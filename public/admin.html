@@ -13,6 +13,7 @@
             --pure-white: #ffffff;
             --signal-red: #c0392b;
             --text-dark: #2c3e50;
+            --placeholder: #95a5a6;
         }
         body { 
             font-family: "Roboto Mono", "Noto Sans SC", "Microsoft YaHei", sans-serif;
@@ -36,11 +37,12 @@
         .btn-logout { background: rgba(255,255,255,0.1); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
         .btn-logout:hover { background: var(--signal-red); }
 
+        /* --- 新增/登记面板 --- */
         .add-panel { 
             background: var(--pure-white); 
             padding: 20px; 
             border-radius: 6px; 
-            margin-bottom: 25px; 
+            margin-bottom: 20px; 
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             display: flex; gap: 10px; flex-wrap: wrap;
             border-left: 5px solid var(--signal-red);
@@ -59,6 +61,32 @@
         }
         .btn-add:hover { background: #e74c3c; transform: translateY(-1px); }
         
+        /* --- 搜索框样式 --- */
+        .search-wrapper {
+            position: relative;
+            margin-bottom: 20px;
+        }
+        .search-wrapper i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--placeholder);
+        }
+        .search-input {
+            width: 100%;
+            padding: 12px 10px 12px 40px; /* 左侧留出图标位置 */
+            background: rgba(0,0,0,0.2);
+            border: 1px solid #576574;
+            border-radius: 4px;
+            color: white;
+            font-family: inherit;
+            box-sizing: border-box; /* 确保padding不撑大宽度 */
+        }
+        .search-input:focus { outline: none; border-color: var(--signal-red); background: rgba(0,0,0,0.4); }
+        .search-input::placeholder { color: var(--placeholder); font-style: italic; }
+
+        /* --- 列表样式 --- */
         .user-list { display: grid; gap: 12px; }
         .user-card { 
             background: var(--pure-white);
@@ -66,7 +94,9 @@
             display: flex; align-items: center; justify-content: space-between; 
             border: 1px solid #ecf0f1;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            animation: fadeIn 0.3s ease;
         }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
         .u-info { flex: 1; }
         .u-name { font-weight: bold; font-size: 16px; color: var(--text-dark); display: flex; align-items: center; gap: 10px; }
@@ -83,6 +113,8 @@
         .btn-del:hover { background: var(--signal-red); color: white; }
         
         .admin-tag { background: var(--signal-red); color: white; padding: 2px 6px; border-radius: 2px; font-size: 10px; letter-spacing: 1px; }
+
+        .no-result { text-align: center; color: #7f8c8d; font-style: italic; font-size: 14px; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -104,11 +136,18 @@
         </div>
     </header>
 
+    <!-- 入职登记面板 -->
     <div class="add-panel">
         <input type="text" id="newName" placeholder="员工姓名">
         <input type="text" id="newUser" placeholder="登录账号">
         <input type="text" id="newPass" placeholder="登录密码">
         <button class="btn-add" onclick="addUser()"><i class="fas fa-plus"></i> 入职登记</button>
+    </div>
+
+    <!-- 搜索框 -->
+    <div class="search-wrapper">
+        <i class="fas fa-search"></i>
+        <input type="text" id="searchInput" class="search-input" placeholder="SEARCH... [输入姓名进行检索]" autocomplete="off">
     </div>
 
     <div id="list" class="user-list"></div>
@@ -118,37 +157,75 @@
     const isAdmin = localStorage.getItem('ta_is_admin');
     if (isAdmin !== 'true') { window.location.href = 'login.html'; }
 
+    // 全局变量存储所有用户
+    let allUsersData = [];
+
+    // 加载数据
     async function loadUsers() {
         try {
             const res = await fetch('/api/users');
-            const users = await res.json();
-            const container = document.getElementById('list');
-            container.innerHTML = '';
-
-            users.forEach(u => {
-                const el = document.createElement('div');
-                el.className = 'user-card';
-                
-                const delBtn = u.isAdmin 
-                    ? `<span style="font-size:10px;color:#aaa;padding:0 10px;">SYSTEM ADMIN</span>` 
-                    : `<button class="btn-base btn-del" onclick="delUser(${u.id}, '${u.name}')">删除</button>`;
-
-                const editBtn = `<button class="btn-base btn-edit" onclick="changePass(${u.id}, '${u.username}')">改密</button>`;
-
-                el.innerHTML = `
-                    <div class="u-info">
-                        <span class="u-name">${u.name} ${u.isAdmin ? '<span class="admin-tag">ADMIN</span>' : ''}</span>
-                        <div class="u-meta">
-                            ID: ${u.username} | KEY: <span class="u-pass">${u.password}</span> | DOCS: ${u.charCount}
-                        </div>
-                    </div>
-                    <div class="action-btns">${editBtn}${delBtn}</div>
-                `;
-                container.appendChild(el);
-            });
-        } catch(e) { alert('连接错误'); }
+            allUsersData = await res.json();
+            
+            // 初始渲染所有数据
+            renderList(allUsersData);
+        } catch(e) { 
+            console.error(e);
+            alert('连接错误'); 
+        }
     }
 
+    // 渲染列表函数 (核心逻辑抽取)
+    function renderList(users) {
+        const container = document.getElementById('list');
+        container.innerHTML = '';
+
+        if (users.length === 0) {
+            container.innerHTML = '<div class="no-result">NO MATCHING RECORDS FOUND</div>';
+            return;
+        }
+
+        users.forEach(u => {
+            const el = document.createElement('div');
+            el.className = 'user-card';
+            
+            const delBtn = u.isAdmin 
+                ? `<span style="font-size:10px;color:#aaa;padding:0 10px;">SYSTEM ADMIN</span>` 
+                : `<button class="btn-base btn-del" onclick="delUser(${u.id}, '${u.name}')">删除</button>`;
+
+            const editBtn = `<button class="btn-base btn-edit" onclick="changePass(${u.id}, '${u.username}')">改密</button>`;
+
+            el.innerHTML = `
+                <div class="u-info">
+                    <span class="u-name">${u.name} ${u.isAdmin ? '<span class="admin-tag">ADMIN</span>' : ''}</span>
+                    <div class="u-meta">
+                        ID: ${u.username} | KEY: <span class="u-pass">${u.password}</span> | DOCS: ${u.charCount || 0}
+                    </div>
+                </div>
+                <div class="action-btns">${editBtn}${delBtn}</div>
+            `;
+            container.appendChild(el);
+        });
+    }
+
+    // 搜索监听
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+        const term = e.target.value.toLowerCase().trim();
+        
+        if (!term) {
+            renderList(allUsersData);
+            return;
+        }
+
+        // 同时检索 姓名(name) 和 账号(username)
+        const filtered = allUsersData.filter(u => 
+            (u.name && u.name.toLowerCase().includes(term)) || 
+            (u.username && u.username.toLowerCase().includes(term))
+        );
+
+        renderList(filtered);
+    });
+
+    // 业务逻辑保持不变
     async function changePass(id, username) {
         const newPass = prompt(`请输入用户 [${username}] 的新密码:`);
         if (newPass === null || newPass.trim() === "") return;
@@ -190,6 +267,8 @@
     }
 
     function logout() { localStorage.clear(); window.location.href = 'login.html'; }
+    
+    // 初始化
     loadUsers();
 </script>
 </body>
