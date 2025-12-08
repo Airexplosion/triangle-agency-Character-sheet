@@ -271,6 +271,8 @@
         .c-func { color: var(--functional); } .f-cell.active { background: var(--functional); border-color: var(--functional); color: white; }
         .c-real { color: var(--reality); } .r-cell.active { background: var(--reality); border-color: var(--reality); color: white; }
         .c-anom { color: var(--accent); } .a-cell.active { background: var(--accent); border-color: var(--accent); color: white; }
+        .p-cell.ignored { background: #95a5a6; border-color: #7f8c8d; color: white; }
+        .p-cell.ignored span { opacity: 0.7; }
         
         .track-rule { font-size: 11px; color: #7f8c8d; padding: 6px 0; border-top: 1px dotted var(--border-color); margin-top: 8px; }
 
@@ -748,7 +750,29 @@
     }
     function fillReal(div, d) { div.querySelector('.f-name').value=d.name; div.querySelector('.f-actor').value=d.actor; div.querySelector('.f-desc').innerHTML=d.desc; div.querySelector('.f-act').checked=d.act; div.querySelector('.f-conn').innerHTML=d.conn; div.querySelectorAll('.r-dots .dot').forEach((e,i)=>{if(i<d.lvl)e.classList.add('active')}); }
     
-    document.querySelectorAll('.p-cell').forEach(c => c.onclick = () => { if(!isReadOnly) c.classList.toggle('active'); });
+    // === [MODIFIED] Progress Cell Click Logic ===
+    document.querySelectorAll('.p-cell').forEach(c => {
+        // Left-click handler
+        c.addEventListener('click', () => {
+            if (isReadOnly) return;
+            if (c.classList.contains('active')) {
+                c.classList.remove('active');
+                c.classList.add('ignored');
+            } else if (c.classList.contains('ignored')) {
+                c.classList.remove('ignored');
+            } else {
+                c.classList.add('active');
+            }
+        });
+
+        // Right-click handler
+        c.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (isReadOnly) return;
+            c.classList.remove('active');
+            c.classList.add('ignored');
+        });
+    });
 
     function populateData(data) {
         ['pName','pAnom','pReal','pFunc','pTrig1','pTrig2','pTrig3','perm1','perm2','perm3','pComm','pRep','mvpCount','watchCount', 'noteTitle', 'noteBody'].forEach(id => { 
@@ -759,7 +783,14 @@
         document.getElementById('list-anom').innerHTML=''; document.getElementById('list-real').innerHTML=''; document.getElementById('list-item').innerHTML='';
         (data.anoms||[]).forEach(x=>addAnom(x)); (data.reals||[]).forEach(x=>addReal(x)); (data.items||[]).forEach(x=>addItem(x));
         if(!document.getElementById('list-anom').children.length) addAnom(); if(!document.getElementById('list-real').children.length) addReal(); if(!document.getElementById('list-item').children.length) addItem();
-        (data.pf||[]).forEach(i=>document.querySelector(`.f-cell[data-idx="${i}"]`)?.classList.add('active')); (data.pr||[]).forEach(i=>document.querySelector(`.r-cell[data-idx="${i}"]`)?.classList.add('active')); (data.pa||[]).forEach(i=>document.querySelector(`.a-cell[data-idx="${i}"]`)?.classList.add('active'));
+        
+        // Restore active and ignored states
+        (data.pf||[]).forEach(i=>document.querySelector(`.f-cell[data-idx="${i}"]`)?.classList.add('active')); 
+        (data.pr||[]).forEach(i=>document.querySelector(`.r-cell[data-idx="${i}"]`)?.classList.add('active')); 
+        (data.pa||[]).forEach(i=>document.querySelector(`.a-cell[data-idx="${i}"]`)?.classList.add('active'));
+        (data.pf_ign||[]).forEach(i=>document.querySelector(`.f-cell[data-idx="${i}"]`)?.classList.add('ignored'));
+        (data.pr_ign||[]).forEach(i=>document.querySelector(`.r-cell[data-idx="${i}"]`)?.classList.add('ignored'));
+        (data.pa_ign||[]).forEach(i=>document.querySelector(`.a-cell[data-idx="${i}"]`)?.classList.add('ignored'));
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
@@ -781,7 +812,9 @@
            perm1: document.getElementById('perm1').value, perm2: document.getElementById('perm2').value, perm3: document.getElementById('perm3').value,
            pComm: document.getElementById('pComm').value, pRep: document.getElementById('pRep').value, mvpCount: document.getElementById('mvpCount').value, watchCount: document.getElementById('watchCount').value,
            noteTitle: document.getElementById('noteTitle').value, noteBody: document.getElementById('noteBody').innerHTML, 
-           qs: [], attrs: {}, anoms: [], reals: [], items: [], pf: [], pr: [], pa: []
+           qs: [], attrs: {}, anoms: [], reals: [], items: [], 
+           pf: [], pr: [], pa: [],
+           pf_ign: [], pr_ign: [], pa_ign: []
        };
        for(let i=1; i<=7; i++) d.qs.push(document.getElementById(`q${i}`).innerHTML);
        ATTRS.forEach(a => { const row = document.querySelector(`.attr-input[data-attr="${a}"]`).parentElement; const m = []; row.querySelectorAll('.dot.marked').forEach(dt => m.push(parseInt(dt.dataset.i))); d.attrs[a] = { v: row.querySelector('input').value, m: m }; });
@@ -793,7 +826,15 @@
        }); });
        document.querySelectorAll('#list-real .card').forEach(c => { let l = 0; c.querySelectorAll('.r-dots .dot').forEach((e,i)=>{if(e.classList.contains('active')) l=i+1}); d.reals.push({ name: c.querySelector('.f-name').value, actor: c.querySelector('.f-actor').value, desc: c.querySelector('.f-desc').innerHTML, act: c.querySelector('.f-act').checked, conn: c.querySelector('.f-conn').innerHTML, lvl: l }); });
        document.querySelectorAll('#list-item .card').forEach(c => { d.items.push({ item: c.querySelector('.f-item').value, pd: c.querySelector('.f-pd').value, eff: c.querySelector('.f-eff').innerHTML }); });
-       document.querySelectorAll('.f-cell.active').forEach(e=>d.pf.push(parseInt(e.dataset.idx))); document.querySelectorAll('.r-cell.active').forEach(e=>d.pr.push(parseInt(e.dataset.idx))); document.querySelectorAll('.a-cell.active').forEach(e=>d.pa.push(parseInt(e.dataset.idx)));
+       
+       // Gather active and ignored states
+       document.querySelectorAll('.f-cell.active').forEach(e=>d.pf.push(parseInt(e.dataset.idx))); 
+       document.querySelectorAll('.r-cell.active').forEach(e=>d.pr.push(parseInt(e.dataset.idx))); 
+       document.querySelectorAll('.a-cell.active').forEach(e=>d.pa.push(parseInt(e.dataset.idx)));
+       document.querySelectorAll('.f-cell.ignored').forEach(e=>d.pf_ign.push(parseInt(e.dataset.idx)));
+       document.querySelectorAll('.r-cell.ignored').forEach(e=>d.pr_ign.push(parseInt(e.dataset.idx)));
+       document.querySelectorAll('.a-cell.ignored').forEach(e=>d.pa_ign.push(parseInt(e.dataset.idx)));
+       
        return d;
     }
 
