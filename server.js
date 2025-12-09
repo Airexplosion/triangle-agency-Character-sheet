@@ -25,9 +25,10 @@ db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT, name TEXT, is_admin INTEGER)`);
     db.run(`CREATE TABLE IF NOT EXISTS characters (id TEXT PRIMARY KEY, user_id INTEGER, data TEXT, created_at INTEGER, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE)`);
     
+    // 初始化默认用户
     db.get('SELECT * FROM users WHERE username = ?', ['admin'], (err, row) => {
         if (!row) {
-            db.run('INSERT INTO users VALUES (?, ?, ?, ?, ?)', [999, 'admin', 'admin', '管理员', 1]); //修改账号：admin，在生成database.db之前修改。
+            db.run('INSERT INTO users VALUES (?, ?, ?, ?, ?)', [999, 'admin', 'admin', '管理员', 1]); 
             db.get('SELECT * FROM users WHERE username = ?', ['111'], (err2, row2) => {
                 if(!row2) db.run('INSERT INTO users VALUES (?, ?, ?, ?, ?)', [1, '111', '111', '测试员', 0]);
             });
@@ -36,11 +37,10 @@ db.serialize(() => {
 });
 
 // ==========================================
-// [新增] 配置选项接口 (读取 JSON 文件)
+// [核心修改] 配置选项接口 
 // ==========================================
 app.get('/api/options', (req, res) => {
     try {
-        // 辅助函数：安全读取 JSON 文件，如果不存在返回空数组
         const readJsonFile = (filename) => {
             const filePath = path.join(DATA_DIR, filename);
             if (fs.existsSync(filePath)) {
@@ -51,26 +51,31 @@ app.get('/api/options', (req, res) => {
                     return [];
                 }
             }
-            return []; // 文件不存在时返回空数组
+            return []; 
         };
 
         const anoms = readJsonFile('anoms.json');
         const realities = readJsonFile('realities.json');
         const functions = readJsonFile('functions.json');
+        // [新增] 读取连结加成配置
+        const bonuses = readJsonFile('bonuses.json');
 
         res.json({
             anoms: anoms,
             realities: realities,
-            functions: functions
+            functions: functions,
+            bonuses: bonuses // 返回给前端
         });
     } catch (error) {
         console.error("获取配置选项失败:", error);
-        res.status(500).json({ anoms: [], realities: [], functions: [] });
+        res.status(500).json({ anoms: [], realities: [], functions: [], bonuses: [] });
     }
 });
+
+// ==========================================
+// 常规 API 接口
 // ==========================================
 
-// 档案列表接口 ===
 app.get('/api/characters', (req, res) => {
     db.all('SELECT id, data FROM characters WHERE user_id = ?', [req.query.userId], (err, rows) => {
         const list = (rows || []).map(row => {
@@ -79,9 +84,9 @@ app.get('/api/characters', (req, res) => {
             return { 
                 id: row.id, 
                 name: d.pName || "未命名干员", 
-                func: d.pFunc || "---",      // 职能
-                anom: d.pAnom || "---",      // 异常能力
-                real: d.pReal || "---"       // 现实身份
+                func: d.pFunc || "---",
+                anom: d.pAnom || "---",
+                real: d.pReal || "---"
             };
         });
         res.json(list);
@@ -91,13 +96,8 @@ app.get('/api/characters', (req, res) => {
 app.get('/api/character/:id', (req, res) => {
     db.get('SELECT data FROM characters WHERE id = ?', [req.params.id], (err, row) => {
         if (row) {
-            try {
-                res.json(JSON.parse(row.data));
-            } catch (e) {
-                res.status(500).json({});
-            }
-        }
-        else res.status(404).json({});
+            try { res.json(JSON.parse(row.data)); } catch (e) { res.status(500).json({}); }
+        } else res.status(404).json({});
     });
 });
 
@@ -123,7 +123,6 @@ app.delete('/api/character/:id', (req, res) => {
     });
 });
 
-
 app.post('/api/login', (req, res) => {
     db.get('SELECT * FROM users WHERE username = ? AND password = ?', [req.body.username, req.body.password], (err, row) => {
         if (err) return res.status(500).json({ success: false });
@@ -135,7 +134,6 @@ app.post('/api/login', (req, res) => {
 app.get('/api/users', (req, res) => {
     db.all('SELECT id, username, password, name, is_admin FROM users', [], (err, users) => {
         if (err || !users || users.length === 0) return res.json([]);
-        
         let processed = 0; 
         const result = [];
         users.forEach(u => {
@@ -147,24 +145,27 @@ app.get('/api/users', (req, res) => {
         });
     });
 });
+
 app.post('/api/users', (req, res) => {
     db.run('INSERT INTO users (id, username, password, name, is_admin) VALUES (?, ?, ?, ?, ?)', [Date.now(), req.body.username, req.body.password, req.body.name || "新职员", 0], function(err) {
         if (err) res.json({ success: false, message: "账号已存在" }); else res.json({ success: true });
     });
 });
+
 app.delete('/api/users/:id', (req, res) => {
     db.get('SELECT is_admin FROM users WHERE id = ?', [req.params.id], (err, row) => {
         if (row && row.is_admin) return res.json({ success: false, message: "不能删除管理员" });
         db.run('DELETE FROM users WHERE id = ?', [req.params.id], function(err) { res.json({ success: true }); });
     });
 });
+
 app.put('/api/users/:id', (req, res) => {
     db.run('UPDATE users SET password = ? WHERE id = ?', [req.body.password, req.params.id], function(err) { res.json({ success: true }); });
 });
+
 app.get('/api/admin/monitor', (req, res) => {
     db.all('SELECT id, name, username, is_admin FROM users', [], (err, users) => {
         if(err || !users || users.length === 0) return res.json([]);
-
         let completed = 0; 
         const result = [];
         users.forEach(u => {
