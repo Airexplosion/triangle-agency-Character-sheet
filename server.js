@@ -10,10 +10,12 @@ const PORT = 3333;
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json());
 
-const DB_PATH = path.join(__dirname, 'data', 'database.db');
+const DATA_DIR = path.join(__dirname, 'data');
+const DB_PATH = path.join(DATA_DIR, 'database.db');
 
-if (!fs.existsSync(path.join(__dirname, 'data'))) {
-    fs.mkdirSync(path.join(__dirname, 'data'));
+// 确保 data 目录存在
+if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR);
 }
 
 const db = new sqlite3.Database(DB_PATH);
@@ -33,13 +35,47 @@ db.serialize(() => {
     });
 });
 
+// ==========================================
+// [新增] 配置选项接口 (读取 JSON 文件)
+// ==========================================
+app.get('/api/options', (req, res) => {
+    try {
+        // 辅助函数：安全读取 JSON 文件，如果不存在返回空数组
+        const readJsonFile = (filename) => {
+            const filePath = path.join(DATA_DIR, filename);
+            if (fs.existsSync(filePath)) {
+                try {
+                    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+                } catch (e) {
+                    console.error(`解析 ${filename} 失败:`, e);
+                    return [];
+                }
+            }
+            return []; // 文件不存在时返回空数组
+        };
 
+        const anoms = readJsonFile('anoms.json');
+        const realities = readJsonFile('realities.json');
+        const functions = readJsonFile('functions.json');
+
+        res.json({
+            anoms: anoms,
+            realities: realities,
+            functions: functions
+        });
+    } catch (error) {
+        console.error("获取配置选项失败:", error);
+        res.status(500).json({ anoms: [], realities: [], functions: [] });
+    }
+});
+// ==========================================
 
 // 档案列表接口 ===
 app.get('/api/characters', (req, res) => {
     db.all('SELECT id, data FROM characters WHERE user_id = ?', [req.query.userId], (err, rows) => {
         const list = (rows || []).map(row => {
-            const d = JSON.parse(row.data);
+            let d = {};
+            try { d = JSON.parse(row.data); } catch(e) {}
             return { 
                 id: row.id, 
                 name: d.pName || "未命名干员", 
@@ -52,18 +88,22 @@ app.get('/api/characters', (req, res) => {
     });
 });
 
-
-
 app.get('/api/character/:id', (req, res) => {
     db.get('SELECT data FROM characters WHERE id = ?', [req.params.id], (err, row) => {
-        if (row) res.json(JSON.parse(row.data));
+        if (row) {
+            try {
+                res.json(JSON.parse(row.data));
+            } catch (e) {
+                res.status(500).json({});
+            }
+        }
         else res.status(404).json({});
     });
 });
 
 app.post('/api/character', (req, res) => {
     const newId = Date.now().toString();
-    const data = JSON.stringify({ pName: "新进干员" });
+    const data = JSON.stringify({ pName: "新进职员" });
     db.run('INSERT INTO characters (id, user_id, data, created_at) VALUES (?, ?, ?, ?)', 
         [newId, req.body.userId, data, Date.now()], 
         function(err) { res.json({ success: true, id: newId }); }
@@ -94,13 +134,15 @@ app.post('/api/login', (req, res) => {
 
 app.get('/api/users', (req, res) => {
     db.all('SELECT id, username, password, name, is_admin FROM users', [], (err, users) => {
-        if (err) return res.json([]);
-        if (users.length === 0) return res.json([]);
-        let processed = 0; const result = [];
+        if (err || !users || users.length === 0) return res.json([]);
+        
+        let processed = 0; 
+        const result = [];
         users.forEach(u => {
             db.get('SELECT COUNT(*) as count FROM characters WHERE user_id = ?', [u.id], (err, row) => {
                 result.push({ id: u.id, username: u.username, password: u.password, name: u.name, isAdmin: !!u.is_admin, charCount: row ? row.count : 0 });
-                processed++; if(processed === users.length) res.json(result);
+                processed++; 
+                if(processed === users.length) res.json(result);
             });
         });
     });
@@ -121,14 +163,20 @@ app.put('/api/users/:id', (req, res) => {
 });
 app.get('/api/admin/monitor', (req, res) => {
     db.all('SELECT id, name, username, is_admin FROM users', [], (err, users) => {
-        if(err || !users) return res.json([]);
-        if(users.length === 0) return res.json([]);
-        let completed = 0; const result = [];
+        if(err || !users || users.length === 0) return res.json([]);
+
+        let completed = 0; 
+        const result = [];
         users.forEach(u => {
             db.all('SELECT id, data FROM characters WHERE user_id = ?', [u.id], (err, chars) => {
-                const userChars = (chars || []).map(c => { let d = {}; try { d = JSON.parse(c.data); } catch(e) {} return { id: c.id, name: d.pName || "未命名", func: d.pFunc || "未知" }; });
+                const userChars = (chars || []).map(c => { 
+                    let d = {}; 
+                    try { d = JSON.parse(c.data); } catch(e) {} 
+                    return { id: c.id, name: d.pName || "未命名", func: d.pFunc || "未知" }; 
+                });
                 result.push({ userId: u.id, userName: u.name, userAccount: u.username, isAdmin: !!u.is_admin, characters: userChars });
-                completed++; if(completed === users.length) res.json(result);
+                completed++; 
+                if(completed === users.length) res.json(result);
             });
         });
     });
@@ -138,4 +186,5 @@ app.get('/', (req, res) => res.redirect('/login.html'));
 
 app.listen(PORT, () => {
     console.log(`服务器运行中: http://localhost:${PORT}`);
+    console.log(`数据目录: ${DATA_DIR}`);
 });
