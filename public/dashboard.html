@@ -9,13 +9,11 @@
         :root {
             --deep-bg: #1a252f;
             --bg-pattern: radial-gradient(#2c3e50 1px, transparent 1px);
-            
             --card-bg: #ffffff;
             --text-main: #1e293b;
             --text-sub: #64748b;
             --signal-red: #c0392b;
             --border-color: #ecf0f1;
-
             --c-anom: #0284c7; 
             --c-real: #ea580c; 
             --c-func: #dc2626; 
@@ -68,523 +66,302 @@
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
             gap: 20px; 
         }
+
+        /* === 移动端适配优化 === */
+        @media (max-width: 768px) {
+            header { flex-direction: column; align-items: flex-start; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; }
+            .btn-group { width: 100%; display: flex; justify-content: space-between; gap: 8px; }
+            .btn { flex: 1; justify-content: center; padding: 10px 0; font-size: 14px; min-width: 40px; }
+            .btn-text { display: none; }
+            .brand-logo .top { font-size: 20px; }
+            .brand-logo .btm { font-size: 12px; }
+        }
         
         /* === 卡片样式 === */
         .char-card { 
-            background-color: var(--card-bg);
-            padding: 20px; 
-            border-radius: 6px; 
-            border-top: 4px solid var(--signal-red);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
-            
-            position: relative; 
-            overflow: hidden; 
-            isolation: isolate;
-            
+            background-color: var(--card-bg); padding: 20px; border-radius: 6px; 
+            border-top: 4px solid var(--signal-red); box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+            position: relative; overflow: hidden; isolation: isolate;
             transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
-            display: flex;
-            flex-direction: column;
+            display: flex; flex-direction: column;
         }
-
-        /* 动态背景碎片 */
-        .char-card::before, .char-card::after {
-            content: ''; position: absolute; z-index: -1; pointer-events: none;
-            opacity: 0.12; transform-origin: center;
-        }
-        .char-card::before {
-            background: #cbd5e1; width: 400px; height: 400px;
-            top: calc(-120px + 220px * var(--r1)); left: calc(-120px + 220px * var(--r2));
-            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-            animation: float-shard calc(25s + 10s * var(--r3)) infinite linear;
-        }
-        .char-card::after {
-            background: var(--signal-red); width: 280px; height: 280px; opacity: 0.08;
-            top: calc(40% + 100px * var(--r2)); right: calc(-60px + 120px * var(--r1));
-            clip-path: polygon(0 0, 100% 50%, 0 100%);
-            animation: float-shard calc(30s + 15s * var(--r1)) infinite reverse linear;
-        }
-
-        .char-card:hover { 
-            transform: translateY(-5px) scale(1.02); 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-            z-index: 10;
-        }
-
-        /* 点击激活状态 */
-        .char-card.accessing {
-            transform: scale(0.95);
-            box-shadow: 0 0 0 2px var(--signal-red), 0 0 20px var(--signal-red);
-            border-top-color: transparent; 
-        }
-
-        @keyframes float-shard {
-            0% { transform: rotate(0deg) translate(0, 0); }
-            50% { transform: rotate(180deg) translate(20px, 20px); }
-            100% { transform: rotate(360deg) translate(0, 0); }
-        }
-
-        .card-content-wrapper {
-            flex-grow: 1; display: flex; flex-direction: column;
-            justify-content: center; cursor: pointer; padding: 10px 0; z-index: 2; 
-        }
-        
-        .card-header {
-            margin-bottom: 20px; padding-bottom: 15px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .c-name { 
-            font-size: 22px; font-weight: 800; color: var(--text-main); letter-spacing: 0.5px;
-        }
-
+        .char-card:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 20px 40px rgba(0,0,0,0.2); z-index: 10; }
+        .char-card.accessing { transform: scale(0.95); box-shadow: 0 0 0 2px var(--signal-red), 0 0 20px var(--signal-red); border-top-color: transparent; }
+        .card-content-wrapper { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; cursor: pointer; padding: 10px 0; z-index: 2; }
+        .card-header { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+        .c-name { font-size: 22px; font-weight: 800; color: var(--text-main); letter-spacing: 0.5px; }
         .info-group { display: flex; flex-direction: column; gap: 12px; }
-
-        /* 半透明磨砂信息块 */
-        .info-field {
-            display: flex; flex-direction: column; padding: 10px 14px; border-radius: 4px;
-            background: rgba(241, 245, 249, 0.65); 
-            backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
-            border-left: 4px solid #ccc;
-            transition: all 0.3s ease;
-            border-top: 1px solid rgba(255,255,255,0.5);
-            border-right: 1px solid rgba(255,255,255,0.5);
-            border-bottom: 1px solid rgba(255,255,255,0.5);
-        }
+        .info-field { display: flex; flex-direction: column; padding: 10px 14px; border-radius: 4px; background: rgba(241, 245, 249, 0.65); backdrop-filter: blur(4px); border-left: 4px solid #ccc; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.5); border-left-width: 4px; }
         .info-field:hover { background: rgba(241, 245, 249, 0.9); transform: translateX(2px); }
-
         .if-anom { border-left-color: var(--c-anom); } .if-anom .field-label { color: var(--c-anom); }
         .if-real { border-left-color: var(--c-real); } .if-real .field-label { color: var(--c-real); }
         .if-func { border-left-color: var(--c-func); } .if-func .field-label { color: var(--c-func); }
-
-        .field-label {
-            font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px;
-            font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; opacity: 0.9;
-        }
-        .field-label i { font-size: 12px; width: 14px; text-align: center; }
-        .field-val {
-            font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            color: var(--text-main); font-family: "Noto Sans SC", sans-serif; letter-spacing: 0.5px;
-        }
-
-        /* 动画 */
-        @keyframes flicker { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-        .anim-flicker { animation: flicker 2s infinite steps(5); }
-        @keyframes breathe { 0%, 100% { opacity: 0.6; transform: scale(1); } 50% { opacity: 1; transform: scale(1.1); } }
-        .anim-breathe { animation: breathe 3s infinite ease-in-out; }
-        @keyframes floatPulse { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
-        .anim-float { animation: floatPulse 2.5s infinite ease-in-out; }
-
-        .c-actions { 
-            padding-top: 15px; border-top: 1px dashed var(--border-color);
-            text-align: right; margin-top: auto; position: relative; z-index: 2;
-        }
-        .btn-del {
-            color: var(--text-sub); background: none; border: none;
-            font-size: 11px; cursor: pointer; padding: 5px; transition: color 0.2s;
-        }
+        .field-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; opacity: 0.9; }
+        .field-val { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); font-family: "Noto Sans SC", sans-serif; letter-spacing: 0.5px; }
+        .c-actions { padding-top: 15px; border-top: 1px dashed var(--border-color); text-align: right; margin-top: auto; position: relative; z-index: 2; }
+        .btn-del { color: var(--text-sub); background: none; border: none; font-size: 11px; cursor: pointer; padding: 5px; transition: color 0.2s; }
         .btn-del:hover { color: var(--signal-red); text-decoration: underline; }
-
-        /* 卡片操作按钮 */
-        .card-tools {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 10px;
-            flex-wrap: wrap;
-        }
-        .tool-btn {
-            background: #f1f5f9;
-            border: none;
-            padding: 6px 10px;
-            border-radius: 4px;
-            font-size: 10px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            color: #64748b;
-            transition: all 0.2s;
-            text-transform: uppercase;
-            font-weight: bold;
-        }
+        .card-tools { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+        .tool-btn { background: #f1f5f9; border: none; padding: 6px 10px; border-radius: 4px; font-size: 10px; cursor: pointer; display: flex; align-items: center; gap: 5px; color: #64748b; transition: all 0.2s; text-transform: uppercase; font-weight: bold; }
         .tool-btn:hover { background: #e2e8f0; color: var(--text-main); }
-        .tool-btn.active { background: var(--signal-red); color: white; }
-        .tool-btn i { font-size: 11px; }
 
-        /* 模态框 */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7);
-            z-index: 5000;
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-overlay.show { display: flex; }
-        .modal {
-            background: white;
-            padding: 25px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 450px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        .modal h3 {
-            margin: 0 0 20px;
-            color: var(--text-main);
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .modal h3 i { color: var(--signal-red); }
-        .modal-close {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            color: #999;
-        }
-        .modal-content { margin-bottom: 20px; }
-        .code-display {
-            background: #f8f9fa;
-            border: 2px dashed #cbd5e1;
-            border-radius: 6px;
-            padding: 15px;
-            text-align: center;
-            margin: 15px 0;
-        }
-        .code-display code {
-            font-size: 14px;
-            font-family: monospace;
-            color: var(--signal-red);
-            word-break: break-all;
-        }
-        .code-display.link code {
-            font-size: 12px;
-            color: var(--c-anom);
-        }
-        .modal-input {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #ecf0f1;
-            border-radius: 4px;
-            font-size: 13px;
-            box-sizing: border-box;
-        }
-        .modal-input:focus {
-            outline: none;
-            border-color: var(--signal-red);
-        }
-        .modal-btns {
-            display: flex;
-            gap: 10px;
-        }
-        .modal-btns button {
-            flex: 1;
-            padding: 10px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 12px;
-        }
-        .btn-cancel { background: #ecf0f1; color: #555; }
-        .btn-confirm { background: var(--signal-red); color: white; }
-        .btn-copy { background: var(--c-anom); color: white; }
-        .btn-copy:hover { background: #0369a1; }
+        /* === 普通文档加载过渡 === */
+        #transition-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0f172a; z-index: 8000; pointer-events: none; clip-path: inset(50% 0 50% 0); transition: clip-path 0.8s cubic-bezier(0.8, 0, 0.2, 1); display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #transition-overlay.active { pointer-events: all; clip-path: inset(0 0 0 0); }
+        #transition-overlay::before { content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: var(--signal-red); z-index: 100; box-shadow: 0 0 15px var(--signal-red); opacity: 0; transition: opacity 0.2s; }
+        #transition-overlay.active::before { opacity: 1; animation: line-fade 0.8s forwards; }
+        @keyframes line-fade { 0% { opacity: 1; transform: scaleX(0.1); } 50% { opacity: 1; transform: scaleX(1); } 100% { opacity: 0; transform: scaleX(1); } }
+        .loader-content { text-align: center; color: var(--signal-red); opacity: 0; transform: scale(0.9); transition: all 0.4s ease 0.2s; }
+        #transition-overlay.active .loader-content { opacity: 1; transform: scale(1); }
+        .loader-icon { font-size: 40px; margin-bottom: 20px; }
+        .loader-text { font-family: "Noto Sans SC", sans-serif; font-size: 16px; letter-spacing: 2px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+        .dots::after { content: ''; width: 1.5em; text-align: left; display: inline-block; animation: dot-steps 1.5s infinite steps(4, end); }
+        @keyframes dot-steps { 0%, 20% { content: ''; } 40% { content: '.'; } 60% { content: '..'; } 80%, 100% { content: '...'; } }
 
-        .option-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #ecf0f1;
-        }
-        .option-row:last-child { border-bottom: none; }
-        .option-label { font-size: 13px; color: var(--text-main); }
-        .option-desc { font-size: 11px; color: #94a3b8; margin-top: 3px; }
-
-        /* 开关 */
-        .switch {
-            position: relative;
-            width: 44px;
-            height: 24px;
-        }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #ccc;
-            transition: .3s;
-            border-radius: 24px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: .3s;
-            border-radius: 50%;
-        }
-        input:checked + .slider { background-color: var(--signal-red); }
-        input:checked + .slider:before { transform: translateX(20px); }
-
-        /* Toast */
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--signal-red);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 4px;
-            font-size: 13px;
-            font-weight: bold;
-            z-index: 6000;
-            display: none;
-        }
-        .toast.show { display: block; animation: slideUp 0.3s ease; }
-        .toast.success { background: #27ae60; }
-        @keyframes slideUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
-
-        .empty-state {
-            grid-column: 1 / -1; text-align: center; background: rgba(255,255,255,0.05);
-            color: rgba(255,255,255,0.4); padding: 60px 0; font-size: 14px;
-            border-radius: 8px; border: 2px dashed rgba(255,255,255,0.1);
-        }
-
-        /* === 页面过渡遮罩 (文档展开效果) === */
-        #transition-overlay {
-            position: fixed; 
-            top: 0; left: 0; 
-            width: 100vw; height: 100vh;
-            background: #0f172a; 
+        /* === 高墙特效 (GLITCH & CYBERPUNK) === */
+        
+        /* 1. 基础容器：开始时看起来和普通加载一样 */
+        #hw-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #0f172a; /* 初始深蓝背景，伪装成正常 */
             z-index: 9999;
             pointer-events: none;
-            
-            /* 初始状态：中间一条线 */
             clip-path: inset(50% 0 50% 0);
-            
-            /* 修改点：时间从 0.6s 延长到 1.2s，更慢更沉重 */
             transition: clip-path 0.8s cubic-bezier(0.8, 0, 0.2, 1);
-            
             display: flex; flex-direction: column; justify-content: center; align-items: center;
+            overflow: hidden;
         }
-        
-        #transition-overlay.active {
+
+        #hw-overlay.active {
             pointer-events: all;
             clip-path: inset(0 0 0 0);
         }
 
-        /* 装饰线 */
-        #transition-overlay::before {
-            content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 2px;
-            background: var(--signal-red); z-index: 100;
-            box-shadow: 0 0 15px var(--signal-red);
-            opacity: 0; transition: opacity 0.2s;
-        }
-        /* 修改点：线条动画也跟随延长到 1.2s */
-        #transition-overlay.active::before {
-            opacity: 1;
-            animation: line-fade 0.8s forwards;
-        }
-        @keyframes line-fade { 
-            0% { opacity: 1; transform: scaleX(0.1); } 
-            50% { opacity: 1; transform: scaleX(1); } 
-            100% { opacity: 0; transform: scaleX(1); } 
-        }
-
-        .loader-content {
+        /* 2. 正常加载的内容 */
+        .hw-normal-content {
             text-align: center; color: var(--signal-red);
-            opacity: 0; transform: scale(0.9);
-            /* 修改点：延迟稍微加长，配合变慢的展开 */
-            transition: all 0.4s ease 0.2s; 
+            transition: opacity 0.1s;
+            z-index: 10;
         }
-        #transition-overlay.active .loader-content {
-            opacity: 1; transform: scale(1);
-        }
-
-        .loader-icon { font-size: 40px; margin-bottom: 20px; }
         
-        .loader-text {
-            font-family: "Noto Sans SC", sans-serif;
-            font-size: 16px; letter-spacing: 2px;
-            font-weight: 900;
-            display: flex; align-items: center; justify-content: center;
+        /* 3. 故障花屏层 */
+        .hw-glitch-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            display: none; /* 默认隐藏 */
+            z-index: 20;
+            mix-blend-mode: hard-light;
+        }
+        
+        /* 故障时的背景动画 */
+        #hw-overlay.glitch-mode {
+            background: #200000; /* 变成暗红 */
+            animation: bg-flash 0.1s infinite; /* 背景剧烈闪烁 */
+        }
+        
+        #hw-overlay.glitch-mode .hw-normal-content {
+            filter: invert(1) blur(1px); /* 文字反色模糊 */
+            transform: scale(1.1);
         }
 
-        .dots::after {
-            content: '';
-            width: 1.5em; 
-            text-align: left;
-            display: inline-block;
-            animation: dot-steps 1.5s infinite steps(4, end);
+        /* 赛博花屏特效 (CSS Striping) */
+        .hw-scanlines {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2));
+            background-size: 100% 4px;
+            animation: scanline 0.2s linear infinite;
+            pointer-events: none;
+            display: none;
+            z-index: 21;
         }
 
-        @keyframes dot-steps {
-            0%, 20% { content: ''; }
-            40% { content: '.'; }
-            60% { content: '..'; }
-            80%, 100% { content: '...'; }
+        /* 4. 眼睛层 */
+        .hw-eye-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 30;
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0;
+            transition: opacity 0.2s;
         }
-		/* ... 原有的 CSS ... */
 
-		/* === 移动端适配优化 === */
-		@media (max-width: 768px) {
-			/* 1. 调整 Header 布局：垂直排列 */
-			header {
-				flex-direction: column;
-				align-items: flex-start;
-				gap: 15px;
-				margin-bottom: 20px;
-				padding-bottom: 15px;
-			}
+        .hw-eye-svg {
+            width: 150px;
+            opacity: 0;
+            transform-origin: center center; /* 修复1：设置正确的变换原点 */
+            transform: scaleY(0.01); /* 闭眼 */
+            filter: drop-shadow(0 0 20px #00f3ff);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        
+        /* 修复2：修正 CSS 选择器，确保能正确应用到 SVG 上 */
+        .hw-eye-svg.eye-open {
+            opacity: 1;
+            transform: scaleY(1);
+        }
 
-			/* 2. 按钮组占满宽度，两端对齐 */
-			.btn-group {
-				width: 100%;
-				display: flex;
-				justify-content: space-between; /* 按钮均匀分布 */
-				gap: 8px; /* 减小间距 */
-			}
+        /* Keyframes */
+        @keyframes bg-flash {
+            0% { background-color: #200000; transform: translate(2px, 0); }
+            25% { background-color: #000000; transform: translate(-2px, 2px); }
+            50% { background-color: #400000; transform: translate(0, -2px); }
+            75% { background-color: #100000; transform: translate(2px, 2px); }
+            100% { background-color: #200000; transform: translate(0, 0); }
+        }
+        
+        @keyframes spin-crash {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(180deg); } /* 转一半卡住 */
+        }
 
-			/* 3. 按钮样式调整 */
-			.btn {
-				flex: 1; /* 让按钮平分宽度 */
-				justify-content: center; /* 图标居中 */
-				padding: 10px 0; /* 调整内边距 */
-				font-size: 14px;
-				min-width: 40px;
-			}
+        @keyframes scanline {
+            0% { transform: translateY(0); }
+            100% { transform: translateY(4px); }
+        }
 
-			/* 4. 关键：隐藏按钮文字，只留图标 */
-			.btn-text {
-				display: none;
-			}
-			
-			/* 5. 调整 Logo 大小 */
-			.brand-logo .top { font-size: 20px; }
-			.brand-logo .btm { font-size: 12px; }
-		}
+        /* Toast & Modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 5000; justify-content: center; align-items: center; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: white; padding: 25px; border-radius: 8px; width: 90%; max-width: 450px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--signal-red); color: white; padding: 12px 24px; border-radius: 4px; font-size: 13px; font-weight: bold; z-index: 6000; display: none; }
+        .toast.show { display: block; animation: slideUp 0.3s ease; }
+        .toast.success { background: #27ae60; }
+        .empty-state { grid-column: 1 / -1; text-align: center; background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.4); padding: 60px 0; font-size: 14px; border-radius: 8px; border: 2px dashed rgba(255,255,255,0.1); }
+    /* === 新增特效样式 === */
 
-    </style>
+        /* 触手容器：覆盖全屏，中心定位 */
+        .hw-tentacles-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 35; /* 在眼睛(30)之上，或者之下? 既然要蔓延掩盖，建议在眼睛之上或者同层混合 */
+            display: flex; justify-content: center; align-items: center;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        /* 单个触手 */
+        .tendril {
+            position: absolute;
+            width: 15vw; /* 宽度 */
+            height: 120vmax; /* 足够长，超出屏幕 */
+            background: #000;
+            top: 50%; left: 50%;
+            transform-origin: top center; /* 以顶部（中心点）为旋转轴，实际上我们反过来做，从外向内 */
+            filter: blur(8px) contrast(1.2); /* 模糊边缘，制造液态/阴影感 */
+            opacity: 0;
+            border-radius: 0 0 50% 50%; /* 尖端圆润 */
+            mix-blend-mode: multiply; /* 混合模式，增强黑暗感 */
+        }
+
+        /* 触手动画：从屏幕外伸向中心 */
+        .tendril.creeping {
+            opacity: 1;
+            animation: creep-in 1.8s cubic-bezier(0.7, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes creep-in {
+            0% {
+                transform: translate(-50%, -120%) rotate(var(--r)); /* 初始位置：远在圆心之外 */
+            }
+            100% {
+                transform: translate(-50%, -10%) rotate(var(--r)); /* 结束位置：刺入圆心 */
+            }
+        }
+
+        /* 最终黑屏层 */
+        #hw-blackout {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease;
+        }
+        #hw-blackout.active {
+            opacity: 1;
+        }
+
+        /* 优化眼睛层：当触手出现时，眼睛稍微缩小颤抖，仿佛在恐惧 */
+        .hw-eye-svg.scared {
+            animation: eye-shiver 0.1s infinite;
+        }
+        @keyframes eye-shiver {
+            0% { transform: scale(1) translate(0,0); }
+            50% { transform: scale(0.98) translate(1px, 1px); }
+            100% { transform: scale(1) translate(0,0); }
+        }
+	</style>
 </head>
 <body>
     
-    <!-- 过渡遮罩层 -->
+    <!-- 普通过渡 (正常档案) -->
     <div id="transition-overlay">
         <div class="loader-content">
             <i class="fas fa-circle-notch fa-spin loader-icon"></i>
-            <div class="loader-text">
-                访问终端中<span class="dots"></span>
-            </div>
+            <div class="loader-text">访问终端中<span class="dots"></span></div>
         </div>
+    </div>
+
+   <!-- 高墙特效容器 -->
+    <div id="hw-overlay">
+        <!-- 1. 伪装层 -->
+        <div class="hw-normal-content" id="hw-content">
+            <i class="fas fa-circle-notch fa-spin loader-icon" id="hw-icon"></i>
+            <div class="loader-text" id="hw-text">访问高墙文件<span class="dots"></span></div>
+        </div>
+
+        <!-- 2. 故障层 -->
+        <div class="hw-scanlines" id="hw-scanlines"></div>
+
+        <!-- NEW: 4. 暗影触手层 (新增) -->
+        <div class="hw-tentacles-layer" id="hw-tentacles"></div>
+
+        <!-- 3. 眼睛层 -->
+        <div class="hw-eye-layer" id="hw-eye-layer">
+            <svg class="hw-eye-svg" id="hw-eye-icon" viewBox="0 0 100 90">
+                <path d="M5 45 Q 50 5 95 45 Q 50 85 5 45 Z" fill="#000" stroke="#00f3ff" stroke-width="3"/>
+                <circle cx="50" cy="45" r="16" fill="#00f3ff" opacity="0.8" />
+                <path d="M50 30 Q 54 45 50 60 Q 46 45 50 30 Z" fill="#fff" />
+            </svg>
+        </div>
+        
+        <!-- NEW: 5. 最终熄灭层 (新增) -->
+        <div id="hw-blackout"></div>
     </div>
 
     <div class="container">
-
-	<header>
-		<div class="brand-logo">
-			<span class="top">TRIANGLE</span>
-			<span class="btm">AGENCY</span>
-		</div>
-		<div class="btn-group">
-			<!-- 新增的高墙文件按钮 -->
-			<button class="btn" style="background:#2c3e50; color:white;" onclick="window.location.href='documents.html'" title="高墙文件">
-				<i class="fas fa-file-shield"></i> <span class="btn-text">高墙</span>
-			</button>
-
-			<!-- 控制台按钮 (根据权限显示) -->
-			<button class="btn btn-console" id="btnConsole" style="display:none;" onclick="goConsole()" title="管理台">
-				<i class="fas fa-cog"></i> <span class="btn-text" id="btnConsoleText">控制台</span>
-			</button>
-
-			<!-- 登出按钮 (保持原样，或也加 span) -->
-			<button class="btn btn-logout" onclick="logout()" title="登出">
-				<i class="fas fa-sign-out-alt"></i> <span class="btn-text">退出</span>
-			</button>
-
-			<!-- 新建按钮 -->
-			<button class="btn btn-new" onclick="createNew()" title="新建档案">
-				<i class="fas fa-plus"></i> <span class="btn-text">新建</span>
-			</button>
-		</div>
-	</header>
+        <header>
+            <div class="brand-logo">
+                <span class="top">TRIANGLE</span>
+                <span class="btm">AGENCY</span>
+            </div>
+            <div class="btn-group">
+                <button class="btn" style="background:#2c3e50; color:white;" onclick="enterHighWall()" title="高墙文件">
+                    <i class="fas fa-file-shield"></i> <span class="btn-text">高墙</span>
+                </button>
+                <button class="btn btn-console" id="btnConsole" style="display:none;" onclick="goConsole()" title="管理台">
+                    <i class="fas fa-cog"></i> <span class="btn-text" id="btnConsoleText">控制台</span>
+                </button>
+                <button class="btn btn-logout" onclick="logout()" title="登出">
+                    <i class="fas fa-sign-out-alt"></i> <span class="btn-text">退出</span>
+                </button>
+                <button class="btn btn-new" onclick="createNew()" title="新建档案">
+                    <i class="fas fa-plus"></i> <span class="btn-text">新建</span>
+                </button>
+            </div>
+        </header>
         <div id="list" class="grid"></div>
     </div>
 
-    <!-- 授权模态框 -->
+    <!-- 授权/分享模态框 -->
     <div class="modal-overlay" id="authModal">
         <div class="modal">
             <h3><i class="fas fa-key"></i> 生成授权码</h3>
-            <div class="modal-content">
-                <p style="font-size:13px;color:#64748b;margin-bottom:15px;">生成授权码后，经理可以通过该码获得此角色卡的编辑权限。</p>
-                <div id="authCodeDisplay" class="code-display" style="display:none;">
-                    <p style="font-size:11px;color:#94a3b8;margin:0 0 10px;">授权码</p>
-                    <code id="authCode"></code>
-                </div>
-                <div id="authLinkDisplay" class="code-display link" style="display:none;">
-                    <p style="font-size:11px;color:#94a3b8;margin:0 0 10px;">授权链接</p>
-                    <code id="authLink"></code>
-                </div>
+            <div id="authCodeDisplay" style="background:#f8f9fa;padding:15px;text-align:center;margin:15px 0;border-radius:6px;font-family:monospace;color:var(--signal-red);">
+                <code id="authCode">Generating...</code>
             </div>
-            <div class="modal-btns" id="authBtns">
-                <button class="btn-cancel" onclick="closeModal('authModal')">关闭</button>
-                <button class="btn-confirm" id="btnGenAuth" onclick="generateAuthCode()">生成授权码</button>
-            </div>
-            <div class="modal-btns" id="authCopyBtns" style="display:none;">
-                <button class="btn-cancel" onclick="closeModal('authModal')">关闭</button>
-                <button class="btn-copy" onclick="copyAuthCode()"><i class="fas fa-copy"></i> 复制授权码</button>
-                <button class="btn-copy" onclick="copyAuthLink()"><i class="fas fa-link"></i> 复制链接</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 分享模态框 -->
-    <div class="modal-overlay" id="shareModal">
-        <div class="modal">
-            <h3><i class="fas fa-share-alt"></i> 分享角色卡</h3>
-            <div class="modal-content" id="shareSetup">
-                <p style="font-size:13px;color:#64748b;margin-bottom:15px;">生成分享链接，任何人都可以通过链接查看此角色卡（只读）。</p>
-                <div class="option-row">
-                    <div>
-                        <div class="option-label">密码保护</div>
-                        <div class="option-desc">需要输入密码才能查看</div>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="shareNeedPwd" onchange="togglePwdInput()">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div id="sharePwdRow" style="display:none;margin-top:15px;">
-                    <input type="password" class="modal-input" id="sharePwd" placeholder="设置查看密码">
-                </div>
-            </div>
-            <div class="modal-content" id="shareResult" style="display:none;">
-                <div class="code-display link">
-                    <p style="font-size:11px;color:#94a3b8;margin:0 0 10px;">分享链接</p>
-                    <code id="shareLink"></code>
-                </div>
-                <p id="sharePwdHint" style="font-size:12px;color:#94a3b8;text-align:center;display:none;">
-                    <i class="fas fa-lock"></i> 已设置密码保护
-                </p>
-            </div>
-            <div class="modal-btns" id="shareBtns">
-                <button class="btn-cancel" onclick="closeModal('shareModal')">取消</button>
-                <button class="btn-confirm" onclick="createShare()">生成链接</button>
-            </div>
-            <div class="modal-btns" id="shareCopyBtns" style="display:none;">
-                <button class="btn-cancel" onclick="closeModal('shareModal')">关闭</button>
-                <button class="btn-copy" onclick="copyShareLink()"><i class="fas fa-copy"></i> 复制链接</button>
+            <div style="display:flex;gap:10px;">
+                <button style="flex:1;padding:10px;border:none;background:#ecf0f1;cursor:pointer;" onclick="document.getElementById('authModal').classList.remove('show')">关闭</button>
+                <button style="flex:1;padding:10px;border:none;background:var(--signal-red);color:white;cursor:pointer;" onclick="copyAuthCode()">复制</button>
             </div>
         </div>
     </div>
@@ -597,42 +374,105 @@
         const userRole = parseInt(localStorage.getItem('ta_role') || '0');
         if(!uid) window.location.href = 'login.html';
 
-        let currentCharId = null;
-
-        // 根据角色显示控制台按钮
-		(function initConsoleButton() {
-			const btnConsole = document.getElementById('btnConsole');
-			const btnText = document.getElementById('btnConsoleText'); // 获取文字 span
-			
-			// 如果之前没有加 id="btnConsoleText"，这里做一个容错处理，直接改 innerHTML 也可以，
-			// 但为了配合上面的 CSS 隐藏文字功能，建议按第一步修改 HTML。
-			
-			if (userRole >= 2) {
-				// 超级管理员
-				btnConsole.style.display = 'inline-flex';
-				btnConsole.classList.add('admin');
-				// 只修改图标和文字 span 的内容，保持结构
-				btnConsole.innerHTML = '<i class="fas fa-shield-alt"></i> <span class="btn-text">管理台</span>';
-			} else if (userRole >= 1) {
-				// 经理
-				btnConsole.style.display = 'inline-flex';
-				btnConsole.innerHTML = '<i class="fas fa-user-tie"></i> <span class="btn-text">经理台</span>';
-			}
-		})();
-
-        function goConsole() {
+        (function initConsoleButton() {
+            const btnConsole = document.getElementById('btnConsole');
             if (userRole >= 2) {
-                window.location.href = 'admin.html';
+                btnConsole.style.display = 'inline-flex';
+                btnConsole.classList.add('admin');
+                btnConsole.innerHTML = '<i class="fas fa-shield-alt"></i> <span class="btn-text">管理台</span>';
             } else if (userRole >= 1) {
-                window.location.href = 'manager.html';
+                btnConsole.style.display = 'inline-flex';
+                btnConsole.innerHTML = '<i class="fas fa-user-tie"></i> <span class="btn-text">经理台</span>';
             }
+        })();
+
+// === 高墙特效逻辑 (GLITCH SEQUENCE) ===
+        function enterHighWall() {
+            const overlay = document.getElementById('hw-overlay');
+            const icon = document.getElementById('hw-icon');
+            const text = document.getElementById('hw-text');
+            const scanlines = document.getElementById('hw-scanlines');
+            const eyeLayer = document.getElementById('hw-eye-layer');
+            const eyeIcon = document.getElementById('hw-eye-icon');
+            const tentaclesLayer = document.getElementById('hw-tentacles');
+            const blackout = document.getElementById('hw-blackout');
+            
+            // 阶段 1: 伪装 (0s - 1.0s)
+            overlay.classList.add('active');
+            
+            // 阶段 2: 故障 (1.0s)
+            setTimeout(() => {
+                icon.classList.remove('fa-spin');
+                icon.style.transform = 'rotate(160deg)'; 
+                
+                setTimeout(() => {
+                    icon.className = 'fas fa-exclamation-triangle loader-icon';
+                    icon.style.color = '#ff0000';
+                    text.style.color = '#ff0000';
+                    text.style.fontFamily = 'monospace';
+                    text.innerHTML = 'SYSTEM FAILURE /// 0xFF'; 
+                    overlay.classList.add('glitch-mode');
+                    scanlines.style.display = 'block';
+                }, 100);
+            }, 1000);
+
+            // 阶段 3: 凝视 (1.4s)
+            setTimeout(() => {
+                overlay.classList.remove('glitch-mode');
+                scanlines.style.display = 'none';
+                document.getElementById('hw-content').style.display = 'none'; 
+                eyeLayer.style.opacity = '1';
+                
+                setTimeout(() => {
+                    eyeIcon.classList.add('eye-open');
+                }, 100);
+            }, 1400);
+
+            // 阶段 4: 暗影触手蔓延 (1.8s) - 新增部分
+            setTimeout(() => {
+                // 生成12根触手，环绕360度
+                tentaclesLayer.innerHTML = ''; // 清空
+                const count = 12;
+                for (let i = 0; i < count; i++) {
+                    const div = document.createElement('div');
+                    div.className = 'tendril';
+                    // 计算旋转角度
+                    const deg = i * (360 / count);
+                    // 设置CSS变量用于动画中的旋转保持
+                    div.style.setProperty('--r', `${deg}deg`);
+                    // 随机化一点延迟和宽度，让它看起来更像生物/液态，而不是完美的几何体
+                    div.style.animationDelay = `${Math.random() * 0.3}s`;
+                    div.style.width = `${10 + Math.random() * 10}vw`; 
+                    tentaclesLayer.appendChild(div);
+                    
+                    // 触发动画
+                    requestAnimationFrame(() => div.classList.add('creeping'));
+                }
+
+                // 眼睛开始颤抖
+                eyeIcon.classList.add('scared');
+
+            }, 1800);
+
+            // 阶段 5: 视野熄灭 (2.8s)
+            setTimeout(() => {
+                blackout.classList.add('active'); // 全黑遮罩淡入
+            }, 2800);
+
+            // 阶段 6: 跳转 (3.3s)
+            setTimeout(() => {
+                window.location.href = 'documents.html';
+            }, 3300);
         }
 
-        function getAuthHeaders() {
-            return {
-                'Content-Type': 'application/json',
-                'Authorization': token ? `Bearer ${token}` : ''
-            };
+        function goConsole() {
+            if (userRole >= 2) window.location.href = 'admin.html';
+            else if (userRole >= 1) window.location.href = 'manager.html';
+        }
+
+        function logout() {
+            localStorage.removeItem('ta_uid');
+            window.location.href = 'login.html';
         }
 
         function showToast(msg, success = false) {
@@ -644,7 +484,7 @@
 
         async function loadList() {
             try {
-                const res = await fetch(`/api/characters?userId=${uid}`);
+                const res = await fetch(`/api/characters?userId=${uid}`, { headers: {'Authorization': `Bearer ${token}`} });
                 const list = await res.json();
                 const container = document.getElementById('list');
                 container.innerHTML = '';
@@ -657,50 +497,17 @@
                 list.forEach(c => {
                     const el = document.createElement('div');
                     el.className = 'char-card';
-
-                    el.style.setProperty('--r1', Math.random());
-                    el.style.setProperty('--r2', Math.random());
-                    el.style.setProperty('--r3', Math.random());
-
                     el.innerHTML = `
                         <div class="card-tools">
-                            <button class="tool-btn" onclick="openAuthModal(event, '${c.id}')" title="生成授权码给经理">
-                                <i class="fas fa-key"></i> 授权
-                            </button>
-                            <button class="tool-btn" onclick="openShareModal(event, '${c.id}')" title="分享给他人查看">
-                                <i class="fas fa-share-alt"></i> 分享
-                            </button>
-                            <button class="tool-btn" onclick="exportCard(event, '${c.id}')" title="导出为图片">
-                                <i class="fas fa-image"></i> 导出
-                            </button>
+                            <button class="tool-btn" onclick="openAuthModal(event, '${c.id}')"><i class="fas fa-key"></i> 授权</button>
+                            <button class="tool-btn" onclick="delChar(event, '${c.id}')"><i class="fas fa-trash"></i></button>
                         </div>
                         <div class="card-content-wrapper" onclick="openSheet(event, '${c.id}')">
-                            <div class="card-header">
-                                <span class="c-name">${c.name}</span>
-                            </div>
+                            <div class="card-header"><span class="c-name">${c.name}</span></div>
                             <div class="info-group">
-                                <div class="info-field if-anom">
-                                    <span class="field-label">
-                                        <i class="fas fa-bolt anim-flicker"></i> 异常 // ANOMALY
-                                    </span>
-                                    <span class="field-val">${c.anom}</span>
-                                </div>
-                                <div class="info-field if-real">
-                                    <span class="field-label">
-                                        <i class="fas fa-fingerprint anim-breathe"></i> 现实 // REALITY
-                                    </span>
-                                    <span class="field-val">${c.real}</span>
-                                </div>
-                                <div class="info-field if-func">
-                                    <span class="field-label">
-                                        <i class="fas fa-briefcase anim-float"></i> 职能 // COMPETENCY
-                                    </span>
-                                    <span class="field-val">${c.func}</span>
-                                </div>
+                                <div class="info-field if-anom"><span class="field-label">异常</span><span class="field-val">${c.anom}</span></div>
+                                <div class="info-field if-func"><span class="field-label">职能</span><span class="field-val">${c.func}</span></div>
                             </div>
-                        </div>
-                        <div class="c-actions">
-                            <button class="btn-del" onclick="delChar(event, '${c.id}')">销毁档案</button>
                         </div>
                     `;
                     container.appendChild(el);
@@ -708,149 +515,10 @@
             } catch(e) { console.error(e); }
         }
 
-        // 模态框控制
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('show');
-            // 重置状态
-            if (id === 'authModal') {
-                document.getElementById('authCodeDisplay').style.display = 'none';
-                document.getElementById('authLinkDisplay').style.display = 'none';
-                document.getElementById('authBtns').style.display = 'flex';
-                document.getElementById('authCopyBtns').style.display = 'none';
-            }
-            if (id === 'shareModal') {
-                document.getElementById('shareSetup').style.display = 'block';
-                document.getElementById('shareResult').style.display = 'none';
-                document.getElementById('shareBtns').style.display = 'flex';
-                document.getElementById('shareCopyBtns').style.display = 'none';
-                document.getElementById('shareNeedPwd').checked = false;
-                document.getElementById('sharePwdRow').style.display = 'none';
-                document.getElementById('sharePwd').value = '';
-            }
-        }
-
-        // 授权功能
-        function openAuthModal(event, id) {
-            event.stopPropagation();
-            currentCharId = id;
-            document.getElementById('authModal').classList.add('show');
-        }
-
-        async function generateAuthCode() {
-            if (!currentCharId) return;
-            const btn = document.getElementById('btnGenAuth');
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-
-            try {
-                const res = await fetch(`/api/character/${currentCharId}/auth-code`, {
-                    method: 'POST',
-                    headers: getAuthHeaders()
-                });
-                const data = await res.json();
-
-                if (data.success) {
-                    document.getElementById('authCode').textContent = data.authCode;
-                    document.getElementById('authLink').textContent = `${location.origin}/manager.html?auth=${data.authCode}`;
-                    document.getElementById('authCodeDisplay').style.display = 'block';
-                    document.getElementById('authLinkDisplay').style.display = 'block';
-                    document.getElementById('authBtns').style.display = 'none';
-                    document.getElementById('authCopyBtns').style.display = 'flex';
-                } else {
-                    showToast(data.message || '生成失败');
-                }
-            } catch (e) {
-                showToast('生成失败');
-            }
-            btn.innerHTML = '生成授权码';
-        }
-
-        function copyAuthCode() {
-            const code = document.getElementById('authCode').textContent;
-            navigator.clipboard.writeText(code).then(() => showToast('授权码已复制', true));
-        }
-
-        function copyAuthLink() {
-            const link = document.getElementById('authLink').textContent;
-            navigator.clipboard.writeText(link).then(() => showToast('链接已复制', true));
-        }
-
-        // 分享功能
-        function openShareModal(event, id) {
-            event.stopPropagation();
-            currentCharId = id;
-            document.getElementById('shareModal').classList.add('show');
-        }
-
-        function togglePwdInput() {
-            const checked = document.getElementById('shareNeedPwd').checked;
-            document.getElementById('sharePwdRow').style.display = checked ? 'block' : 'none';
-        }
-
-        async function createShare() {
-            if (!currentCharId) return;
-            const needPwd = document.getElementById('shareNeedPwd').checked;
-            const password = needPwd ? document.getElementById('sharePwd').value : null;
-
-            if (needPwd && !password) {
-                showToast('请设置密码');
-                return;
-            }
-
-            try {
-                const res = await fetch(`/api/character/${currentCharId}/share`, {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({ password })
-                });
-                const data = await res.json();
-
-                if (data.success) {
-                    document.getElementById('shareLink').textContent = `${location.origin}/share.html?code=${data.shareCode}`;
-                    document.getElementById('shareSetup').style.display = 'none';
-                    document.getElementById('shareResult').style.display = 'block';
-                    document.getElementById('shareBtns').style.display = 'none';
-                    document.getElementById('shareCopyBtns').style.display = 'flex';
-                    document.getElementById('sharePwdHint').style.display = data.hasPassword ? 'block' : 'none';
-                } else {
-                    showToast(data.message || '生成失败');
-                }
-            } catch (e) {
-                showToast('生成失败');
-            }
-        }
-
-        function copyShareLink() {
-            const link = document.getElementById('shareLink').textContent;
-            navigator.clipboard.writeText(link).then(() => showToast('链接已复制', true));
-        }
-
-        // 导出图片
-        function exportCard(event, id) {
-            event.stopPropagation();
-            window.open(`card-export.html?id=${id}`, '_blank');
-        }
-
-        function openSheet(event, id) {
-            event.preventDefault(); 
-            
-            const card = event.currentTarget.closest('.char-card');
-            if(card) {
-                card.classList.add('accessing');
-            }
-
-            const overlay = document.getElementById('transition-overlay');
-            overlay.classList.add('active');
-
-            // 修改点：延迟从 800ms 延长到 1600ms，等待动画充分展示
-            setTimeout(() => {
-                window.location.href = `sheet.html?id=${id}`;
-            }, 1200); 
-        }
-
         async function createNew() {
             const btn = document.querySelector('.btn-new');
             const original = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 处理中';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
             try {
                 const res = await fetch('/api/character', {
                     method: 'POST',
@@ -861,25 +529,46 @@
                 if(data.success) {
                     const overlay = document.getElementById('transition-overlay');
                     overlay.classList.add('active');
-                    // 同样延长
-                    setTimeout(() => {
-                        window.location.href = `sheet.html?id=${data.id}`;
-                    }, 1200);
+                    setTimeout(() => window.location.href = `sheet.html?id=${data.id}`, 1200);
                 }
             } catch(e) { btn.innerHTML = original; }
         }
-        
-        async function delChar(event, id) {
-            event.stopPropagation();
-            if(!confirm('警告：此操作不可逆。\n确定要销毁这份档案吗？')) return;
+
+        function openSheet(event, id) {
+            event.preventDefault();
+            const card = event.currentTarget.closest('.char-card');
+            if(card) card.classList.add('accessing');
+            const overlay = document.getElementById('transition-overlay');
+            overlay.classList.add('active');
+            setTimeout(() => window.location.href = `sheet.html?id=${id}`, 1200);
+        }
+
+        let currentAuthId = null;
+        async function openAuthModal(e, id) {
+            e.stopPropagation();
+            currentAuthId = id;
+            document.getElementById('authCode').textContent = 'Loading...';
+            document.getElementById('authModal').classList.add('show');
+            try {
+                const res = await fetch(`/api/character/${id}/auth-code`, { 
+                    method: 'POST', 
+                    headers: {'Authorization': `Bearer ${token}`} 
+                });
+                const data = await res.json();
+                document.getElementById('authCode').textContent = data.authCode || 'Error';
+            } catch(e) { document.getElementById('authCode').textContent = 'Failed'; }
+        }
+        function copyAuthCode() {
+            navigator.clipboard.writeText(document.getElementById('authCode').textContent);
+            showToast('已复制', true);
+        }
+        async function delChar(e, id) {
+            e.stopPropagation();
+            if(!confirm('确定销毁档案？')) return;
             await fetch(`/api/character/${id}`, { method: 'DELETE' });
             loadList();
         }
 
-        function logout() {
-            localStorage.removeItem('ta_uid');
-            window.location.href = 'login.html';
-        }
         loadList();
     </script>
 </body>
