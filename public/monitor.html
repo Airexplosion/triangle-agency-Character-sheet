@@ -6,6 +6,40 @@
     <title>全局监控 // TRIANGLE AGENCY</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     <style>
+	/* 高墙授权弹窗样式 */
+		.doc-list {
+			max-height: 300px;
+			overflow-y: auto;
+			border: 1px solid #eee;
+			border-radius: 4px;
+			margin-top: 10px;
+		}
+		.doc-item {
+			display: flex;
+			align-items: center;
+			padding: 8px 10px;
+			border-bottom: 1px solid #f8f9fa;
+			cursor: pointer;
+		}
+		.doc-item:hover { background: #f0f2f5; }
+		.doc-item:last-child { border-bottom: none; }
+		.doc-item input { margin-right: 10px; }
+		.doc-item span { font-size: 13px; color: var(--text-dark); flex: 1; }
+		.doc-search {
+			width: 100%;
+			padding: 8px;
+			border: 1px solid #ddd;
+			border-radius: 4px;
+			font-size: 12px;
+			box-sizing: border-box;
+		}
+		.ug-btn-group { display: flex; gap: 5px; }
+		.btn-auth-doc {
+			background: #34495e; color: white; border: none; 
+			padding: 4px 8px; border-radius: 3px; font-size: 10px; cursor: pointer;
+		}
+		.btn-auth-doc:hover { background: #2c3e50; }
+
         :root {
             --deep-bg: #1a252f;
             --bg-pattern: radial-gradient(#2c3e50 1px, transparent 1px);
@@ -285,8 +319,32 @@
 </div>
 
 <div class="toast" id="toast"></div>
+<!-- 高墙文件授权弹窗 -->
+<div id="docAuthModal" class="modal-overlay">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3><i class="fas fa-file-shield"></i> 高墙文件授权</h3>
+            <button class="modal-close" onclick="closeDocModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p class="modal-desc">管理 <strong id="docAuthUserName"></strong> 的阅览权限</p>
+            
+            <input type="text" class="doc-search" id="docSearch" placeholder="搜索文件..." onkeyup="filterDocs()">
+            
+            <div class="doc-list" id="docAuthList">
+                <div style="padding:20px;text-align:center;"><i class="fas fa-circle-notch fa-spin"></i></div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal btn-cancel" onclick="closeDocModal()">取消</button>
+            <button class="btn-modal btn-confirm" onclick="saveDocPermissions()">保存更改</button>
+        </div>
+    </div>
+</div>
 
 <script>
+
+
     // 1. 权限检查
     const isAdmin = localStorage.getItem('ta_is_admin');
     if (isAdmin !== 'true') {
@@ -353,16 +411,21 @@
             const displayName = u.userName || '未知用户';
             const initial = displayName.charAt(0).toUpperCase();
 
-            group.innerHTML = `
-                <div class="ug-header">
-                    <div class="ug-avatar">${initial}</div>
-                    <div class="ug-info">
-                        <h3>${displayName} ${u.isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}</h3>
-                        <span>ID: ${u.userAccount || '---'}</span>
-                    </div>
-                </div>
-                ${charsHtml}
-            `;
+			group.innerHTML = `
+				<div class="ug-header">
+					<div class="ug-avatar">${initial}</div>
+					<div class="ug-info">
+						<h3>${displayName} ${u.isAdmin ? '<span class="admin-badge">ADMIN</span>' : ''}</h3>
+						<span>ID: ${u.userAccount || '---'}</span>
+					</div>
+					<div class="ug-btn-group">
+						<button class="btn-auth-doc" onclick="openDocModal(${u.userId}, '${displayName}')">
+							<i class="fas fa-file-contract"></i> 高墙授权
+						</button>
+					</div>
+				</div>
+				${charsHtml}
+			`;
             container.appendChild(group);
         });
     }
@@ -516,6 +579,111 @@
 
     // 启动加载
     loadMonitorData();
+	
+	// ... existing variables
+    let currentDocUserId = null;
+    let allDocFiles = []; // 存储当前加载的文件列表状态
+
+    // 打开文档授权弹窗
+    async function openDocModal(userId, userName) {
+        currentDocUserId = userId;
+        document.getElementById('docAuthUserName').textContent = userName;
+        document.getElementById('docSearch').value = '';
+        
+        const listContainer = document.getElementById('docAuthList');
+        listContainer.innerHTML = '<div style="padding:20px;text-align:center;"><i class="fas fa-circle-notch fa-spin"></i> 加载中...</div>';
+        document.getElementById('docAuthModal').classList.add('show');
+
+        try {
+            const token = localStorage.getItem('ta_token');
+            const res = await fetch(`/api/admin/user/${userId}/permissions`, {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            allDocFiles = await res.json();
+            renderDocList(allDocFiles);
+        } catch (e) {
+            listContainer.innerHTML = '<div style="color:red;text-align:center;">加载失败</div>';
+        }
+    }
+
+    // 渲染文档列表
+    function renderDocList(files) {
+        const container = document.getElementById('docAuthList');
+        if (files.length === 0) {
+            container.innerHTML = '<div style="padding:10px;text-align:center;color:#999;">无高墙文件</div>';
+            return;
+        }
+
+        container.innerHTML = files.map(f => `
+            <label class="doc-item">
+                <input type="checkbox" value="${f.filename}" ${f.hasPerm ? 'checked' : ''}>
+                <span>${f.filename.replace('.md', '')}</span>
+            </label>
+        `).join('');
+    }
+
+    // 过滤文档 (搜索功能)
+    function filterDocs() {
+        const term = document.getElementById('docSearch').value.toLowerCase();
+        const items = document.querySelectorAll('.doc-item');
+        
+        items.forEach(item => {
+            const text = item.querySelector('span').textContent.toLowerCase();
+            item.style.display = text.includes(term) ? 'flex' : 'none';
+        });
+    }
+
+    // 关闭弹窗
+    function closeDocModal() {
+        document.getElementById('docAuthModal').classList.remove('show');
+        currentDocUserId = null;
+    }
+
+    // 保存权限
+    async function saveDocPermissions() {
+        if (!currentDocUserId) return;
+
+        const checkboxes = document.querySelectorAll('#docAuthList input[type="checkbox"]:checked');
+        const selectedFiles = Array.from(checkboxes).map(cb => cb.value);
+        const token = localStorage.getItem('ta_token');
+
+        // 按钮变 loading
+        const btn = document.querySelector('#docAuthModal .btn-confirm');
+        const originalText = btn.textContent;
+        btn.textContent = '保存中...';
+        btn.disabled = true;
+
+        try {
+            const res = await fetch(`/api/admin/user/${currentDocUserId}/permissions`, {
+                method: 'PUT',
+                headers: { 
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ permissions: selectedFiles })
+            });
+            
+            const data = await res.json();
+            if (data.success) {
+                showToast('权限已更新', true);
+                closeDocModal();
+            } else {
+                showToast('更新失败');
+            }
+        } catch (e) {
+            showToast('网络错误');
+        } finally {
+            btn.textContent = originalText;
+            btn.disabled = false;
+        }
+    }
+
+    // 点击遮罩关闭
+    document.getElementById('docAuthModal').addEventListener('click', function(e) {
+        if (e.target === this) closeDocModal();
+    });
+	
 </script>
+
 </body>
 </html>
