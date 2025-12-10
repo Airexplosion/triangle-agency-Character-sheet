@@ -9,59 +9,222 @@
         :root {
             --deep-bg: #1a252f;
             --bg-pattern: radial-gradient(#2c3e50 1px, transparent 1px);
-            
             --pure-white: #ffffff;
             --signal-red: #c0392b;
             --text-dark: #2c3e50;
             --placeholder: #95a5a6;
         }
-        body { 
+        body {
             font-family: "Roboto Mono", "Noto Sans SC", "Microsoft YaHei", sans-serif;
             background-color: var(--deep-bg);
             background-image: var(--bg-pattern);
             background-size: 20px 20px;
-            margin: 0; padding: 20px; color: var(--text-dark); 
+            margin: 0; padding: 20px; color: var(--text-dark);
         }
-        .container { max-width: 800px; margin: 0 auto; }
-        
-        header { 
-            display: flex; justify-content: space-between; align-items: flex-end; 
-            margin-bottom: 30px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); 
+        .container { max-width: 900px; margin: 0 auto; }
+
+        header {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            margin-bottom: 30px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1);
         }
-        
+
         .brand-logo { display: flex; flex-direction: column; line-height: 0.9; font-weight: 900; text-transform: uppercase; }
         .brand-logo .top { font-size: 20px; letter-spacing: 2px; color: white; }
         .brand-logo .btm { font-size: 12px; letter-spacing: 3px; color: var(--signal-red); }
         .page-title { font-size: 12px; color: #7f8c8d; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px; }
 
+        .btn-group { display: flex; gap: 10px; }
         .btn-logout { background: rgba(255,255,255,0.1); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; transition: 0.2s; }
         .btn-logout:hover { background: var(--signal-red); }
 
-        /* --- 新增/登记面板 --- */
-        .add-panel { 
-            background: var(--pure-white); 
-            padding: 20px; 
-            border-radius: 6px; 
-            margin-bottom: 20px; 
+        /* 标签页 */
+        .tabs {
+            display: flex; gap: 5px; margin-bottom: 20px;
+        }
+        .tab-btn {
+            background: rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.6);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px 4px 0 0;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: var(--pure-white);
+            color: var(--text-dark);
+        }
+        .tab-btn:hover:not(.active) {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* 系统设置面板 */
+        .config-panel {
+            background: var(--pure-white);
+            padding: 25px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+        .config-section {
+            margin-bottom: 25px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .config-section:last-child {
+            margin-bottom: 0;
+            padding-bottom: 0;
+            border-bottom: none;
+        }
+        .config-section h3 {
+            font-size: 14px;
+            color: var(--text-dark);
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .config-section h3 i { color: var(--signal-red); }
+
+        .config-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            padding: 10px;
+            background: #f8f9fa;
+            border-radius: 4px;
+        }
+        .config-row label {
+            font-size: 13px;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+        .config-row .desc {
+            font-size: 11px;
+            color: #7f8c8d;
+            margin-top: 3px;
+        }
+
+        /* 开关样式 */
+        .switch {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: #ccc;
+            transition: .3s;
+            border-radius: 26px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+        input:checked + .slider { background-color: var(--signal-red); }
+        input:checked + .slider:before { transform: translateX(24px); }
+
+        /* SMTP 配置表单 */
+        .smtp-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .smtp-grid .full { grid-column: 1 / -1; }
+        .form-field {
+            display: flex;
+            flex-direction: column;
+        }
+        .form-field label {
+            font-size: 11px;
+            color: #7f8c8d;
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .form-field input {
+            padding: 10px;
+            border: 2px solid #ecf0f1;
+            border-radius: 4px;
+            font-size: 13px;
+            transition: border-color 0.2s;
+        }
+        .form-field input:focus {
+            outline: none;
+            border-color: var(--signal-red);
+        }
+
+        .btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .btn-save {
+            background: var(--signal-red);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .btn-save:hover { background: #e74c3c; }
+        .btn-test {
+            background: #34495e;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            transition: all 0.2s;
+        }
+        .btn-test:hover { background: #2c3e50; }
+
+        /* 用户管理 */
+        .add-panel {
+            background: var(--pure-white);
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 20px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             display: flex; gap: 10px; flex-wrap: wrap;
             border-left: 5px solid var(--signal-red);
         }
-        
-        .add-panel input { 
+
+        .add-panel input, .add-panel select {
             padding: 10px; border: 2px solid #ecf0f1; background: #fdfdfd; color: var(--text-dark);
-            border-radius: 4px; flex: 1; min-width: 120px; font-weight: bold;
+            border-radius: 4px; flex: 1; min-width: 100px; font-weight: bold;
         }
-        .add-panel input:focus { border-color: var(--signal-red); outline: none; background: white; }
-        
-        .btn-add { 
-            background: var(--signal-red); color: white; border: none; 
-            padding: 0 20px; border-radius: 4px; cursor: pointer; font-weight: bold; 
+        .add-panel input:focus, .add-panel select:focus { border-color: var(--signal-red); outline: none; background: white; }
+
+        .btn-add {
+            background: var(--signal-red); color: white; border: none;
+            padding: 0 20px; border-radius: 4px; cursor: pointer; font-weight: bold;
             text-transform: uppercase; font-size: 12px; box-shadow: 0 2px 5px rgba(192, 57, 43, 0.3);
         }
         .btn-add:hover { background: #e74c3c; transform: translateY(-1px); }
-        
-        /* --- 搜索框样式 --- */
+
         .search-wrapper {
             position: relative;
             margin-bottom: 20px;
@@ -75,46 +238,150 @@
         }
         .search-input {
             width: 100%;
-            padding: 12px 10px 12px 40px; /* 左侧留出图标位置 */
+            padding: 12px 10px 12px 40px;
             background: rgba(0,0,0,0.2);
             border: 1px solid #576574;
             border-radius: 4px;
             color: white;
             font-family: inherit;
-            box-sizing: border-box; /* 确保padding不撑大宽度 */
+            box-sizing: border-box;
         }
         .search-input:focus { outline: none; border-color: var(--signal-red); background: rgba(0,0,0,0.4); }
         .search-input::placeholder { color: var(--placeholder); font-style: italic; }
 
-        /* --- 列表样式 --- */
+        .filter-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .filter-btn {
+            background: rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.7);
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all 0.2s;
+        }
+        .filter-btn.active {
+            background: var(--signal-red);
+            color: white;
+        }
+        .filter-btn:hover:not(.active) {
+            background: rgba(255,255,255,0.2);
+        }
+
         .user-list { display: grid; gap: 12px; }
-        .user-card { 
+        .user-card {
             background: var(--pure-white);
-            padding: 15px; border-radius: 6px; 
-            display: flex; align-items: center; justify-content: space-between; 
+            padding: 15px; border-radius: 6px;
+            display: flex; align-items: center; justify-content: space-between;
             border: 1px solid #ecf0f1;
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             animation: fadeIn 0.3s ease;
         }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-        
+
         .u-info { flex: 1; }
-        .u-name { font-weight: bold; font-size: 16px; color: var(--text-dark); display: flex; align-items: center; gap: 10px; }
+        .u-name { font-weight: bold; font-size: 16px; color: var(--text-dark); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
         .u-meta { font-size: 12px; color: #7f8c8d; margin-top: 5px; }
-        .u-pass { font-family: monospace; color: var(--signal-red); background: #fceceb; padding: 2px 6px; border-radius: 3px; border: 1px solid #fadbd8; }
-        
-        .action-btns { display: flex; gap: 8px; }
+
+        .action-btns { display: flex; gap: 8px; flex-wrap: wrap; }
         .btn-base { border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; text-transform: uppercase; }
-        
+
         .btn-edit { background: #ecf0f1; color: var(--text-dark); }
         .btn-edit:hover { background: #bdc3c7; }
-        
+
+        .btn-role { background: #3498db; color: white; }
+        .btn-role:hover { background: #2980b9; }
+
         .btn-del { background: #fceceb; color: var(--signal-red); }
         .btn-del:hover { background: var(--signal-red); color: white; }
-        
-        .admin-tag { background: var(--signal-red); color: white; padding: 2px 6px; border-radius: 2px; font-size: 10px; letter-spacing: 1px; }
+
+        .role-tag {
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+        .role-player { background: #ecf0f1; color: #7f8c8d; }
+        .role-manager { background: #3498db; color: white; }
+        .role-admin { background: var(--signal-red); color: white; }
 
         .no-result { text-align: center; color: #7f8c8d; font-style: italic; font-size: 14px; margin-top: 10px; }
+
+        /* 模态框 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .modal h3 {
+            margin: 0 0 20px;
+            color: var(--text-dark);
+            font-size: 16px;
+        }
+        .modal-btns {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .modal-btns button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .btn-cancel { background: #ecf0f1; color: var(--text-dark); }
+        .btn-confirm { background: var(--signal-red); color: white; }
+
+        .role-select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ecf0f1;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        .role-select:focus {
+            outline: none;
+            border-color: var(--signal-red);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--signal-red);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: bold;
+            z-index: 2000;
+            display: none;
+        }
+        .toast.show { display: block; animation: slideUp 0.3s ease; }
+        .toast.success { background: #27ae60; }
+        @keyframes slideUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
     </style>
 </head>
 <body>
@@ -126,55 +393,281 @@
                 <span class="top">TRIANGLE</span>
                 <span class="btm">AGENCY</span>
             </div>
-            <div class="page-title">// 人员管理控制台</div>
+            <div class="page-title">// 系统管理控制台</div>
         </div>
-        <div style="display:flex; gap:10px;">
+        <div class="btn-group">
             <button class="btn-logout" onclick="location.href='monitor.html'" style="background:var(--pure-white); color:var(--signal-red);">
                 <i class="fas fa-eye"></i> 监控
+            </button>
+            <button class="btn-logout" onclick="location.href='dashboard.html'">
+                <i class="fas fa-folder"></i> 档案
             </button>
             <button class="btn-logout" onclick="logout()"><i class="fas fa-power-off"></i></button>
         </div>
     </header>
 
-    <!-- 入职登记面板 -->
-    <div class="add-panel">
-        <input type="text" id="newName" placeholder="职员姓名">
-        <input type="text" id="newUser" placeholder="登录账号">
-        <input type="text" id="newPass" placeholder="登录密码">
-        <button class="btn-add" onclick="addUser()"><i class="fas fa-plus"></i> 入职登记</button>
+    <!-- 标签页切换 -->
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('users')"><i class="fas fa-users"></i> 人员管理</button>
+        <button class="tab-btn" onclick="switchTab('config')"><i class="fas fa-cog"></i> 系统设置</button>
     </div>
 
-    <!-- 搜索框 -->
-    <div class="search-wrapper">
-        <i class="fas fa-search"></i>
-        <input type="text" id="searchInput" class="search-input" placeholder="SEARCH... [输入姓名进行检索]" autocomplete="off">
+    <!-- 人员管理 -->
+    <div id="tab-users" class="tab-content active">
+        <div class="add-panel">
+            <input type="text" id="newName" placeholder="职员姓名">
+            <input type="text" id="newUser" placeholder="登录账号">
+            <input type="text" id="newPass" placeholder="登录密码">
+            <select id="newRole">
+                <option value="0">玩家</option>
+                <option value="1">经理</option>
+                <option value="2">超级管理员</option>
+            </select>
+            <button class="btn-add" onclick="addUser()"><i class="fas fa-plus"></i> 入职登记</button>
+        </div>
+
+        <div class="filter-row">
+            <button class="filter-btn active" data-role="all" onclick="filterByRole('all', this)">全部</button>
+            <button class="filter-btn" data-role="0" onclick="filterByRole(0, this)">玩家</button>
+            <button class="filter-btn" data-role="1" onclick="filterByRole(1, this)">经理</button>
+            <button class="filter-btn" data-role="2" onclick="filterByRole(2, this)">超管</button>
+        </div>
+
+        <div class="search-wrapper">
+            <i class="fas fa-search"></i>
+            <input type="text" id="searchInput" class="search-input" placeholder="SEARCH... [输入姓名进行检索]" autocomplete="off">
+        </div>
+
+        <div id="list" class="user-list"></div>
     </div>
 
-    <div id="list" class="user-list"></div>
+    <!-- 系统设置 -->
+    <div id="tab-config" class="tab-content">
+        <div class="config-panel">
+            <div class="config-section">
+                <h3><i class="fas fa-user-plus"></i> 注册设置</h3>
+                <div class="config-row">
+                    <div>
+                        <label>开放注册</label>
+                        <div class="desc">允许新用户自行注册账号</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="cfg_reg_enabled">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+                <div class="config-row">
+                    <div>
+                        <label>邮箱验证</label>
+                        <div class="desc">注册时需要验证邮箱（需配置SMTP）</div>
+                    </div>
+                    <label class="switch">
+                        <input type="checkbox" id="cfg_email_enabled">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h3><i class="fas fa-envelope"></i> SMTP 邮件配置</h3>
+                <div class="smtp-grid">
+                    <div class="form-field">
+                        <label>SMTP 服务器</label>
+                        <input type="text" id="cfg_smtp_host" placeholder="smtp.example.com">
+                    </div>
+                    <div class="form-field">
+                        <label>端口</label>
+                        <input type="text" id="cfg_smtp_port" placeholder="587">
+                    </div>
+                    <div class="form-field">
+                        <label>用户名</label>
+                        <input type="text" id="cfg_smtp_user" placeholder="your@email.com">
+                    </div>
+                    <div class="form-field">
+                        <label>密码</label>
+                        <input type="password" id="cfg_smtp_pass" placeholder="••••••••">
+                    </div>
+                    <div class="form-field full">
+                        <label>发件人地址</label>
+                        <input type="text" id="cfg_smtp_from" placeholder="Triangle Agency <noreply@example.com>">
+                    </div>
+                    <div class="config-row full" style="background:transparent;padding:0;">
+                        <div>
+                            <label>使用 SSL/TLS</label>
+                            <div class="desc">端口465通常需要开启</div>
+                        </div>
+                        <label class="switch">
+                            <input type="checkbox" id="cfg_smtp_secure">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button class="btn-test" onclick="testSmtp()"><i class="fas fa-plug"></i> 测试连接</button>
+                    <button class="btn-save" onclick="saveConfig()"><i class="fas fa-save"></i> 保存配置</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
+<!-- 角色修改模态框 -->
+<div class="modal-overlay" id="roleModal">
+    <div class="modal">
+        <h3><i class="fas fa-user-tag"></i> 修改用户角色</h3>
+        <p style="margin-bottom:15px;font-size:13px;color:#7f8c8d;">用户: <strong id="modalUserName"></strong></p>
+        <select class="role-select" id="modalRoleSelect">
+            <option value="0">玩家 - 普通用户，只能管理自己的角色卡</option>
+            <option value="1">经理 - 可以查看/编辑已授权的角色卡</option>
+            <option value="2">超级管理员 - 拥有全部权限</option>
+        </select>
+        <div class="modal-btns">
+            <button class="btn-cancel" onclick="closeRoleModal()">取消</button>
+            <button class="btn-confirm" onclick="confirmRoleChange()">确认修改</button>
+        </div>
+    </div>
+</div>
+
+<!-- 重置密码模态框 -->
+<div class="modal-overlay" id="passwordModal">
+    <div class="modal">
+        <h3><i class="fas fa-key"></i> 重置密码</h3>
+        <p style="margin-bottom:15px;font-size:13px;color:#7f8c8d;">用户: <strong id="pwdModalUserName"></strong></p>
+        <div class="form-field">
+            <label>新密码</label>
+            <input type="password" id="newPasswordInput" placeholder="输入新密码">
+        </div>
+        <div class="form-field" style="margin-top:10px;">
+            <label>确认密码</label>
+            <input type="password" id="confirmPasswordInput" placeholder="再次输入新密码">
+        </div>
+        <div class="modal-btns">
+            <button class="btn-cancel" onclick="closePasswordModal()">取消</button>
+            <button class="btn-confirm" onclick="confirmPasswordChange()">确认重置</button>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
 <script>
+    const token = localStorage.getItem('ta_token');
     const isAdmin = localStorage.getItem('ta_is_admin');
-    if (isAdmin !== 'true') { window.location.href = 'login.html'; }
+    if (isAdmin !== 'true' || !token) { window.location.href = 'login.html'; }
 
-    // 全局变量存储所有用户
+    const ROLE_NAMES = ['玩家', '经理', '超管'];
+    const ROLE_CLASSES = ['role-player', 'role-manager', 'role-admin'];
+
     let allUsersData = [];
+    let currentFilter = 'all';
+    let editingUserId = null;
 
-    // 加载数据
-    async function loadUsers() {
+    function getAuthHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        };
+    }
+
+    function showToast(msg, success = false) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.className = 'toast show' + (success ? ' success' : '');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // 标签切换
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelector(`[onclick="switchTab('${tab}')"]`).classList.add('active');
+        document.getElementById(`tab-${tab}`).classList.add('active');
+
+        if (tab === 'config') loadConfig();
+    }
+
+    // 加载配置
+    async function loadConfig() {
         try {
-            const res = await fetch('/api/users');
-            allUsersData = await res.json();
-            
-            // 初始渲染所有数据
-            renderList(allUsersData);
-        } catch(e) { 
-            console.error(e);
-            alert('连接错误'); 
+            const res = await fetch('/api/admin/config', { headers: getAuthHeaders() });
+            const config = await res.json();
+
+            document.getElementById('cfg_reg_enabled').checked = config.registration_enabled === 'true';
+            document.getElementById('cfg_email_enabled').checked = config.email_registration_enabled === 'true';
+            document.getElementById('cfg_smtp_host').value = config.smtp_host || '';
+            document.getElementById('cfg_smtp_port').value = config.smtp_port || '587';
+            document.getElementById('cfg_smtp_user').value = config.smtp_user || '';
+            document.getElementById('cfg_smtp_pass').value = config.smtp_pass || '';
+            document.getElementById('cfg_smtp_from').value = config.smtp_from || '';
+            document.getElementById('cfg_smtp_secure').checked = config.smtp_secure === 'true';
+        } catch (e) {
+            showToast('加载配置失败');
         }
     }
 
-    // 渲染列表函数 (核心逻辑抽取)
+    // 保存配置
+    async function saveConfig() {
+        try {
+            const config = {
+                registration_enabled: document.getElementById('cfg_reg_enabled').checked ? 'true' : 'false',
+                email_registration_enabled: document.getElementById('cfg_email_enabled').checked ? 'true' : 'false',
+                smtp_host: document.getElementById('cfg_smtp_host').value,
+                smtp_port: document.getElementById('cfg_smtp_port').value,
+                smtp_user: document.getElementById('cfg_smtp_user').value,
+                smtp_pass: document.getElementById('cfg_smtp_pass').value,
+                smtp_from: document.getElementById('cfg_smtp_from').value,
+                smtp_secure: document.getElementById('cfg_smtp_secure').checked ? 'true' : 'false'
+            };
+
+            const res = await fetch('/api/admin/config', {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify(config)
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showToast('配置已保存', true);
+            } else {
+                showToast(data.message || '保存失败');
+            }
+        } catch (e) {
+            showToast('保存失败');
+        }
+    }
+
+    // 测试SMTP
+    async function testSmtp() {
+        try {
+            const res = await fetch('/api/admin/test-smtp', {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showToast('SMTP连接成功', true);
+            } else {
+                showToast(data.message || 'SMTP连接失败');
+            }
+        } catch (e) {
+            showToast('测试失败');
+        }
+    }
+
+    // 加载用户列表
+    async function loadUsers() {
+        try {
+            const res = await fetch('/api/users', { headers: getAuthHeaders() });
+            allUsersData = await res.json();
+            renderList(allUsersData);
+        } catch (e) {
+            console.error(e);
+            showToast('加载用户列表失败');
+        }
+    }
+
+    // 渲染用户列表
     function renderList(users) {
         const container = document.getElementById('list');
         container.innerHTML = '';
@@ -187,87 +680,190 @@
         users.forEach(u => {
             const el = document.createElement('div');
             el.className = 'user-card';
-            
-            const delBtn = u.isAdmin 
-                ? `<span style="font-size:10px;color:#aaa;padding:0 10px;">SYSTEM ADMIN</span>` 
-                : `<button class="btn-base btn-del" onclick="delUser(${u.id}, '${u.name}')">删除</button>`;
 
-            const editBtn = `<button class="btn-base btn-edit" onclick="changePass(${u.id}, '${u.username}')">改密</button>`;
+            const role = u.role !== undefined ? u.role : (u.isAdmin ? 2 : 0);
+            const roleTag = `<span class="role-tag ${ROLE_CLASSES[role]}">${ROLE_NAMES[role]}</span>`;
+
+            const delBtn = role >= 2
+                ? `<span style="font-size:10px;color:#aaa;padding:0 10px;">SYSTEM</span>`
+                : `<button class="btn-base btn-del" onclick="delUser(${u.id}, '${u.name}')">删除</button>`;
 
             el.innerHTML = `
                 <div class="u-info">
-                    <span class="u-name">${u.name} ${u.isAdmin ? '<span class="admin-tag">ADMIN</span>' : ''}</span>
+                    <span class="u-name">${u.name} ${roleTag}</span>
                     <div class="u-meta">
-                        ID: ${u.username} | KEY: <span class="u-pass">${u.password}</span> | DOCS: ${u.charCount || 0}
+                        ID: ${u.username} | DOCS: ${u.charCount || 0}
+                        ${u.email ? `| EMAIL: ${u.email}` : ''}
                     </div>
                 </div>
-                <div class="action-btns">${editBtn}${delBtn}</div>
+                <div class="action-btns">
+                    <button class="btn-base btn-edit" onclick="changePass(${u.id}, '${u.username}')"><i class="fas fa-key"></i> 重置密码</button>
+                    <button class="btn-base btn-role" onclick="openRoleModal(${u.id}, '${u.name}', ${role})">角色</button>
+                    ${delBtn}
+                </div>
             `;
             container.appendChild(el);
         });
     }
 
-    // 搜索监听
-    document.getElementById('searchInput').addEventListener('input', function(e) {
-        const term = e.target.value.toLowerCase().trim();
-        
-        if (!term) {
-            renderList(allUsersData);
+    // 角色筛选
+    function filterByRole(role, btn) {
+        currentFilter = role;
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyFilters();
+    }
+
+    // 搜索
+    document.getElementById('searchInput').addEventListener('input', applyFilters);
+
+    function applyFilters() {
+        const term = document.getElementById('searchInput').value.toLowerCase().trim();
+        let filtered = allUsersData;
+
+        if (currentFilter !== 'all') {
+            filtered = filtered.filter(u => {
+                const role = u.role !== undefined ? u.role : (u.isAdmin ? 2 : 0);
+                return role === currentFilter;
+            });
+        }
+
+        if (term) {
+            filtered = filtered.filter(u =>
+                (u.name && u.name.toLowerCase().includes(term)) ||
+                (u.username && u.username.toLowerCase().includes(term))
+            );
+        }
+
+        renderList(filtered);
+    }
+
+    // 重置密码模态框
+    let passwordEditingUserId = null;
+
+    function changePass(id, username) {
+        passwordEditingUserId = id;
+        document.getElementById('pwdModalUserName').textContent = username;
+        document.getElementById('newPasswordInput').value = '';
+        document.getElementById('confirmPasswordInput').value = '';
+        document.getElementById('passwordModal').classList.add('show');
+        document.getElementById('newPasswordInput').focus();
+    }
+
+    function closePasswordModal() {
+        document.getElementById('passwordModal').classList.remove('show');
+        passwordEditingUserId = null;
+    }
+
+    async function confirmPasswordChange() {
+        if (!passwordEditingUserId) return;
+
+        const newPass = document.getElementById('newPasswordInput').value;
+        const confirmPass = document.getElementById('confirmPasswordInput').value;
+
+        if (!newPass || newPass.trim() === '') {
+            showToast('请输入新密码');
             return;
         }
 
-        // 同时检索 姓名(name) 和 账号(username)
-        const filtered = allUsersData.filter(u => 
-            (u.name && u.name.toLowerCase().includes(term)) || 
-            (u.username && u.username.toLowerCase().includes(term))
-        );
+        if (newPass !== confirmPass) {
+            showToast('两次输入的密码不一致');
+            return;
+        }
 
-        renderList(filtered);
-    });
-
-    // 业务逻辑保持不变
-    async function changePass(id, username) {
-        const newPass = prompt(`请输入用户 [${username}] 的新密码:`);
-        if (newPass === null || newPass.trim() === "") return;
-        
-        const res = await fetch(`/api/users/${id}`, {
+        const res = await fetch(`/api/users/${passwordEditingUserId}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: getAuthHeaders(),
             body: JSON.stringify({ password: newPass })
         });
         const data = await res.json();
-        if (data.success) { alert("密码已更新"); loadUsers(); }
+        if (data.success) {
+            showToast('密码已重置', true);
+            closePasswordModal();
+            loadUsers();
+        } else {
+            showToast(data.message || '重置失败');
+        }
     }
 
+    // 添加用户
     async function addUser() {
         const name = document.getElementById('newName').value;
         const user = document.getElementById('newUser').value;
         const pass = document.getElementById('newPass').value;
-        if(!user || !pass) return alert('账号和密码必填');
+        const role = parseInt(document.getElementById('newRole').value);
+
+        if (!user || !pass) return showToast('账号和密码必填');
 
         const res = await fetch('/api/users', {
             method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ username: user, password: pass, name: name })
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ username: user, password: pass, name: name, role: role })
         });
         const data = await res.json();
-        if(data.success) {
+        if (data.success) {
             document.getElementById('newName').value = '';
             document.getElementById('newUser').value = '';
             document.getElementById('newPass').value = '';
+            document.getElementById('newRole').value = '0';
+            showToast('用户已创建', true);
             loadUsers();
-        } else { alert(data.message); }
+        } else {
+            showToast(data.message || '创建失败');
+        }
     }
 
+    // 删除用户
     async function delUser(id, name) {
-        if(!confirm(`警告：删除用户 [${name}] 将会同时销毁该用户下的所有角色档案！\n\n确定继续吗？`)) return;
-        const res = await fetch(`/api/users/${id}`, { method: 'DELETE' });
+        if (!confirm(`警告：删除用户 [${name}] 将会同时销毁该用户下的所有角色档案！\n\n确定继续吗？`)) return;
+        const res = await fetch(`/api/users/${id}`, {
+            method: 'DELETE',
+            headers: getAuthHeaders()
+        });
         const data = await res.json();
-        if(data.success) loadUsers();
+        if (data.success) {
+            showToast('用户已删除', true);
+            loadUsers();
+        } else {
+            showToast(data.message || '删除失败');
+        }
+    }
+
+    // 角色修改模态框
+    function openRoleModal(userId, userName, currentRole) {
+        editingUserId = userId;
+        document.getElementById('modalUserName').textContent = userName;
+        document.getElementById('modalRoleSelect').value = currentRole;
+        document.getElementById('roleModal').classList.add('show');
+    }
+
+    function closeRoleModal() {
+        document.getElementById('roleModal').classList.remove('show');
+        editingUserId = null;
+    }
+
+    async function confirmRoleChange() {
+        if (!editingUserId) return;
+        const newRole = parseInt(document.getElementById('modalRoleSelect').value);
+
+        const res = await fetch(`/api/admin/users/${editingUserId}/role`, {
+            method: 'PUT',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ role: newRole })
+        });
+        const data = await res.json();
+
+        if (data.success) {
+            showToast('角色已更新', true);
+            closeRoleModal();
+            loadUsers();
+        } else {
+            showToast(data.message || '更新失败');
+        }
     }
 
     function logout() { localStorage.clear(); window.location.href = 'login.html'; }
-    
+
     // 初始化
     loadUsers();
 </script>

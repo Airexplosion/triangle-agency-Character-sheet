@@ -135,6 +135,8 @@
     .nav-btn.n-real.active { color: var(--reality); }
     .nav-btn.n-item.active { color: var(--signal-red); }
     #status-msg { position: fixed; top: 20px; left:50%; transform:translateX(-50%); background: var(--signal-red); color: white; padding: 8px 20px; border-radius: 4px; font-size: 12px; display:none; z-index:2000; box-shadow: 0 5px 20px rgba(0,0,0,0.5); font-weight: bold; letter-spacing: 1px; }
+	#status-msg.success { background: #27ae60; }
+	#status-msg.error { background: var(--signal-red); }
 	.nav-arrow { position: fixed; top: 50%; transform: translateY(-50%); font-size: 60px; color: var(--signal-red); cursor: pointer; z-index: 900; padding: 20px; display: none; transition: all 0.2s ease; opacity: 0.8; user-select: none; }
 	.nav-arrow:hover { transform: translateY(-50%) scale(1.1); opacity: 1; text-shadow: 0 0 10px rgba(192, 57, 43, 0.4); }
 	.arrow-left { left: calc(50% - 450px - 80px); }
@@ -189,7 +191,7 @@
 <div class="save-area"><button class="btn-save btn-save-server" onclick="saveData()"><i class="fas fa-cloud-upload-alt"></i> 上传终端</button><button class="btn-save btn-export" onclick="exportOffline()"><i class="fas fa-download"></i> 离线另存</button></div>
 </div>
 <div id="view-anom" class="tab-view"><div class="mod-header"><h2>异常能力</h2><button class="btn-add" onclick="addAnom(null, false)"><i class="fas fa-plus"></i> 添加</button></div><div id="list-anom"></div><div class="save-area"><button class="btn-save btn-save-server" onclick="saveData()"><i class="fas fa-cloud-upload-alt"></i> 上传终端</button><button class="btn-save btn-export" onclick="exportOffline()"><i class="fas fa-download"></i> 离线另存</button></div></div>
-<div id="view-real" class="tab-view"><div class="mod-header"><h2>关系网</h2><button class="btn-add" onclick="document.getElementById('list-real').appendChild(addReal())"><i class="fas fa-plus"></i> 添加</button></div><div id="list-real"></div><div class="save-area"><button class="btn-save btn-save-server" onclick="saveData()"><i class="fas fa-cloud-upload-alt"></i> 上传终端</button><button class="btn-save btn-export" onclick="exportOffline()"><i class="fas fa-download"></i> 离线另存</button></div></div>
+<div id="view-real" class="tab-view"><div class="mod-header"><h2>关系网</h2><button class="btn-add" onclick="addRealSafe()"><i class="fas fa-plus"></i> 添加</button></div><div id="list-real"></div><div class="save-area"><button class="btn-save btn-save-server" onclick="saveData()"><i class="fas fa-cloud-upload-alt"></i> 上传终端</button><button class="btn-save btn-export" onclick="exportOffline()"><i class="fas fa-download"></i> 离线另存</button></div></div>
 <div id="view-item" class="tab-view"><div class="mod-header"><h2>申领物/福利</h2><button class="btn-add" onclick="addItem(null, false)"><i class="fas fa-plus"></i> 添加</button></div><div id="list-item"></div><div class="save-area"><button class="btn-save btn-save-server" onclick="saveData()"><i class="fas fa-cloud-upload-alt"></i> 上传终端</button><button class="btn-save btn-export" onclick="exportOffline()"><i class="fas fa-download"></i> 离线另存</button></div></div>
 </div>
 </div>
@@ -205,8 +207,20 @@
 const params = new URLSearchParams(window.location.search);
 const charId = params.get('id');
 const isReadOnly = params.get('readonly') === 'true';
+const token = localStorage.getItem('ta_token');
+
+// 获取带认证的请求头
+function getAuthHeaders() {
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    return headers;
+}
+
 // [修改] 初始化增加 bonuses
 let CONFIG_DATA = { anoms: [], realities: [], functions: [], bonuses: [] };
+
+// 槽位限制
+let SLOT_LIMITS = { anomSlots: 3, realSlots: 3 };
 
 async function loadConfigData() {
     try {
@@ -362,7 +376,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         populateData(JSON.parse(offlineDataEl.textContent));
     } else {
         if(!charId) { window.location.href='dashboard.html'; return; }
-        try { const res=await fetch(`/api/character/${charId}`); const data=await res.json(); populateData(data); } 
+        try {
+            const res=await fetch(`/api/character/${charId}`, { headers: getAuthHeaders() });
+            if (res.status === 401 || res.status === 403) {
+                window.location.href = 'login.html';
+                return;
+            }
+            const data=await res.json();
+            populateData(data);
+        }
         catch(e) { if(!document.getElementById('list-anom').children.length) addAnom(null, false); if(!document.getElementById('list-real').children.length) document.getElementById('list-real').appendChild(addReal()); if(!document.getElementById('list-item').children.length) addItem(null, false); }
     }
 });
@@ -377,9 +399,65 @@ async function goBack() { if(isReadOnly||document.body.classList.contains('offli
 const ATTRS=['专注','欺瞒','活力','共情','主动','坚毅','气场','专业','诡秘'];
 function initAttrs(){ const c=document.getElementById('attrs-list');c.innerHTML='';ATTRS.forEach(a=>{ const d=document.createElement('div');d.className='attr-row';d.innerHTML=`<div class="attr-label">${a}</div><input type="text" class="attr-input" data-attr="${a}" value="0"><div class="attr-dots-container"><div class="attr-dots" data-attr="${a}">${Array(9).fill(0).map((_,i)=>`<div class="dot" data-i="${i+1}"></div>`).join('')}</div></div>`;c.appendChild(d); const i=d.querySelector('input');i.oninput=(e)=>renderDots(a,e.target.value);d.querySelectorAll('.dot').forEach(dot=>{dot.onclick=()=>{if(isReadOnly)return;const max=parseInt(i.value)||0,idx=parseInt(dot.dataset.i);if(idx>max)return;if(dot.classList.contains('marked')){dot.classList.remove('marked');dot.classList.add('active');}else{dot.classList.remove('active');dot.classList.add('marked');}}});});}
 function renderDots(a,v){const val=parseInt(v)||0;document.querySelectorAll(`.attr-dots[data-attr="${a}"] .dot`).forEach((d,i)=>{if(i<val){if(!d.classList.contains('marked'))d.classList.add('active');}else{d.classList.remove('active','marked');}}); }
-function createDelBtn(){return`<button class="btn-del" onclick="if(confirm('确定删除?'))this.parentElement.remove()">×</button>`;}
+function createDelBtn(type){
+    return`<button class="btn-del" onclick="deleteCard(this, '${type}')">×</button>`;
+}
 
-function addAnom(d=null, prepend=false){ const div=document.createElement('div');div.className='card bd-anom';div.innerHTML=`${createDelBtn()}<div class="row-2" style="margin-bottom:10px"><input type="text" class="f-name" placeholder="能力名称"><input type="text" class="f-trig" placeholder="触发器"></div><input type="text" class="f-qual" placeholder="资质" style="margin-bottom:10px"><label class="c-anom">成功时</label><div class="rich-editor f-succ" contenteditable="true"></div><label style="color:#c0392b;margin-top:8px">失败时</label><div class="rich-editor f-fail" contenteditable="true"></div><div style="background:#f9f9f9;padding:10px;border-radius:6px;margin-top:10px;border:1px solid #eee"><div style="display:flex;align-items:center;margin-bottom:6px;gap:10px"><input type="text" class="f-tdesc" placeholder="问题" style="flex:1;margin-bottom:0"><label class="chk-btn chk-trained"><input type="checkbox" class="f-chk"><span></span></label></div><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><input type="text" class="f-t1" placeholder="答案1" style="flex:1"><input type="text" class="small-input f-t1-val"><div class="sq-dots d1">${get3Sq()}</div></div><div style="display:flex;gap:8px;align-items:center"><input type="text" class="f-t2" placeholder="答案2" style="flex:1"><input type="text" class="small-input f-t2-val"><div class="sq-dots d2">${get3Sq()}</div></div></div>`; setupSq(div);if(d)fillAnom(div,d);setRandomVars(div); const container = document.getElementById('list-anom'); if(prepend) { container.prepend(div); } else { container.appendChild(div); } if(isReadOnly){div.querySelectorAll('[contenteditable]').forEach(e=>e.setAttribute('contenteditable','false'));}}
+function deleteCard(btn, type) {
+    if(!confirm('确定删除?')) return;
+    btn.parentElement.remove();
+    updateSlotButtons();
+}
+
+// 更新添加按钮状态
+function updateSlotButtons() {
+    const anomCount = document.querySelectorAll('#list-anom .card').length;
+    const realCount = document.querySelectorAll('#list-real .card').length;
+
+    const btnAddAnom = document.querySelector('#view-anom .btn-add');
+    const btnAddReal = document.querySelector('#view-real .btn-add');
+
+    if (btnAddAnom) {
+        if (anomCount >= SLOT_LIMITS.anomSlots) {
+            btnAddAnom.disabled = true;
+            btnAddAnom.innerHTML = `<i class="fas fa-lock"></i> 已满 (${anomCount}/${SLOT_LIMITS.anomSlots})`;
+            btnAddAnom.style.opacity = '0.5';
+            btnAddAnom.style.cursor = 'not-allowed';
+        } else {
+            btnAddAnom.disabled = false;
+            btnAddAnom.innerHTML = `<i class="fas fa-plus"></i> 添加 (${anomCount}/${SLOT_LIMITS.anomSlots})`;
+            btnAddAnom.style.opacity = '1';
+            btnAddAnom.style.cursor = 'pointer';
+        }
+    }
+
+    if (btnAddReal) {
+        if (realCount >= SLOT_LIMITS.realSlots) {
+            btnAddReal.disabled = true;
+            btnAddReal.innerHTML = `<i class="fas fa-lock"></i> 已满 (${realCount}/${SLOT_LIMITS.realSlots})`;
+            btnAddReal.style.opacity = '0.5';
+            btnAddReal.style.cursor = 'not-allowed';
+        } else {
+            btnAddReal.disabled = false;
+            btnAddReal.innerHTML = `<i class="fas fa-plus"></i> 添加 (${realCount}/${SLOT_LIMITS.realSlots})`;
+            btnAddReal.style.opacity = '1';
+            btnAddReal.style.cursor = 'pointer';
+        }
+    }
+}
+
+function addAnom(d=null, prepend=false, skipCheck=false){
+    // 检查槽位限制
+    if (!skipCheck && !d) {
+        const currentCount = document.querySelectorAll('#list-anom .card').length;
+        if (currentCount >= SLOT_LIMITS.anomSlots) {
+            showToast('异常能力槽位已满，请联系经理解锁更多槽位', 'error');
+            return;
+        }
+    }
+    const div=document.createElement('div');div.className='card bd-anom';div.innerHTML=`${createDelBtn('anom')}<div class="row-2" style="margin-bottom:10px"><input type="text" class="f-name" placeholder="能力名称"><input type="text" class="f-trig" placeholder="触发器"></div><input type="text" class="f-qual" placeholder="资质" style="margin-bottom:10px"><label class="c-anom">成功时</label><div class="rich-editor f-succ" contenteditable="true"></div><label style="color:#c0392b;margin-top:8px">失败时</label><div class="rich-editor f-fail" contenteditable="true"></div><div style="background:#f9f9f9;padding:10px;border-radius:6px;margin-top:10px;border:1px solid #eee"><div style="display:flex;align-items:center;margin-bottom:6px;gap:10px"><input type="text" class="f-tdesc" placeholder="问题" style="flex:1;margin-bottom:0"><label class="chk-btn chk-trained"><input type="checkbox" class="f-chk"><span></span></label></div><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><input type="text" class="f-t1" placeholder="答案1" style="flex:1"><input type="text" class="small-input f-t1-val"><div class="sq-dots d1">${get3Sq()}</div></div><div style="display:flex;gap:8px;align-items:center"><input type="text" class="f-t2" placeholder="答案2" style="flex:1"><input type="text" class="small-input f-t2-val"><div class="sq-dots d2">${get3Sq()}</div></div></div>`; setupSq(div);if(d)fillAnom(div,d);setRandomVars(div); const container = document.getElementById('list-anom'); if(prepend) { container.prepend(div); } else { container.appendChild(div); } if(isReadOnly){div.querySelectorAll('[contenteditable]').forEach(e=>e.setAttribute('contenteditable','false'));}
+    updateSlotButtons();
+}
 
 // [修改] 辅助函数：构建连结加成下拉选项 (增加省略号逻辑)
 function getBonusOptions() {
@@ -425,13 +503,21 @@ window.resetBonus = function(btn) {
     select.value = ''; 
 };
 
-// [修改] addReal 函数，支持混合输入
-function addReal(d = null) {
+// [修改] addReal 函数，支持混合输入和槽位检查
+function addReal(d = null, skipCheck = false) {
+    // 检查槽位限制（仅在手动添加时检查）
+    if (!skipCheck && !d) {
+        const currentCount = document.querySelectorAll('#list-real .card').length;
+        if (currentCount >= SLOT_LIMITS.realSlots) {
+            showToast('关系网槽位已满，请联系经理解锁更多槽位', 'error');
+            return null;
+        }
+    }
     const div = document.createElement('div');
     div.className = 'card bd-real';
     const bonusOptions = getBonusOptions();
     div.innerHTML = `
-        ${createDelBtn()}
+        ${createDelBtn('real')}
         <div class="row-2" style="margin-bottom:10px">
             <input type="text" class="f-name" placeholder="姓名">
             <input type="text" class="f-actor" placeholder="扮演者">
@@ -454,16 +540,25 @@ function addReal(d = null) {
     setRandomVars(div);
     if (isReadOnly) {
         div.querySelectorAll('[contenteditable]').forEach(e => e.setAttribute('contenteditable', 'false'));
-        div.querySelector('.hybrid-input-wrapper').classList.add('show-input'); 
+        div.querySelector('.hybrid-input-wrapper').classList.add('show-input');
     }
+    setTimeout(updateSlotButtons, 0);
     return div;
 }
 
-function addItem(d=null, prepend=false){const div=document.createElement('div');div.className='card bd-func';div.innerHTML=`${createDelBtn()}<div class="row-2" style="margin-bottom:10px"><input type="text" class="f-item" placeholder="物品名称"><input type="text" class="f-pd" placeholder="页面/PD码"></div><label>效果</label><div class="rich-editor f-eff" contenteditable="true"></div>`;if(d){div.querySelector('.f-item').value=d.item||'';div.querySelector('.f-pd').value=d.pd||'';div.querySelector('.f-eff').innerHTML=d.eff||'';}setRandomVars(div); const container = document.getElementById('list-item'); if(prepend) { container.prepend(div); } else { container.appendChild(div); } if(isReadOnly){div.querySelectorAll('[contenteditable]').forEach(e=>e.setAttribute('contenteditable','false'));}}
+function addItem(d=null, prepend=false){const div=document.createElement('div');div.className='card bd-func';div.innerHTML=`${createDelBtn('item')}<div class="row-2" style="margin-bottom:10px"><input type="text" class="f-item" placeholder="物品名称"><input type="text" class="f-pd" placeholder="页面/PD码"></div><label>效果</label><div class="rich-editor f-eff" contenteditable="true"></div>`;if(d){div.querySelector('.f-item').value=d.item||'';div.querySelector('.f-pd').value=d.pd||'';div.querySelector('.f-eff').innerHTML=d.eff||'';}setRandomVars(div); const container = document.getElementById('list-item'); if(prepend) { container.prepend(div); } else { container.appendChild(div); } if(isReadOnly){div.querySelectorAll('[contenteditable]').forEach(e=>e.setAttribute('contenteditable','false'));}}
 
 function get3Sq(){return` <div class="sq-dot"></div><div class="sq-dot"></div><div class="sq-dot"></div> `;}
 function get9Dots(){return Array(9).fill(0).map((_,i)=>`<div class="dot" data-i="${i+1}"></div>`).join('');}
 function setupSq(div){div.querySelectorAll('.sq-dot').forEach(d=>d.onclick=()=>{if(!isReadOnly)d.classList.toggle('active');});}
+
+// 安全添加关系（带槽位检查）
+function addRealSafe() {
+    const card = addReal(null, false);
+    if (card) {
+        document.getElementById('list-real').appendChild(card);
+    }
+}
 function setupRDots(div){const d=div.querySelectorAll('.r-dots .dot');d.forEach(dot=>{dot.onclick=()=>{if(isReadOnly)return;const idx=parseInt(dot.dataset.i);d.forEach((dd,i)=>{if(i<idx)dd.classList.add('active');else dd.classList.remove('active');});}});}
 function fillAnom(div,d){div.querySelector('.f-name').value=d.name||'';div.querySelector('.f-trig').value=d.trig||'';div.querySelector('.f-qual').value=d.qual||'';div.querySelector('.f-succ').innerHTML=d.succ||'';div.querySelector('.f-fail').innerHTML=d.fail||'';if(d.chk)div.querySelector('.f-chk').checked=d.chk;if(d.tdesc)div.querySelector('.f-tdesc').value=d.tdesc;if(d.t1)div.querySelector('.f-t1').value=d.t1;if(d.t1v)div.querySelector('.f-t1-val').value=d.t1v;if(d.t2)div.querySelector('.f-t2').value=d.t2;if(d.t2v)div.querySelector('.f-t2-val').value=d.t2v;if(d.p1)div.querySelectorAll('.d1 .sq-dot').forEach((e,i)=>{if(d.p1[i])e.classList.add('active')});if(d.p2)div.querySelectorAll('.d2 .sq-dot').forEach((e,i)=>{if(d.p2[i])e.classList.add('active')});}
 
@@ -490,9 +585,33 @@ function fillReal(div, d) {
 }
 
 document.querySelectorAll('.p-cell').forEach(c=>{c.addEventListener('click',()=>{if(isReadOnly)return;if(c.classList.contains('active')){c.classList.remove('active');c.classList.add('ignored');}else if(c.classList.contains('ignored')){c.classList.remove('ignored');}else{c.classList.add('active');}});c.addEventListener('contextmenu',(e)=>{e.preventDefault();if(isReadOnly)return;c.classList.remove('active');c.classList.add('ignored');});});
-function populateData(d){['pName','pTrig1','pTrig2','pTrig3','perm1','perm2','perm3','pComm','pRep','mvpCount','watchCount','noteTitle','noteBody'].forEach(id=>{const e=document.getElementById(id);if(d[id]&&e){if(e.tagName==='DIV')e.innerHTML=d[id];else e.value=d[id];}});setHybridInputState('pAnom',d.pAnom);setHybridInputState('pReal',d.pReal);setHybridInputState('pFunc',d.pFunc);if(d.qs)d.qs.forEach((h,i)=>{const q=document.getElementById(`q${i+1}`);if(q)q.innerHTML=h;});if(d.attrs){for(let k in d.attrs){const r=document.querySelector(`.attr-input[data-attr="${k}"]`);if(r){r.value=d.attrs[k].v;renderDots(k,d.attrs[k].v);const dots=r.parentElement.querySelectorAll('.dot');d.attrs[k].m.forEach(idx=>{if(dots[idx-1]){dots[idx-1].classList.remove('active');dots[idx-1].classList.add('marked');}});}}}document.getElementById('list-anom').innerHTML='';document.getElementById('list-real').innerHTML='';document.getElementById('list-item').innerHTML='';(d.anoms||[]).forEach(x=>addAnom(x, false));(d.reals||[]).forEach(x=>document.getElementById('list-real').appendChild(addReal(x)));(d.items||[]).forEach(x=>addItem(x, false));if(!document.getElementById('list-anom').children.length)addAnom(null, false);if(!document.getElementById('list-real').children.length)document.getElementById('list-real').appendChild(addReal());if(!document.getElementById('list-item').children.length)addItem(null, false);(d.pf||[]).forEach(i=>document.querySelector(`.f-cell[data-idx="${i}"]`)?.classList.add('active'));(d.pr||[]).forEach(i=>document.querySelector(`.r-cell[data-idx="${i}"]`)?.classList.add('active'));(d.pa||[]).forEach(i=>document.querySelector(`.a-cell[data-idx="${i}"]`)?.classList.add('active'));(d.pf_ign||[]).forEach(i=>document.querySelector(`.f-cell[data-idx="${i}"]`)?.classList.add('ignored'));(d.pr_ign||[]).forEach(i=>document.querySelector(`.r-cell[data-idx="${i}"]`)?.classList.add('ignored'));(d.pa_ign||[]).forEach(i=>document.querySelector(`.a-cell[data-idx="${i}"]`)?.classList.add('ignored'));}
-function gatherData(){const d={pName:document.getElementById('pName').value,pAnom:document.getElementById('pAnom').value,pReal:document.getElementById('pReal').value,pFunc:document.getElementById('pFunc').value,pTrig1:document.getElementById('pTrig1').innerHTML,pTrig2:document.getElementById('pTrig2').innerHTML,pTrig3:document.getElementById('pTrig3').innerHTML,perm1:document.getElementById('perm1').value,perm2:document.getElementById('perm2').value,perm3:document.getElementById('perm3').value,pComm:document.getElementById('pComm').value,pRep:document.getElementById('pRep').value,mvpCount:document.getElementById('mvpCount').value,watchCount:document.getElementById('watchCount').value,noteTitle:document.getElementById('noteTitle').value,noteBody:document.getElementById('noteBody').innerHTML,qs:[],attrs:{},anoms:[],reals:[],items:[],pf:[],pr:[],pa:[],pf_ign:[],pr_ign:[],pa_ign:[]};for(let i=1;i<=7;i++)d.qs.push(document.getElementById(`q${i}`).innerHTML);ATTRS.forEach(a=>{const r=document.querySelector(`.attr-input[data-attr="${a}"]`).parentElement,m=[];r.querySelectorAll('.dot.marked').forEach(dt=>m.push(parseInt(dt.dataset.i)));d.attrs[a]={v:r.querySelector('input').value,m:m};});document.querySelectorAll('#list-anom .card').forEach(c=>{d.anoms.push({name:c.querySelector('.f-name').value,trig:c.querySelector('.f-trig').value,qual:c.querySelector('.f-qual').value,succ:c.querySelector('.f-succ').innerHTML,fail:c.querySelector('.f-fail').innerHTML,chk:c.querySelector('.f-chk').checked,tdesc:c.querySelector('.f-tdesc').value,t1:c.querySelector('.f-t1').value,t1v:c.querySelector('.f-t1-val').value,t2:c.querySelector('.f-t2').value,t2v:c.querySelector('.f-t2-val').value,p1:Array.from(c.querySelectorAll('.d1 .sq-dot')).map(e=>e.classList.contains('active')),p2:Array.from(c.querySelectorAll('.d2 .sq-dot')).map(e=>e.classList.contains('active'))});});document.querySelectorAll('#list-real .card').forEach(c=>{let l=0;c.querySelectorAll('.r-dots .dot').forEach((e,i)=>{if(e.classList.contains('active'))l=i+1});d.reals.push({name:c.querySelector('.f-name').value,actor:c.querySelector('.f-actor').value,desc:c.querySelector('.f-desc').innerHTML,act:c.querySelector('.f-act').checked,conn:c.querySelector('.f-conn').innerHTML,lvl:l});});document.querySelectorAll('#list-item .card').forEach(c=>{d.items.push({item:c.querySelector('.f-item').value,pd:c.querySelector('.f-pd').value,eff:c.querySelector('.f-eff').innerHTML});});document.querySelectorAll('.f-cell.active').forEach(e=>d.pf.push(parseInt(e.dataset.idx)));document.querySelectorAll('.r-cell.active').forEach(e=>d.pr.push(parseInt(e.dataset.idx)));document.querySelectorAll('.a-cell.active').forEach(e=>d.pa.push(parseInt(e.dataset.idx)));document.querySelectorAll('.f-cell.ignored').forEach(e=>d.pf_ign.push(parseInt(e.dataset.idx)));document.querySelectorAll('.r-cell.ignored').forEach(e=>d.pr_ign.push(parseInt(e.dataset.idx)));document.querySelectorAll('.a-cell.ignored').forEach(e=>d.pa_ign.push(parseInt(e.dataset.idx)));return d;}
-async function saveData(silent=false){if(isReadOnly)return;const d=gatherData();const res=await fetch(`/api/character/${charId}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});if(res.ok){if(!silent){const m=document.getElementById('status-msg');m.style.display='block';setTimeout(()=>m.style.display='none',2000);}}else{alert('保存失败');}}
+function populateData(d){
+    // 更新槽位限制
+    SLOT_LIMITS.anomSlots = d.anomSlots || 3;
+    SLOT_LIMITS.realSlots = d.realSlots || 3;
+
+    ['pName','pTrig1','pTrig2','pTrig3','perm1','perm2','perm3','pComm','pRep','mvpCount','watchCount','noteTitle','noteBody'].forEach(id=>{const e=document.getElementById(id);if(d[id]&&e){if(e.tagName==='DIV')e.innerHTML=d[id];else e.value=d[id];}});setHybridInputState('pAnom',d.pAnom);setHybridInputState('pReal',d.pReal);setHybridInputState('pFunc',d.pFunc);if(d.qs)d.qs.forEach((h,i)=>{const q=document.getElementById(`q${i+1}`);if(q)q.innerHTML=h;});if(d.attrs){for(let k in d.attrs){const r=document.querySelector(`.attr-input[data-attr="${k}"]`);if(r){r.value=d.attrs[k].v;renderDots(k,d.attrs[k].v);const dots=r.parentElement.querySelectorAll('.dot');d.attrs[k].m.forEach(idx=>{if(dots[idx-1]){dots[idx-1].classList.remove('active');dots[idx-1].classList.add('marked');}});}}}document.getElementById('list-anom').innerHTML='';document.getElementById('list-real').innerHTML='';document.getElementById('list-item').innerHTML='';
+    // 加载数据时跳过槽位检查
+    (d.anoms||[]).forEach(x=>addAnom(x, false, true));
+    (d.reals||[]).forEach(x=>{const card = addReal(x, true); if(card) document.getElementById('list-real').appendChild(card);});
+    (d.items||[]).forEach(x=>addItem(x, false));
+    // 如果没有数据，添加默认卡片（跳过检查）
+    if(!document.getElementById('list-anom').children.length)addAnom(null, false, true);
+    if(!document.getElementById('list-real').children.length){const card = addReal(null, true); if(card) document.getElementById('list-real').appendChild(card);}
+    if(!document.getElementById('list-item').children.length)addItem(null, false);
+    (d.pf||[]).forEach(i=>document.querySelector(`.f-cell[data-idx="${i}"]`)?.classList.add('active'));(d.pr||[]).forEach(i=>document.querySelector(`.r-cell[data-idx="${i}"]`)?.classList.add('active'));(d.pa||[]).forEach(i=>document.querySelector(`.a-cell[data-idx="${i}"]`)?.classList.add('active'));(d.pf_ign||[]).forEach(i=>document.querySelector(`.f-cell[data-idx="${i}"]`)?.classList.add('ignored'));(d.pr_ign||[]).forEach(i=>document.querySelector(`.r-cell[data-idx="${i}"]`)?.classList.add('ignored'));(d.pa_ign||[]).forEach(i=>document.querySelector(`.a-cell[data-idx="${i}"]`)?.classList.add('ignored'));
+    // 更新按钮状态
+    updateSlotButtons();
+}
+function gatherData(){const d={pName:document.getElementById('pName').value,pAnom:document.getElementById('pAnom').value,pReal:document.getElementById('pReal').value,pFunc:document.getElementById('pFunc').value,pTrig1:document.getElementById('pTrig1').innerHTML,pTrig2:document.getElementById('pTrig2').innerHTML,pTrig3:document.getElementById('pTrig3').innerHTML,perm1:document.getElementById('perm1').value,perm2:document.getElementById('perm2').value,perm3:document.getElementById('perm3').value,pComm:document.getElementById('pComm').value,pRep:document.getElementById('pRep').value,mvpCount:document.getElementById('mvpCount').value,watchCount:document.getElementById('watchCount').value,noteTitle:document.getElementById('noteTitle').value,noteBody:document.getElementById('noteBody').innerHTML,qs:[],attrs:{},anoms:[],reals:[],items:[],pf:[],pr:[],pa:[],pf_ign:[],pr_ign:[],pa_ign:[],anomSlots:SLOT_LIMITS.anomSlots,realSlots:SLOT_LIMITS.realSlots};for(let i=1;i<=7;i++)d.qs.push(document.getElementById(`q${i}`).innerHTML);ATTRS.forEach(a=>{const r=document.querySelector(`.attr-input[data-attr="${a}"]`).parentElement,m=[];r.querySelectorAll('.dot.marked').forEach(dt=>m.push(parseInt(dt.dataset.i)));d.attrs[a]={v:r.querySelector('input').value,m:m};});document.querySelectorAll('#list-anom .card').forEach(c=>{d.anoms.push({name:c.querySelector('.f-name').value,trig:c.querySelector('.f-trig').value,qual:c.querySelector('.f-qual').value,succ:c.querySelector('.f-succ').innerHTML,fail:c.querySelector('.f-fail').innerHTML,chk:c.querySelector('.f-chk').checked,tdesc:c.querySelector('.f-tdesc').value,t1:c.querySelector('.f-t1').value,t1v:c.querySelector('.f-t1-val').value,t2:c.querySelector('.f-t2').value,t2v:c.querySelector('.f-t2-val').value,p1:Array.from(c.querySelectorAll('.d1 .sq-dot')).map(e=>e.classList.contains('active')),p2:Array.from(c.querySelectorAll('.d2 .sq-dot')).map(e=>e.classList.contains('active'))});});document.querySelectorAll('#list-real .card').forEach(c=>{let l=0;c.querySelectorAll('.r-dots .dot').forEach((e,i)=>{if(e.classList.contains('active'))l=i+1});d.reals.push({name:c.querySelector('.f-name').value,actor:c.querySelector('.f-actor').value,desc:c.querySelector('.f-desc').innerHTML,act:c.querySelector('.f-act').checked,conn:c.querySelector('.f-conn').innerHTML,lvl:l});});document.querySelectorAll('#list-item .card').forEach(c=>{d.items.push({item:c.querySelector('.f-item').value,pd:c.querySelector('.f-pd').value,eff:c.querySelector('.f-eff').innerHTML});});document.querySelectorAll('.f-cell.active').forEach(e=>d.pf.push(parseInt(e.dataset.idx)));document.querySelectorAll('.r-cell.active').forEach(e=>d.pr.push(parseInt(e.dataset.idx)));document.querySelectorAll('.a-cell.active').forEach(e=>d.pa.push(parseInt(e.dataset.idx)));document.querySelectorAll('.f-cell.ignored').forEach(e=>d.pf_ign.push(parseInt(e.dataset.idx)));document.querySelectorAll('.r-cell.ignored').forEach(e=>d.pr_ign.push(parseInt(e.dataset.idx)));document.querySelectorAll('.a-cell.ignored').forEach(e=>d.pa_ign.push(parseInt(e.dataset.idx)));return d;}
+function showToast(msg, type='success') {
+    const m = document.getElementById('status-msg');
+    m.innerHTML = type === 'error' ? `<i class="fas fa-exclamation-circle"></i> ${msg}` : `<i class="fas fa-save"></i> ${msg}`;
+    m.className = type === 'error' ? 'error' : 'success';
+    m.style.display = 'block';
+    setTimeout(() => m.style.display = 'none', 2500);
+}
+async function saveData(silent=false){if(isReadOnly)return;const d=gatherData();const res=await fetch(`/api/character/${charId}`,{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(d)});if(res.ok){if(!silent){showToast('DATA_SAVED', 'success');}}else if(res.status===401||res.status===403){window.location.href='login.html';}else{showToast('保存失败', 'error');}}
 function exportOffline(){const d=gatherData();let h=document.documentElement.outerHTML;h=h.replace(/<script id="__SAVED_DATA__" type="application\/json">.*?<\/script>/s,`<script id="__SAVED_DATA__" type="application/json">${JSON.stringify(d)}<\/script>`);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([h],{type:'text/html'}));a.download=`${d.pName||'角色'}_离线备份.html`;a.click();}
 </script>
 <div class="nav-arrow arrow-left" onclick="moveTab(-1)"><i class="fas fa-caret-left"></i></div>

@@ -120,6 +120,52 @@
         .empty-files { font-size: 12px; color: #bdc3c7; font-style: italic; font-family: monospace; padding-left: 10px; }
         
         .no-result { text-align: center; color: #7f8c8d; padding: 20px; font-family: monospace; }
+
+        /* 模态框样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+        .modal-box {
+            background: var(--pure-white);
+            border-radius: 8px;
+            padding: 30px;
+            max-width: 400px;
+            text-align: center;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+            border-top: 4px solid var(--signal-red);
+        }
+        .modal-box i.modal-icon {
+            font-size: 48px;
+            color: var(--signal-red);
+            margin-bottom: 15px;
+        }
+        .modal-box h3 {
+            color: var(--text-dark);
+            margin-bottom: 10px;
+            font-size: 18px;
+        }
+        .modal-box p {
+            color: var(--muted-gray);
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+        .modal-btn {
+            background: var(--signal-red);
+            color: white;
+            border: none;
+            padding: 10px 30px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .modal-btn:hover { background: #e74c3c; }
     </style>
 </head>
 <body>
@@ -149,11 +195,20 @@
     </div>
 </div>
 
+<div id="accessDeniedModal" class="modal-overlay" style="display:none;">
+    <div class="modal-box">
+        <i class="fas fa-shield-alt modal-icon"></i>
+        <h3>权限拒绝</h3>
+        <p>仅限管理员访问此页面</p>
+        <button class="modal-btn" onclick="window.location.href='login.html'">返回登录</button>
+    </div>
+</div>
+
 <script>
     const isAdmin = localStorage.getItem('ta_is_admin');
     if (isAdmin !== 'true') {
-        alert('权限拒绝：仅限管理员访问');
-        window.location.href = 'login.html';
+        document.getElementById('accessDeniedModal').style.display = 'flex';
+        document.querySelector('.container').style.display = 'none';
     }
 
     // 全局变量存储所有用户数据
