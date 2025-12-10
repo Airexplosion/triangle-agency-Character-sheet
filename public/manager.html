@@ -384,9 +384,30 @@
             background: var(--manager-blue);
             color: white;
         }
+
+        /* === 普通文档加载过渡 (新增) === */
+        #transition-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0f172a; z-index: 8000; pointer-events: none; clip-path: inset(50% 0 50% 0); transition: clip-path 0.8s cubic-bezier(0.8, 0, 0.2, 1); display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #transition-overlay.active { pointer-events: all; clip-path: inset(0 0 0 0); }
+        #transition-overlay::before { content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: var(--signal-red); z-index: 100; box-shadow: 0 0 15px var(--signal-red); opacity: 0; transition: opacity 0.2s; }
+        #transition-overlay.active::before { opacity: 1; animation: line-fade 0.8s forwards; }
+        @keyframes line-fade { 0% { opacity: 1; transform: scaleX(0.1); } 50% { opacity: 1; transform: scaleX(1); } 100% { opacity: 0; transform: scaleX(1); } }
+        .loader-content { text-align: center; color: var(--signal-red); opacity: 0; transform: scale(0.9); transition: all 0.4s ease 0.2s; }
+        #transition-overlay.active .loader-content { opacity: 1; transform: scale(1); }
+        .loader-icon { font-size: 40px; margin-bottom: 20px; }
+        .loader-text { font-family: "Noto Sans SC", sans-serif; font-size: 16px; letter-spacing: 2px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+        .dots::after { content: ''; width: 1.5em; text-align: left; display: inline-block; animation: dot-steps 1.5s infinite steps(4, end); }
+        @keyframes dot-steps { 0%, 20% { content: ''; } 40% { content: '.'; } 60% { content: '..'; } 80%, 100% { content: '...'; } }
     </style>
 </head>
 <body>
+
+<!-- 普通过渡 (新增) -->
+<div id="transition-overlay">
+    <div class="loader-content">
+        <i class="fas fa-circle-notch fa-spin loader-icon"></i>
+        <div class="loader-text" id="transition-text">档案读取中<span class="dots"></span></div>
+    </div>
+</div>
 
 <div class="container">
     <header>
@@ -398,7 +419,7 @@
             <div class="page-title">// 经理控制台</div>
         </div>
         <div class="btn-group">
-            <button class="btn-logout" onclick="location.href='dashboard.html'">
+            <button class="btn-logout" onclick="goToDashboard()">
                 <i class="fas fa-folder"></i> 我的档案
             </button>
             <button class="btn-logout" onclick="logout()"><i class="fas fa-power-off"></i></button>
@@ -487,6 +508,23 @@
         toast.className = 'toast show' + (success ? ' success' : '');
         setTimeout(() => toast.classList.remove('show'), 3000);
     }
+    
+    // 新增：跳转到Dashboard的函数
+    function goToDashboard() {
+        const overlay = document.getElementById('transition-overlay');
+        const loaderText = document.getElementById('transition-text');
+
+        // 设置指定的加载文本
+        loaderText.innerHTML = '档案读取中<span class="dots"></span>';
+        
+        // 激活过渡动画
+        overlay.classList.add('active');
+
+        // 动画播放后跳转
+        setTimeout(() => {
+            window.location.href = 'dashboard.html';
+        }, 1200);
+    }
 
     // 加载已授权的角色
     async function loadCharacters() {
@@ -559,8 +597,6 @@
             return;
         }
 
-        // 支持从链接中提取授权码
-        // 格式: ?auth=xxx 或直接是UUID
         const urlMatch = input.match(/[?&]auth=([a-f0-9-]+)/i);
         if (urlMatch) {
             input = urlMatch[1];
@@ -592,9 +628,7 @@
         const authCode = params.get('auth');
         if (authCode) {
             document.getElementById('authCodeInput').value = authCode;
-            // 自动认领
             setTimeout(() => claimAuth(), 500);
-            // 清除URL参数
             window.history.replaceState({}, document.title, 'manager.html');
         }
     }
@@ -623,7 +657,6 @@
         currentSlotCharId = charId;
         document.getElementById('modalCharName').textContent = charName;
 
-        // 加载当前槽位数据
         try {
             const res = await fetch(`/api/character/${charId}/slots`, {
                 headers: getAuthHeaders()
@@ -637,7 +670,6 @@
             currentSlotData = { anomSlots: 3, realSlots: 3, currentAnoms: 0, currentReals: 0 };
         }
 
-        // 更新UI
         document.getElementById('anomSlotValue').textContent = currentSlotData.anomSlots;
         document.getElementById('realSlotValue').textContent = currentSlotData.realSlots;
         document.getElementById('anomUsed').textContent = currentSlotData.currentAnoms;
@@ -659,11 +691,9 @@
 
         current += delta;
 
-        // 不能低于3或当前使用数
         const minValue = Math.max(3, used);
         if (current < minValue) current = minValue;
 
-        // 最大值限制（可选）
         if (current > 20) current = 20;
 
         valueEl.textContent = current;
