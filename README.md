@@ -2,7 +2,7 @@
 
 这是一个基于 Node.js 和 Express 构建的简易用户管理后端服务，包含默认管理员账号，支持基本的用户身份结构。
 
-- 作者：ska
+- 作者：ska，残光
 - 免责声明：ai搓的，密码等数据未加密。
 
 ## 🚀 快速开始
@@ -37,3 +37,4 @@ db.run('INSERT INTO users VALUES (?, ?, ?, ?, ?)', [999, 'admin', 'admin', '管�
 如需修改默认账号，请直接编辑该行中的 admin 字段。  
 
 删除data文件中database.db再执行node server.js
+
