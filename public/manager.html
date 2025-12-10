@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>经理控制台 // TRIANGLE AGENCY</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --deep-bg: #1a252f;
+            --bg-pattern: radial-gradient(#2c3e50 1px, transparent 1px);
+            --pure-white: #ffffff;
+            --signal-red: #c0392b;
+            --text-dark: #2c3e50;
+            --manager-blue: #3498db;
+        }
+        body {
+            font-family: "Roboto Mono", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+            background-color: var(--deep-bg);
+            background-image: var(--bg-pattern);
+            background-size: 20px 20px;
+            margin: 0; padding: 20px; color: var(--text-dark);
+            min-height: 100vh;
+        }
+        .container { max-width: 900px; margin: 0 auto; }
+
+        header {
+            display: flex; justify-content: space-between; align-items: flex-end;
+            margin-bottom: 30px; padding-bottom: 15px; border-bottom: 2px solid var(--manager-blue);
+        }
+
+        .brand-logo { display: flex; flex-direction: column; line-height: 0.9; font-weight: 900; text-transform: uppercase; }
+        .brand-logo .top { font-size: 20px; letter-spacing: 2px; color: white; }
+        .brand-logo .btm { font-size: 12px; letter-spacing: 3px; color: var(--manager-blue); }
+        .page-title { font-size: 12px; color: #7f8c8d; margin-top: 5px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .btn-group { display: flex; gap: 10px; }
+        .btn-logout { background: rgba(255,255,255,0.1); color: white; border: none; padding: 8px 12px; border-radius: 4px; cursor: pointer; transition: 0.2s; font-size: 12px; }
+        .btn-logout:hover { background: var(--manager-blue); }
+
+        /* 授权码输入 */
+        .auth-panel {
+            background: var(--pure-white);
+            padding: 20px;
+            border-radius: 6px;
+            margin-bottom: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-left: 5px solid var(--manager-blue);
+        }
+        .auth-panel h3 {
+            margin: 0 0 15px;
+            font-size: 14px;
+            color: var(--text-dark);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .auth-panel h3 i { color: var(--manager-blue); }
+        .auth-row {
+            display: flex;
+            gap: 10px;
+        }
+        .auth-row input {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #ecf0f1;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            letter-spacing: 1px;
+        }
+        .auth-row input:focus {
+            outline: none;
+            border-color: var(--manager-blue);
+        }
+        .auth-row input::placeholder {
+            font-family: "Noto Sans SC", sans-serif;
+            letter-spacing: 0;
+        }
+        .btn-claim {
+            background: var(--manager-blue);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 12px;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+        .btn-claim:hover { background: #2980b9; }
+
+        /* 角色卡列表 */
+        .section-title {
+            color: white;
+            font-size: 13px;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-title::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: rgba(255,255,255,0.2);
+        }
+
+        .char-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            gap: 15px;
+        }
+
+        .char-card {
+            background: var(--pure-white);
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s;
+            cursor: pointer;
+            position: relative;
+        }
+        .char-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+        }
+
+        .card-header {
+            background: linear-gradient(135deg, var(--manager-blue), #2980b9);
+            padding: 15px;
+            color: white;
+        }
+        .card-name {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .card-owner {
+            font-size: 11px;
+            opacity: 0.8;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .card-body {
+            padding: 15px;
+        }
+        .card-info {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+        }
+        .info-label {
+            color: #7f8c8d;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 0.5px;
+        }
+        .info-value {
+            font-weight: bold;
+            color: var(--text-dark);
+        }
+
+        .card-footer {
+            padding: 10px 15px;
+            background: #f8f9fa;
+            border-top: 1px solid #ecf0f1;
+            display: flex;
+            justify-content: flex-end;
+        }
+        .btn-view {
+            background: var(--manager-blue);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-view:hover { background: #2980b9; }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: rgba(255,255,255,0.5);
+        }
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+        .empty-state h3 {
+            margin: 0 0 10px;
+            font-size: 16px;
+        }
+        .empty-state p {
+            font-size: 13px;
+            margin: 0;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--signal-red);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: bold;
+            z-index: 2000;
+            display: none;
+        }
+        .toast.show { display: block; animation: slideUp 0.3s ease; }
+        .toast.success { background: #27ae60; }
+        @keyframes slideUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255,255,255,0.5);
+        }
+        .loading i { font-size: 24px; }
+
+        /* 槽位管理弹窗样式 */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 3000;
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-box {
+            background: white;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            animation: modalIn 0.3s ease;
+        }
+        @keyframes modalIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+        .modal-header {
+            background: linear-gradient(135deg, var(--manager-blue), #2980b9);
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-header h3 {
+            margin: 0;
+            color: white;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            opacity: 0.8;
+            transition: 0.2s;
+        }
+        .modal-close:hover { opacity: 1; }
+        .modal-body { padding: 20px; }
+        .modal-desc {
+            color: var(--text-dark);
+            font-size: 14px;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .slot-group {
+            margin-bottom: 20px;
+        }
+        .slot-group label {
+            display: block;
+            font-size: 12px;
+            color: #7f8c8d;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+        .slot-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .slot-btn {
+            width: 36px;
+            height: 36px;
+            border: 2px solid var(--manager-blue);
+            background: white;
+            color: var(--manager-blue);
+            border-radius: 50%;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .slot-btn:hover {
+            background: var(--manager-blue);
+            color: white;
+        }
+        .slot-value {
+            font-size: 28px;
+            font-weight: bold;
+            color: var(--text-dark);
+            min-width: 40px;
+            text-align: center;
+        }
+        .slot-info {
+            font-size: 11px;
+            color: #95a5a6;
+            margin-top: 8px;
+        }
+        .modal-footer {
+            padding: 15px 20px;
+            background: #f8f9fa;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .btn-modal-cancel {
+            background: #ecf0f1;
+            color: #7f8c8d;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-modal-cancel:hover { background: #ddd; }
+        .btn-modal-confirm {
+            background: var(--manager-blue);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: 0.2s;
+        }
+        .btn-modal-confirm:hover { background: #2980b9; }
+
+        /* 卡片内槽位按钮 */
+        .btn-slots {
+            background: rgba(52, 152, 219, 0.1);
+            border: 1px solid var(--manager-blue);
+            color: var(--manager-blue);
+            padding: 6px 12px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-right: 8px;
+        }
+        .btn-slots:hover {
+            background: var(--manager-blue);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <div>
+            <div class="brand-logo">
+                <span class="top">TRIANGLE</span>
+                <span class="btm">AGENCY</span>
+            </div>
+            <div class="page-title">// 经理控制台</div>
+        </div>
+        <div class="btn-group">
+            <button class="btn-logout" onclick="location.href='dashboard.html'">
+                <i class="fas fa-folder"></i> 我的档案
+            </button>
+            <button class="btn-logout" onclick="logout()"><i class="fas fa-power-off"></i></button>
+        </div>
+    </header>
+
+    <!-- 授权码认领 -->
+    <div class="auth-panel">
+        <h3><i class="fas fa-key"></i> 认领授权</h3>
+        <div class="auth-row">
+            <input type="text" id="authCodeInput" placeholder="输入授权码 或 粘贴授权链接">
+            <button class="btn-claim" onclick="claimAuth()"><i class="fas fa-plus"></i> 认领</button>
+        </div>
+    </div>
+
+    <!-- 已授权角色列表 -->
+    <div class="section-title">
+        <i class="fas fa-users"></i> 已授权的角色档案
+    </div>
+
+    <div id="charList" class="char-grid">
+        <div class="loading">
+            <i class="fas fa-circle-notch fa-spin"></i>
+            <p>加载中...</p>
+        </div>
+    </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- 槽位管理弹窗 -->
+<div class="modal-overlay" id="slotModal">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3><i class="fas fa-unlock-alt"></i> 槽位管理</h3>
+            <button class="modal-close" onclick="closeSlotModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <p class="modal-desc">为 <strong id="modalCharName">角色名</strong> 解锁更多槽位</p>
+
+            <div class="slot-group">
+                <label>异常能力槽位</label>
+                <div class="slot-controls">
+                    <button class="slot-btn" onclick="adjustSlot('anom', -1)"><i class="fas fa-minus"></i></button>
+                    <span class="slot-value" id="anomSlotValue">3</span>
+                    <button class="slot-btn" onclick="adjustSlot('anom', 1)"><i class="fas fa-plus"></i></button>
+                </div>
+                <div class="slot-info">当前已使用: <span id="anomUsed">0</span> 个</div>
+            </div>
+
+            <div class="slot-group">
+                <label>关系网槽位</label>
+                <div class="slot-controls">
+                    <button class="slot-btn" onclick="adjustSlot('real', -1)"><i class="fas fa-minus"></i></button>
+                    <span class="slot-value" id="realSlotValue">3</span>
+                    <button class="slot-btn" onclick="adjustSlot('real', 1)"><i class="fas fa-plus"></i></button>
+                </div>
+                <div class="slot-info">当前已使用: <span id="realUsed">0</span> 个</div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal-cancel" onclick="closeSlotModal()">取消</button>
+            <button class="btn-modal-confirm" onclick="saveSlots()"><i class="fas fa-save"></i> 保存</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const token = localStorage.getItem('ta_token');
+    const role = parseInt(localStorage.getItem('ta_role') || '0');
+
+    if (!token || role < 1) {
+        window.location.href = 'login.html';
+    }
+
+    function getAuthHeaders() {
+        return {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        };
+    }
+
+    function showToast(msg, success = false) {
+        const toast = document.getElementById('toast');
+        toast.textContent = msg;
+        toast.className = 'toast show' + (success ? ' success' : '');
+        setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    // 加载已授权的角色
+    async function loadCharacters() {
+        try {
+            const res = await fetch('/api/manager/characters', {
+                headers: getAuthHeaders()
+            });
+            const chars = await res.json();
+            renderCharacters(chars);
+        } catch (e) {
+            console.error(e);
+            showToast('加载失败');
+        }
+    }
+
+    function renderCharacters(chars) {
+        const container = document.getElementById('charList');
+
+        if (!chars || chars.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state" style="grid-column: 1/-1;">
+                    <i class="fas fa-folder-open"></i>
+                    <h3>暂无授权档案</h3>
+                    <p>请使用上方的授权码认领功能添加角色档案</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = chars.map(c => `
+            <div class="char-card">
+                <div class="card-header" onclick="openSheet('${c.id}')">
+                    <div class="card-name">${c.name}</div>
+                    <div class="card-owner"><i class="fas fa-user"></i> ${c.ownerName}</div>
+                </div>
+                <div class="card-body" onclick="openSheet('${c.id}')">
+                    <div class="card-info">
+                        <div class="info-row">
+                            <span class="info-label">异常</span>
+                            <span class="info-value">${c.anom || '---'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">职能</span>
+                            <span class="info-value">${c.func || '---'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">现实</span>
+                            <span class="info-value">${c.real || '---'}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <button class="btn-slots" onclick="event.stopPropagation(); openSlotModal('${c.id}', '${c.name.replace(/'/g, "\\'")}')"><i class="fas fa-unlock-alt"></i> 槽位</button>
+                    <button class="btn-view" onclick="openSheet('${c.id}')"><i class="fas fa-edit"></i> 编辑</button>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function openSheet(id) {
+        window.location.href = `sheet.html?id=${id}`;
+    }
+
+    // 认领授权
+    async function claimAuth() {
+        let input = document.getElementById('authCodeInput').value.trim();
+
+        if (!input) {
+            showToast('请输入授权码');
+            return;
+        }
+
+        // 支持从链接中提取授权码
+        // 格式: ?auth=xxx 或直接是UUID
+        const urlMatch = input.match(/[?&]auth=([a-f0-9-]+)/i);
+        if (urlMatch) {
+            input = urlMatch[1];
+        }
+
+        try {
+            const res = await fetch('/api/auth/claim', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ authCode: input })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showToast('授权认领成功', true);
+                document.getElementById('authCodeInput').value = '';
+                loadCharacters();
+            } else {
+                showToast(data.message || '认领失败');
+            }
+        } catch (e) {
+            showToast('认领失败');
+        }
+    }
+
+    // 检查URL参数中的授权码
+    function checkUrlAuth() {
+        const params = new URLSearchParams(window.location.search);
+        const authCode = params.get('auth');
+        if (authCode) {
+            document.getElementById('authCodeInput').value = authCode;
+            // 自动认领
+            setTimeout(() => claimAuth(), 500);
+            // 清除URL参数
+            window.history.replaceState({}, document.title, 'manager.html');
+        }
+    }
+
+    function logout() {
+        localStorage.clear();
+        window.location.href = 'login.html';
+    }
+
+    // 初始化
+    loadCharacters();
+    checkUrlAuth();
+
+    // 回车提交
+    document.getElementById('authCodeInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') claimAuth();
+    });
+
+    // ==========================================
+    // 槽位管理功能
+    // ==========================================
+    let currentSlotCharId = null;
+    let currentSlotData = { anomSlots: 3, realSlots: 3, currentAnoms: 0, currentReals: 0 };
+
+    async function openSlotModal(charId, charName) {
+        currentSlotCharId = charId;
+        document.getElementById('modalCharName').textContent = charName;
+
+        // 加载当前槽位数据
+        try {
+            const res = await fetch(`/api/character/${charId}/slots`, {
+                headers: getAuthHeaders()
+            });
+            if (res.ok) {
+                currentSlotData = await res.json();
+            } else {
+                currentSlotData = { anomSlots: 3, realSlots: 3, currentAnoms: 0, currentReals: 0 };
+            }
+        } catch (e) {
+            currentSlotData = { anomSlots: 3, realSlots: 3, currentAnoms: 0, currentReals: 0 };
+        }
+
+        // 更新UI
+        document.getElementById('anomSlotValue').textContent = currentSlotData.anomSlots;
+        document.getElementById('realSlotValue').textContent = currentSlotData.realSlots;
+        document.getElementById('anomUsed').textContent = currentSlotData.currentAnoms;
+        document.getElementById('realUsed').textContent = currentSlotData.currentReals;
+
+        document.getElementById('slotModal').classList.add('show');
+    }
+
+    function closeSlotModal() {
+        document.getElementById('slotModal').classList.remove('show');
+        currentSlotCharId = null;
+    }
+
+    function adjustSlot(type, delta) {
+        const valueEl = document.getElementById(type + 'SlotValue');
+        const usedEl = document.getElementById(type + 'Used');
+        let current = parseInt(valueEl.textContent);
+        const used = parseInt(usedEl.textContent);
+
+        current += delta;
+
+        // 不能低于3或当前使用数
+        const minValue = Math.max(3, used);
+        if (current < minValue) current = minValue;
+
+        // 最大值限制（可选）
+        if (current > 20) current = 20;
+
+        valueEl.textContent = current;
+    }
+
+    async function saveSlots() {
+        if (!currentSlotCharId) return;
+
+        const anomSlots = parseInt(document.getElementById('anomSlotValue').textContent);
+        const realSlots = parseInt(document.getElementById('realSlotValue').textContent);
+
+        try {
+            const res = await fetch(`/api/character/${currentSlotCharId}/slots`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ anomSlots, realSlots })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showToast('槽位设置已保存', true);
+                closeSlotModal();
+            } else {
+                showToast(data.message || '保存失败');
+            }
+        } catch (e) {
+            showToast('保存失败');
+        }
+    }
+
+    // 点击遮罩关闭
+    document.getElementById('slotModal').addEventListener('click', function(e) {
+        if (e.target === this) closeSlotModal();
+    });
+</script>
+</body>
+</html>

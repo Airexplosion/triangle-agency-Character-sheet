@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>三角机构 // 入职申请</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;700;900&family=Roboto+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --deep-bg: #0b1120;
+            --card-white: #f8fafc;
+            --agency-red: #d50000;
+            --agency-black: #0f172a;
+            --text-gray: #64748b;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+        body {
+            font-family: "Roboto Mono", "Noto Sans SC", "Microsoft YaHei", sans-serif;
+            background-color: var(--deep-bg);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1200px;
+            margin: 0;
+        }
+
+        #bg-canvas {
+            position: absolute; top: 0; left: 0;
+            width: 100%; height: 100%; z-index: 0;
+        }
+
+        .badge-container {
+            position: relative;
+            z-index: 10;
+            width: 300px;
+            height: 520px;
+            perspective: 1500px;
+            transition:
+                width 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+                height 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: width, height;
+        }
+
+        .badge-container.email-mode {
+            height: 650px;
+        }
+
+        .badge-container.expanded {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: none !important;
+            max-height: none !important;
+            margin: 0;
+            z-index: 9999;
+            transform: none !important;
+        }
+
+        .badge-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transform-style: preserve-3d;
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .badge-inner.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden;
+            backface-visibility: hidden;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: border-radius 0.4s ease;
+        }
+
+        .badge-container.expanded .card-face {
+            border-radius: 0;
+            box-shadow: none;
+        }
+
+        .card-face.front {
+            background: var(--card-white);
+            box-shadow:
+                0 25px 50px rgba(0,0,0,0.6),
+                0 0 0 1px rgba(255,255,255,0.1) inset;
+            display: flex;
+            flex-direction: column;
+            clip-path: polygon(
+                0% 0%,
+                28% 0%, 28% 5%, 72% 5%, 72% 0%,
+                100% 0%,
+                100% 100%,
+                0% 100%
+            );
+        }
+
+        .badge-container.expanded .card-face.front {
+            clip-path: none;
+        }
+
+        .card-face.back {
+            background-color: #ffffff;
+            transform: rotateY(180deg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+            position: relative;
+        }
+
+        .card-face.back::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image:
+                linear-gradient(rgba(15, 23, 42, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(15, 23, 42, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            z-index: 0;
+        }
+
+        .circuit-deco {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 300px; height: 300px;
+            transform: translate(-50%, -50%);
+            border: 2px solid rgba(15, 23, 42, 0.05);
+            border-radius: 50%;
+            opacity: 0;
+            transition: opacity 0.5s ease 0.5s, transform 20s linear;
+            pointer-events: none;
+        }
+        .circuit-deco::after {
+            content: ''; position: absolute;
+            top: 50%; left: 50%;
+            width: 200px; height: 173px;
+            background: transparent;
+            border: 2px solid rgba(15, 23, 42, 0.08);
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            transform: translate(-50%, -50%);
+        }
+
+        .badge-container.expanded .circuit-deco {
+            opacity: 1;
+            transform: translate(-50%, -50%) rotate(360deg);
+        }
+
+        .loading-text {
+            margin-top: 20px;
+            font-family: "Noto Sans SC", sans-serif;
+            color: var(--agency-black);
+            font-weight: 900;
+            z-index: 2;
+            font-size: 16px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        .header-stripe {
+            height: 8px;
+            background: var(--agency-black);
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .lanyard-clip {
+            position: absolute;
+            top: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 110px;
+            height: 24px;
+            background: #1e293b;
+            border-radius: 6px;
+            z-index: 5;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            transition: opacity 0.3s;
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+        }
+        .lanyard-clip::before {
+            content: '';
+            position: absolute;
+            top: -100vh;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 20px;
+            height: 100vh;
+            background: linear-gradient(90deg, #0f172a, #334155, #0f172a);
+        }
+        .lanyard-clip::after {
+            content: '';
+            width: 70px;
+            height: 6px;
+            background: rgba(0,0,0,0.4);
+            margin-bottom: 6px;
+            border-radius: 3px;
+        }
+
+        .watermark {
+            position: absolute;
+            top: 55%; left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 120px;
+            color: rgba(0,0,0,0.04);
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .content-area {
+            padding: 12px 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            z-index: 1;
+            overflow-y: auto;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE/Edge */
+        }
+        .content-area::-webkit-scrollbar {
+            display: none; /* Chrome/Safari */
+        }
+
+        .triangle-frame {
+            width: 70px;
+            height: 61px;
+            background: var(--agency-red);
+            clip-path: polygon(0% 0%, 100% 0%, 50% 100%);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 10px;
+            box-shadow: 0 8px 15px rgba(213, 0, 0, 0.3);
+            transition: transform 0.3s;
+        }
+        .triangle-frame i { font-size: 26px; color: white; transition: all 0.3s; }
+        .badge-container:hover .triangle-frame { transform: scale(1.05); }
+
+        .org-title {
+            text-align: center;
+            margin-bottom: 12px;
+            width: 100%;
+            line-height: 0.85;
+        }
+        .org-title h1 {
+            font-family: "Roboto Mono", sans-serif;
+            font-size: 20px; font-weight: 900; color: var(--agency-black);
+            letter-spacing: 2px; margin: 0; text-transform: uppercase;
+            display: block;
+        }
+        .org-title span {
+            font-family: "Roboto Mono", sans-serif;
+            font-size: 20px; color: var(--agency-red); letter-spacing: 2px;
+            text-transform: uppercase; font-weight: 900; display: block;
+        }
+        .org-title h2 {
+            font-family: "Noto Sans SC", sans-serif;
+            font-size: 9px; color: var(--text-gray); letter-spacing: 3px;
+            text-transform: uppercase; font-weight: 700; display: block; margin-top: 6px;
+        }
+
+        .form-group { width: 100%; margin-bottom: 10px; }
+        .form-group label {
+            font-family: "Noto Sans SC", sans-serif;
+            font-size: 9px; color: var(--text-gray); font-weight: 700;
+            text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 2px;
+        }
+        .form-group input {
+            width: 100%; background: transparent; border: none;
+            border-bottom: 2px solid #cbd5e1; padding: 4px 0;
+            font-family: "Roboto Mono", monospace; font-size: 13px; font-weight: bold;
+            color: var(--agency-black); outline: none; transition: all 0.3s;
+        }
+        .form-group input:focus { border-bottom-color: var(--agency-red); }
+        .form-group input::placeholder { font-family: "Noto Sans SC", sans-serif; font-weight: normal; opacity: 0.5; font-size: 11px; }
+
+        .code-row {
+            display: flex;
+            gap: 8px;
+            align-items: flex-end;
+        }
+        .code-row input { flex: 1; }
+        .btn-code {
+            background: var(--agency-black);
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            border-radius: 3px;
+            white-space: nowrap;
+            transition: all 0.2s;
+        }
+        .btn-code:hover { background: var(--agency-red); }
+        .btn-code:disabled { background: #94a3b8; cursor: not-allowed; }
+
+        .btn-verify {
+            margin-top: 10px; background: var(--agency-red); color: white;
+            border: none; padding: 10px 0; font-size: 11px; font-weight: 900;
+            letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
+            transition: all 0.2s; width: 100%; border-radius: 4px;
+            box-shadow: 0 4px 10px rgba(213, 0, 0, 0.2);
+            font-family: "Noto Sans SC", sans-serif;
+        }
+        .btn-verify:hover { background: #b71c1c; transform: translateY(-1px); }
+
+        .footer-scan {
+            margin-top: auto; width: 100%; padding: 10px;
+            background: #f1f5f9; border-top: 1px solid #e2e8f0;
+            position: relative; overflow: hidden;
+        }
+        .barcode {
+            height: 20px; width: 100%;
+            background: repeating-linear-gradient(90deg, #334155 0, #334155 2px, transparent 2px, transparent 4px);
+            opacity: 0.6;
+        }
+        .laser-line {
+            position: absolute; top: 0; left: 0; width: 100%; height: 2px;
+            background: var(--agency-red); box-shadow: 0 0 8px var(--agency-red);
+            animation: scan 2.5s infinite ease-in-out; opacity: 0.8;
+        }
+        @keyframes scan {
+            0% { top: 0; opacity: 0; } 15% { opacity: 1; } 85% { opacity: 1; } 100% { top: 100%; opacity: 0; }
+        }
+
+        .status-msg {
+            font-size: 10px; color: var(--agency-red); margin-top: 8px;
+            font-weight: bold; height: 12px; text-align: center; opacity: 0;
+            font-family: "Noto Sans SC", sans-serif;
+        }
+        .status-msg.show { opacity: 1; }
+        .status-msg.success { color: #15803d; }
+
+        .login-link {
+            margin-top: 8px;
+            text-align: center;
+        }
+        .login-link a {
+            color: var(--text-gray);
+            font-size: 11px;
+            text-decoration: none;
+        }
+        .login-link a span {
+            color: var(--agency-red);
+            font-weight: bold;
+        }
+
+        .email-section { display: none; }
+        .email-section.show { display: block; }
+
+        @media (max-width: 400px) {
+            .badge-container { width: 85vw; max-width: 300px; height: 520px; }
+            .badge-container.email-mode { height: 650px; }
+        }
+
+        @media (max-height: 700px) {
+            .badge-container.email-mode { height: 90vh; }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="bg-canvas"></canvas>
+
+    <div class="badge-container" id="badgeContainer">
+        <div class="lanyard-clip" id="lanyard"></div>
+
+        <div class="badge-inner" id="badgeInner">
+
+            <!-- 正面 -->
+            <div class="card-face front">
+                <div class="header-stripe"></div>
+                <div class="watermark"><i class="fas fa-user-plus"></i></div>
+
+                <div class="content-area">
+                    <div class="triangle-frame" id="photo-frame">
+                        <i class="fas fa-user-plus"></i>
+                    </div>
+
+                    <div class="org-title">
+                        <h1>TRIANGLE</h1>
+                        <span>AGENCY</span>
+                        <h2>入职申请</h2>
+                    </div>
+
+                    <div class="form-group">
+                        <label>特工ID</label>
+                        <input type="text" id="username" autocomplete="off" placeholder="设置您的登录账号">
+                    </div>
+
+                    <div class="form-group">
+                        <label>姓名</label>
+                        <input type="text" id="name" placeholder="您的称呼（可选）">
+                    </div>
+
+                    <div class="form-group">
+                        <label>密钥</label>
+                        <input type="password" id="password" placeholder="设置登录密码">
+                    </div>
+
+                    <div class="form-group">
+                        <label>确认密钥</label>
+                        <input type="password" id="password2" placeholder="再次输入密码">
+                    </div>
+
+                    <div class="email-section" id="emailSection">
+                        <div class="form-group">
+                            <label>通讯邮箱</label>
+                            <input type="email" id="email" placeholder="您的电子邮箱">
+                        </div>
+
+                        <div class="form-group">
+                            <label>验证码</label>
+                            <div class="code-row">
+                                <input type="text" id="code" placeholder="6位验证码">
+                                <button class="btn-code" id="btnCode" onclick="sendCode()">发送验证码</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn-verify" onclick="register()">提交申请</button>
+                    <div class="status-msg" id="msg"></div>
+
+                    <div class="login-link">
+                        <a href="login.html">已有账号？<span>接入终端</span></a>
+                    </div>
+                </div>
+
+                <div class="footer-scan">
+                    <div class="barcode"></div>
+                    <div class="laser-line"></div>
+                </div>
+            </div>
+
+            <!-- 背面 -->
+            <div class="card-face back">
+                <div class="circuit-deco"></div>
+                <i class="fas fa-circle-notch fa-spin" style="color: var(--agency-black); font-size: 40px; z-index: 2;"></i>
+                <div class="loading-text">
+                    入职处理中...
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        const container = document.getElementById('badgeContainer');
+        const inner = document.getElementById('badgeInner');
+        const lanyard = document.getElementById('lanyard');
+
+        let emailRequired = false;
+        let countdown = 0;
+
+        // 检查注册状态
+        async function checkStatus() {
+            try {
+                const res = await fetch('/api/register/status');
+                const data = await res.json();
+                if (!data.registrationEnabled) {
+                    document.querySelector('.content-area').innerHTML = `
+                        <div style="text-align:center;padding:40px 20px;">
+                            <i class="fas fa-lock" style="font-size:48px;color:#94a3b8;margin-bottom:20px;"></i>
+                            <h3 style="color:var(--agency-black);margin-bottom:10px;">入职通道已关闭</h3>
+                            <p style="color:var(--text-gray);font-size:12px;">当前不接受新的入职申请</p>
+                            <a href="login.html" style="display:inline-block;margin-top:20px;color:var(--agency-red);font-size:12px;">返回登录</a>
+                        </div>
+                    `;
+                    return;
+                }
+                if (data.emailRequired) {
+                    emailRequired = true;
+                    document.getElementById('emailSection').classList.add('show');
+                    document.getElementById('badgeContainer').classList.add('email-mode');
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        }
+        checkStatus();
+
+        // 发送验证码
+        async function sendCode() {
+            const email = document.getElementById('email').value;
+            const btn = document.getElementById('btnCode');
+            const msg = document.getElementById('msg');
+
+            if (!email) {
+                msg.textContent = '请输入邮箱地址';
+                msg.classList.add('show');
+                return;
+            }
+
+            btn.disabled = true;
+            btn.textContent = '发送中...';
+
+            try {
+                const res = await fetch('/api/register/send-code', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    msg.textContent = '验证码已发送到您的邮箱';
+                    msg.classList.add('show', 'success');
+                    countdown = 60;
+                    updateCountdown();
+                } else {
+                    msg.textContent = data.message || '发送失败';
+                    msg.classList.add('show');
+                    msg.classList.remove('success');
+                    btn.disabled = false;
+                    btn.textContent = '发送验证码';
+                }
+            } catch (e) {
+                msg.textContent = '网络错误';
+                msg.classList.add('show');
+                btn.disabled = false;
+                btn.textContent = '发送验证码';
+            }
+        }
+
+        function updateCountdown() {
+            const btn = document.getElementById('btnCode');
+            if (countdown > 0) {
+                btn.textContent = `${countdown}s`;
+                countdown--;
+                setTimeout(updateCountdown, 1000);
+            } else {
+                btn.disabled = false;
+                btn.textContent = '发送验证码';
+            }
+        }
+
+        // 注册
+        async function register() {
+            const username = document.getElementById('username').value;
+            const name = document.getElementById('name').value;
+            const password = document.getElementById('password').value;
+            const password2 = document.getElementById('password2').value;
+            const email = document.getElementById('email')?.value || '';
+            const code = document.getElementById('code')?.value || '';
+            const msg = document.getElementById('msg');
+            const btn = document.querySelector('.btn-verify');
+
+            msg.classList.remove('show', 'success');
+
+            if (!username || !password) {
+                msg.textContent = '账号和密码必填';
+                msg.classList.add('show');
+                return;
+            }
+
+            if (password !== password2) {
+                msg.textContent = '两次密码输入不一致';
+                msg.classList.add('show');
+                return;
+            }
+
+            if (password.length < 3) {
+                msg.textContent = '密码至少3位';
+                msg.classList.add('show');
+                return;
+            }
+
+            if (emailRequired && (!email || !code)) {
+                msg.textContent = '请输入邮箱和验证码';
+                msg.classList.add('show');
+                return;
+            }
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 处理中...';
+            btn.style.opacity = '0.8';
+
+            try {
+                const res = await fetch('/api/register/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password, name, email, code })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    btn.innerHTML = '入职成功';
+                    btn.style.background = '#15803d';
+                    msg.textContent = '正在跳转登录...';
+                    msg.classList.add('show', 'success');
+
+                    setTimeout(() => {
+                        inner.classList.add('flipped');
+                        lanyard.style.opacity = '0';
+
+                        setTimeout(() => {
+                            container.classList.add('expanded');
+                            setTimeout(() => {
+                                window.location.href = 'login.html';
+                            }, 800);
+                        }, 600);
+                    }, 500);
+                } else {
+                    msg.textContent = data.message || '注册失败';
+                    msg.classList.add('show');
+                    btn.innerHTML = '提交申请';
+                    btn.style.opacity = '1';
+                    btn.style.background = '';
+                }
+            } catch (e) {
+                msg.textContent = '网络错误';
+                msg.classList.add('show');
+                btn.innerHTML = '提交申请';
+                btn.style.opacity = '1';
+            }
+        }
+
+        // 3D 效果
+        let tiltX = 0, tiltY = 0;
+        if (!(/Mobi|Android/i.test(navigator.userAgent))) {
+            document.addEventListener('mousemove', (e) => {
+                tiltX = (window.innerWidth / 2 - e.pageX) / 60;
+                tiltY = (window.innerHeight / 2 - e.pageY) / 60;
+                if (!container.classList.contains('expanded')) {
+                    container.style.transform = `rotateY(${tiltX}deg) rotateX(${tiltY}deg)`;
+                }
+            });
+        }
+
+        // 粒子背景
+        const canvas = document.getElementById('bg-canvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, particles = [];
+        const particleCount = 70;
+
+        function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+        class Particle {
+            constructor() {
+                this.x = Math.random() * width; this.y = Math.random() * height;
+                this.vx = (Math.random() - 0.5) * 0.4; this.vy = (Math.random() - 0.5) * 0.4;
+                this.size = Math.random() * 2 + 0.5;
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                if (this.x < 0 || this.x > width) this.vx *= -1;
+                if (this.y < 0 || this.y > height) this.vy *= -1;
+            }
+            draw() {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill();
+            }
+        }
+        function initParticles() { particles = []; for (let i = 0; i < particleCount; i++) particles.push(new Particle()); }
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            particles.forEach(p => { p.update(); p.draw(); });
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dist = Math.hypot(particles[i].x - particles[j].x, particles[i].y - particles[j].y);
+                    if (dist < 130) {
+                        ctx.beginPath(); ctx.strokeStyle = `rgba(255, 255, 255, ${0.1 - dist/130 * 0.1})`;
+                        ctx.moveTo(particles[i].x, particles[i].y); ctx.lineTo(particles[j].x, particles[j].y); ctx.stroke();
+                    }
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+        window.addEventListener('resize', () => { resize(); initParticles(); });
+        resize(); initParticles(); animate();
+
+        // 回车提交
+        document.addEventListener('keydown', function(event) {
+            if (event.key === "Enter") register();
+        });
+    </script>
+</body>
+</html>

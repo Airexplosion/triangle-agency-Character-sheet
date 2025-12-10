@@ -3,9 +3,22 @@ const bodyParser = require('body-parser');
 const fs = require('fs');
 const path = require('path');
 const sqlite3 = require('sqlite3').verbose();
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const { v4: uuidv4 } = require('uuid');
+const nodemailer = require('nodemailer');
 
 const app = express();
 const PORT = 3333;
+const JWT_SECRET = process.env.JWT_SECRET || 'triangle-agency-secret-key-change-in-production';
+const BCRYPT_ROUNDS = 10;
+
+// 角色常量
+const ROLE = {
+    PLAYER: 0,
+    MANAGER: 1,
+    SUPER_ADMIN: 2
+};
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(bodyParser.json());
@@ -21,23 +34,307 @@ if (!fs.existsSync(DATA_DIR)) {
 const db = new sqlite3.Database(DB_PATH);
 db.run("PRAGMA foreign_keys = ON");
 
+// ==========================================
+// 数据库初始化
+// ==========================================
 db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, password TEXT, name TEXT, is_admin INTEGER)`);
-    db.run(`CREATE TABLE IF NOT EXISTS characters (id TEXT PRIMARY KEY, user_id INTEGER, data TEXT, created_at INTEGER, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE)`);
-    
+    // 用户表 - 添加新字段
+    db.run(`CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY,
+        username TEXT UNIQUE,
+        password TEXT,
+        password_hash TEXT,
+        name TEXT,
+        is_admin INTEGER,
+        role INTEGER DEFAULT 0,
+        email TEXT,
+        email_verified INTEGER DEFAULT 0,
+        created_at INTEGER
+    )`);
+
+    // 角色表
+    db.run(`CREATE TABLE IF NOT EXISTS characters (
+        id TEXT PRIMARY KEY,
+        user_id INTEGER,
+        data TEXT,
+        created_at INTEGER,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`);
+
+    // 系统配置表
+    db.run(`CREATE TABLE IF NOT EXISTS system_config (
+        key TEXT PRIMARY KEY,
+        value TEXT
+    )`);
+
+    // 验证码表
+    db.run(`CREATE TABLE IF NOT EXISTS verification_codes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        email TEXT,
+        code TEXT,
+        type TEXT,
+        expires_at INTEGER,
+        used INTEGER DEFAULT 0
+    )`);
+
+    // 角色授权表
+    db.run(`CREATE TABLE IF NOT EXISTS character_authorizations (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        character_id TEXT,
+        manager_id INTEGER,
+        auth_code TEXT UNIQUE,
+        created_at INTEGER,
+        FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE,
+        FOREIGN KEY(manager_id) REFERENCES users(id) ON DELETE CASCADE
+    )`);
+
+    // 角色分享表
+    db.run(`CREATE TABLE IF NOT EXISTS character_shares (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        character_id TEXT,
+        share_code TEXT UNIQUE,
+        password_hash TEXT,
+        created_at INTEGER,
+        expires_at INTEGER,
+        FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE
+    )`);
+
+    // 初始化默认配置
+    const defaultConfigs = [
+        ['registration_enabled', 'true'],
+        ['email_registration_enabled', 'false'],
+        ['smtp_host', ''],
+        ['smtp_port', '587'],
+        ['smtp_user', ''],
+        ['smtp_pass', ''],
+        ['smtp_from', ''],
+        ['smtp_secure', 'false']
+    ];
+
+    defaultConfigs.forEach(([key, value]) => {
+        db.run('INSERT OR IGNORE INTO system_config (key, value) VALUES (?, ?)', [key, value]);
+    });
+
+    // 迁移：添加新列（如果不存在）
+    db.all("PRAGMA table_info(users)", [], (err, columns) => {
+        if (err) return;
+        const columnNames = columns.map(c => c.name);
+
+        if (!columnNames.includes('password_hash')) {
+            db.run('ALTER TABLE users ADD COLUMN password_hash TEXT');
+        }
+        if (!columnNames.includes('role')) {
+            db.run('ALTER TABLE users ADD COLUMN role INTEGER DEFAULT 0');
+        }
+        if (!columnNames.includes('email')) {
+            db.run('ALTER TABLE users ADD COLUMN email TEXT');
+        }
+        if (!columnNames.includes('email_verified')) {
+            db.run('ALTER TABLE users ADD COLUMN email_verified INTEGER DEFAULT 0');
+        }
+        if (!columnNames.includes('created_at')) {
+            db.run('ALTER TABLE users ADD COLUMN created_at INTEGER');
+        }
+
+        // 迁移现有密码为哈希
+        db.all('SELECT id, password, password_hash, is_admin, role FROM users WHERE password_hash IS NULL AND password IS NOT NULL', [], async (err, users) => {
+            if (err || !users) return;
+            for (const user of users) {
+                try {
+                    const hash = await bcrypt.hash(user.password, BCRYPT_ROUNDS);
+                    // 如果是旧的 is_admin，迁移到新的 role 系统
+                    const newRole = user.is_admin ? ROLE.SUPER_ADMIN : (user.role || ROLE.PLAYER);
+                    db.run('UPDATE users SET password_hash = ?, role = ? WHERE id = ?', [hash, newRole, user.id]);
+                } catch (e) {
+                    console.error('密码迁移失败:', e);
+                }
+            }
+        });
+    });
+
     // 初始化默认用户
-    db.get('SELECT * FROM users WHERE username = ?', ['admin'], (err, row) => {
+    db.get('SELECT * FROM users WHERE username = ?', ['admin'], async (err, row) => {
         if (!row) {
-            db.run('INSERT INTO users VALUES (?, ?, ?, ?, ?)', [999, 'admin', 'admin', '管理员', 1]); 
-            db.get('SELECT * FROM users WHERE username = ?', ['111'], (err2, row2) => {
-                if(!row2) db.run('INSERT INTO users VALUES (?, ?, ?, ?, ?)', [1, '111', '111', '测试员', 0]);
-            });
+            const adminHash = await bcrypt.hash('admin', BCRYPT_ROUNDS);
+            const testHash = await bcrypt.hash('111', BCRYPT_ROUNDS);
+            db.run('INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [999, 'admin', 'admin', adminHash, '管理员', 1, ROLE.SUPER_ADMIN, null, 0, Date.now()]);
+            db.run('INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [1, '111', '111', testHash, '测试员', 0, ROLE.PLAYER, null, 0, Date.now()]);
         }
     });
 });
 
 // ==========================================
-// [核心修改] 配置选项接口 
+// 工具函数
+// ==========================================
+
+// 获取系统配置
+function getConfig(key) {
+    return new Promise((resolve, reject) => {
+        db.get('SELECT value FROM system_config WHERE key = ?', [key], (err, row) => {
+            if (err) reject(err);
+            else resolve(row ? row.value : null);
+        });
+    });
+}
+
+// 获取所有配置
+function getAllConfig() {
+    return new Promise((resolve, reject) => {
+        db.all('SELECT key, value FROM system_config', [], (err, rows) => {
+            if (err) reject(err);
+            else {
+                const config = {};
+                (rows || []).forEach(r => config[r.key] = r.value);
+                resolve(config);
+            }
+        });
+    });
+}
+
+// 设置配置
+function setConfig(key, value) {
+    return new Promise((resolve, reject) => {
+        db.run('INSERT OR REPLACE INTO system_config (key, value) VALUES (?, ?)', [key, value], (err) => {
+            if (err) reject(err);
+            else resolve();
+        });
+    });
+}
+
+// 生成短码
+function generateShortCode(length = 8) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+    let result = '';
+    for (let i = 0; i < length; i++) {
+        result += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return result;
+}
+
+// 生成6位数字验证码
+function generateVerificationCode() {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+// 创建邮件传输器
+async function createMailTransporter() {
+    const config = await getAllConfig();
+    if (!config.smtp_host || !config.smtp_user) {
+        throw new Error('SMTP未配置');
+    }
+
+    return nodemailer.createTransport({
+        host: config.smtp_host,
+        port: parseInt(config.smtp_port) || 587,
+        secure: config.smtp_secure === 'true',
+        auth: {
+            user: config.smtp_user,
+            pass: config.smtp_pass
+        }
+    });
+}
+
+// 发送验证码邮件
+async function sendVerificationEmail(email, code, type = 'register') {
+    const transporter = await createMailTransporter();
+    const config = await getAllConfig();
+
+    const subject = type === 'register' ? '三角机构 - 注册验证码' : '三角机构 - 密码重置验证码';
+    const templatePath = path.join(DATA_DIR, 'email-template.html');
+
+    let html;
+    if (fs.existsSync(templatePath)) {
+        html = fs.readFileSync(templatePath, 'utf8')
+            .replace(/{{CODE}}/g, code)
+            .replace(/{{TYPE}}/g, type === 'register' ? '注册' : '密码重置');
+    } else {
+        // 默认邮件模板
+        html = `
+        <div style="background:#1a252f;padding:40px;font-family:Arial,sans-serif;">
+            <div style="max-width:500px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;">
+                <div style="background:#c0392b;padding:20px;text-align:center;">
+                    <h1 style="margin:0;color:#fff;font-size:24px;letter-spacing:2px;">TRIANGLE AGENCY</h1>
+                    <p style="margin:5px 0 0;color:rgba(255,255,255,0.8);font-size:12px;">三角机构</p>
+                </div>
+                <div style="padding:30px;text-align:center;">
+                    <p style="color:#333;font-size:16px;margin-bottom:20px;">您的${type === 'register' ? '注册' : '密码重置'}验证码是：</p>
+                    <div style="background:#f8f9fa;border:2px dashed #c0392b;border-radius:8px;padding:20px;margin:20px 0;">
+                        <span style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#c0392b;">${code}</span>
+                    </div>
+                    <p style="color:#666;font-size:14px;">验证码有效期为 <strong>5分钟</strong></p>
+                    <p style="color:#999;font-size:12px;margin-top:20px;">如果这不是您的操作，请忽略此邮件。</p>
+                </div>
+                <div style="background:#f8f9fa;padding:15px;text-align:center;border-top:1px solid #eee;">
+                    <p style="margin:0;color:#999;font-size:11px;">© Triangle Agency - 此邮件由系统自动发送</p>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // 处理发件人格式 - 确保格式正确
+    let fromAddress = config.smtp_from || config.smtp_user;
+    // 如果没有尖括号格式，添加名称
+    if (!fromAddress.includes('<')) {
+        fromAddress = `"Triangle Agency" <${config.smtp_user}>`;
+    }
+
+    await transporter.sendMail({
+        from: fromAddress,
+        to: email,
+        subject: subject,
+        html: html
+    });
+}
+
+// ==========================================
+// JWT 认证中间件
+// ==========================================
+
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ success: false, message: '未登录' });
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) {
+            return res.status(403).json({ success: false, message: '登录已过期' });
+        }
+        req.user = user;
+        next();
+    });
+}
+
+function requireRole(minRole) {
+    return (req, res, next) => {
+        if (!req.user || req.user.role < minRole) {
+            return res.status(403).json({ success: false, message: '权限不足' });
+        }
+        next();
+    };
+}
+
+// 可选认证（不强制，但会解析token）
+function optionalAuth(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (token) {
+        jwt.verify(token, JWT_SECRET, (err, user) => {
+            if (!err) req.user = user;
+            next();
+        });
+    } else {
+        next();
+    }
+}
+
+// ==========================================
+// 配置选项接口
 // ==========================================
 app.get('/api/options', (req, res) => {
     try {
@@ -51,20 +348,19 @@ app.get('/api/options', (req, res) => {
                     return [];
                 }
             }
-            return []; 
+            return [];
         };
 
         const anoms = readJsonFile('anoms.json');
         const realities = readJsonFile('realities.json');
         const functions = readJsonFile('functions.json');
-        // [新增] 读取连结加成配置
         const bonuses = readJsonFile('bonuses.json');
 
         res.json({
             anoms: anoms,
             realities: realities,
             functions: functions,
-            bonuses: bonuses // 返回给前端
+            bonuses: bonuses
         });
     } catch (error) {
         console.error("获取配置选项失败:", error);
@@ -73,17 +369,341 @@ app.get('/api/options', (req, res) => {
 });
 
 // ==========================================
-// 常规 API 接口
+// 注册状态检查
 // ==========================================
+app.get('/api/register/status', async (req, res) => {
+    try {
+        const regEnabled = await getConfig('registration_enabled');
+        const emailEnabled = await getConfig('email_registration_enabled');
+        res.json({
+            registrationEnabled: regEnabled === 'true',
+            emailRequired: emailEnabled === 'true'
+        });
+    } catch (e) {
+        res.json({ registrationEnabled: false, emailRequired: false });
+    }
+});
 
+// ==========================================
+// 发送验证码
+// ==========================================
+app.post('/api/register/send-code', async (req, res) => {
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ success: false, message: '邮箱不能为空' });
+        }
+
+        const emailEnabled = await getConfig('email_registration_enabled');
+        if (emailEnabled !== 'true') {
+            return res.status(400).json({ success: false, message: '邮箱注册未启用' });
+        }
+
+        // 检查邮箱是否已注册
+        const existingUser = await new Promise((resolve, reject) => {
+            db.get('SELECT id FROM users WHERE email = ?', [email], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (existingUser) {
+            return res.status(400).json({ success: false, message: '该邮箱已被注册' });
+        }
+
+        // 生成验证码
+        const code = generateVerificationCode();
+        const expiresAt = Date.now() + 5 * 60 * 1000; // 5分钟
+
+        // 保存验证码
+        db.run('INSERT INTO verification_codes (email, code, type, expires_at) VALUES (?, ?, ?, ?)',
+            [email, code, 'register', expiresAt]);
+
+        // 发送邮件
+        await sendVerificationEmail(email, code, 'register');
+
+        res.json({ success: true, message: '验证码已发送' });
+    } catch (e) {
+        console.error('发送验证码失败:', e);
+        res.status(500).json({ success: false, message: '发送失败: ' + e.message });
+    }
+});
+
+// ==========================================
+// 验证并注册
+// ==========================================
+app.post('/api/register/verify', async (req, res) => {
+    try {
+        const { username, password, name, email, code } = req.body;
+
+        if (!username || !password) {
+            return res.status(400).json({ success: false, message: '账号和密码必填' });
+        }
+
+        const regEnabled = await getConfig('registration_enabled');
+        if (regEnabled !== 'true') {
+            return res.status(400).json({ success: false, message: '注册功能已关闭' });
+        }
+
+        const emailEnabled = await getConfig('email_registration_enabled');
+
+        // 如果启用了邮箱注册，验证验证码
+        if (emailEnabled === 'true') {
+            if (!email || !code) {
+                return res.status(400).json({ success: false, message: '邮箱和验证码必填' });
+            }
+
+            const validCode = await new Promise((resolve, reject) => {
+                db.get('SELECT * FROM verification_codes WHERE email = ? AND code = ? AND type = ? AND used = 0 AND expires_at > ?',
+                    [email, code, 'register', Date.now()], (err, row) => {
+                        if (err) reject(err);
+                        else resolve(row);
+                    });
+            });
+
+            if (!validCode) {
+                return res.status(400).json({ success: false, message: '验证码无效或已过期' });
+            }
+
+            // 标记验证码已使用
+            db.run('UPDATE verification_codes SET used = 1 WHERE id = ?', [validCode.id]);
+        }
+
+        // 检查用户名是否已存在
+        const existingUser = await new Promise((resolve, reject) => {
+            db.get('SELECT id FROM users WHERE username = ?', [username], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (existingUser) {
+            return res.status(400).json({ success: false, message: '账号已存在' });
+        }
+
+        // 创建用户 - 不存储明文密码
+        const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+        const userId = Date.now();
+
+        db.run('INSERT INTO users (id, username, password_hash, name, is_admin, role, email, email_verified, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [userId, username, passwordHash, name || '新职员', 0, ROLE.PLAYER, email || null, emailEnabled === 'true' ? 1 : 0, Date.now()],
+            function(err) {
+                if (err) {
+                    return res.status(500).json({ success: false, message: '注册失败' });
+                }
+                res.json({ success: true, message: '注册成功' });
+            });
+    } catch (e) {
+        console.error('注册失败:', e);
+        res.status(500).json({ success: false, message: '注册失败: ' + e.message });
+    }
+});
+
+// ==========================================
+// 登录接口
+// ==========================================
+app.post('/api/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+
+        const user = await new Promise((resolve, reject) => {
+            db.get('SELECT * FROM users WHERE username = ?', [username], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!user) {
+            return res.status(401).json({ success: false, message: '账号或密码错误' });
+        }
+
+        // 验证密码（优先使用哈希，兼容旧密码）
+        let validPassword = false;
+        if (user.password_hash) {
+            validPassword = await bcrypt.compare(password, user.password_hash);
+        } else if (user.password === password) {
+            // 旧密码匹配，迁移到新哈希
+            validPassword = true;
+            const hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+            db.run('UPDATE users SET password_hash = ? WHERE id = ?', [hash, user.id]);
+        }
+
+        if (!validPassword) {
+            return res.status(401).json({ success: false, message: '账号或密码错误' });
+        }
+
+        // 确定角色
+        const role = user.role !== undefined ? user.role : (user.is_admin ? ROLE.SUPER_ADMIN : ROLE.PLAYER);
+
+        // 生成 JWT
+        const token = jwt.sign(
+            { userId: user.id, username: user.username, role: role },
+            JWT_SECRET,
+            { expiresIn: '24h' }
+        );
+
+        res.json({
+            success: true,
+            userId: user.id,
+            isAdmin: role >= ROLE.SUPER_ADMIN,
+            isManager: role >= ROLE.MANAGER,
+            role: role,
+            token: token
+        });
+    } catch (e) {
+        console.error('登录失败:', e);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+// ==========================================
+// 系统配置 API（超管）
+// ==========================================
+app.get('/api/admin/config', authenticateToken, requireRole(ROLE.SUPER_ADMIN), async (req, res) => {
+    try {
+        const config = await getAllConfig();
+        // 不返回密码明文
+        if (config.smtp_pass) {
+            config.smtp_pass_set = true;
+            config.smtp_pass = '********';
+        }
+        res.json(config);
+    } catch (e) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+app.put('/api/admin/config', authenticateToken, requireRole(ROLE.SUPER_ADMIN), async (req, res) => {
+    try {
+        const updates = req.body;
+        for (const [key, value] of Object.entries(updates)) {
+            // 跳过空密码更新
+            if (key === 'smtp_pass' && value === '********') continue;
+            await setConfig(key, value);
+        }
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.post('/api/admin/test-smtp', authenticateToken, requireRole(ROLE.SUPER_ADMIN), async (req, res) => {
+    try {
+        const transporter = await createMailTransporter();
+        await transporter.verify();
+        res.json({ success: true, message: 'SMTP连接成功' });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'SMTP连接失败: ' + e.message });
+    }
+});
+
+// ==========================================
+// 用户管理 API
+// ==========================================
+app.get('/api/users', authenticateToken, requireRole(ROLE.SUPER_ADMIN), (req, res) => {
+    // 不查询密码字段
+    db.all('SELECT id, username, name, is_admin, role, email, email_verified, created_at FROM users', [], (err, users) => {
+        if (err || !users || users.length === 0) return res.json([]);
+        let processed = 0;
+        const result = [];
+        users.forEach(u => {
+            db.get('SELECT COUNT(*) as count FROM characters WHERE user_id = ?', [u.id], (err, row) => {
+                result.push({
+                    id: u.id,
+                    username: u.username,
+                    // 不返回密码，只显示是否已设置
+                    hasPassword: true,
+                    name: u.name,
+                    isAdmin: u.role >= ROLE.SUPER_ADMIN || !!u.is_admin,
+                    role: u.role || (u.is_admin ? ROLE.SUPER_ADMIN : ROLE.PLAYER),
+                    email: u.email,
+                    emailVerified: !!u.email_verified,
+                    charCount: row ? row.count : 0
+                });
+                processed++;
+                if (processed === users.length) res.json(result);
+            });
+        });
+    });
+});
+
+app.post('/api/users', authenticateToken, requireRole(ROLE.SUPER_ADMIN), async (req, res) => {
+    try {
+        const { username, password, name, role } = req.body;
+        const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+        const userRole = role !== undefined ? role : ROLE.PLAYER;
+
+        // 不存储明文密码，只存储哈希
+        db.run('INSERT INTO users (id, username, password_hash, name, is_admin, role, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [Date.now(), username, passwordHash, name || '新职员', userRole >= ROLE.SUPER_ADMIN ? 1 : 0, userRole, Date.now()],
+            function(err) {
+                if (err) res.json({ success: false, message: '账号已存在' });
+                else res.json({ success: true });
+            });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+app.delete('/api/users/:id', authenticateToken, requireRole(ROLE.SUPER_ADMIN), (req, res) => {
+    db.get('SELECT role, is_admin FROM users WHERE id = ?', [req.params.id], (err, row) => {
+        if (row && (row.role >= ROLE.SUPER_ADMIN || row.is_admin)) {
+            return res.json({ success: false, message: '不能删除超级管理员' });
+        }
+        db.run('DELETE FROM users WHERE id = ?', [req.params.id], function(err) {
+            res.json({ success: true });
+        });
+    });
+});
+
+app.put('/api/users/:id', authenticateToken, requireRole(ROLE.SUPER_ADMIN), async (req, res) => {
+    try {
+        const { password, role } = req.body;
+
+        if (password) {
+            const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+            // 只更新哈希，清空明文密码字段
+            db.run('UPDATE users SET password = NULL, password_hash = ? WHERE id = ?',
+                [passwordHash, req.params.id]);
+        }
+
+        if (role !== undefined) {
+            db.run('UPDATE users SET role = ?, is_admin = ? WHERE id = ?',
+                [role, role >= ROLE.SUPER_ADMIN ? 1 : 0, req.params.id]);
+        }
+
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// 修改用户角色
+app.put('/api/admin/users/:id/role', authenticateToken, requireRole(ROLE.SUPER_ADMIN), (req, res) => {
+    const { role } = req.body;
+    if (role === undefined) {
+        return res.status(400).json({ success: false, message: '角色不能为空' });
+    }
+
+    db.run('UPDATE users SET role = ?, is_admin = ? WHERE id = ?',
+        [role, role >= ROLE.SUPER_ADMIN ? 1 : 0, req.params.id],
+        function(err) {
+            if (err) res.status(500).json({ success: false });
+            else res.json({ success: true });
+        });
+});
+
+// ==========================================
+// 角色卡 API
+// ==========================================
 app.get('/api/characters', (req, res) => {
     db.all('SELECT id, data FROM characters WHERE user_id = ?', [req.query.userId], (err, rows) => {
         const list = (rows || []).map(row => {
             let d = {};
             try { d = JSON.parse(row.data); } catch(e) {}
-            return { 
-                id: row.id, 
-                name: d.pName || "未命名干员", 
+            return {
+                id: row.id,
+                name: d.pName || "未命名干员",
                 func: d.pFunc || "---",
                 anom: d.pAnom || "---",
                 real: d.pReal || "---"
@@ -93,27 +713,99 @@ app.get('/api/characters', (req, res) => {
     });
 });
 
-app.get('/api/character/:id', (req, res) => {
-    db.get('SELECT data FROM characters WHERE id = ?', [req.params.id], (err, row) => {
-        if (row) {
-            try { res.json(JSON.parse(row.data)); } catch (e) { res.status(500).json({}); }
-        } else res.status(404).json({});
+app.get('/api/character/:id', optionalAuth, (req, res) => {
+    db.get('SELECT * FROM characters WHERE id = ?', [req.params.id], (err, row) => {
+        if (!row) return res.status(404).json({});
+
+        // 检查访问权限
+        const checkAccess = () => {
+            // 超管可以访问所有
+            if (req.user && req.user.role >= ROLE.SUPER_ADMIN) {
+                return true;
+            }
+            // 所有者可以访问
+            if (req.user && req.user.userId === row.user_id) {
+                return true;
+            }
+            // 检查经理授权
+            return new Promise((resolve) => {
+                if (!req.user || req.user.role < ROLE.MANAGER) {
+                    resolve(false);
+                    return;
+                }
+                db.get('SELECT id FROM character_authorizations WHERE character_id = ? AND manager_id = ?',
+                    [req.params.id, req.user.userId], (err, auth) => {
+                        resolve(!!auth);
+                    });
+            });
+        };
+
+        Promise.resolve(checkAccess()).then(hasAccess => {
+            if (!hasAccess && req.user) {
+                return res.status(403).json({ error: '无权访问此角色卡' });
+            }
+
+            // 获取所属账号昵称
+            db.get('SELECT name, username FROM users WHERE id = ?', [row.user_id], (err, owner) => {
+                try {
+                    const data = JSON.parse(row.data);
+                    data._ownerId = row.user_id;
+                    data._canEdit = hasAccess;
+                    data.ownerName = owner ? (owner.name || owner.username) : '未知';
+                    // 确保槽位数据存在，默认3个
+                    data.anomSlots = data.anomSlots || 3;
+                    data.realSlots = data.realSlots || 3;
+                    res.json(data);
+                } catch (e) {
+                    res.status(500).json({});
+                }
+            });
+        });
     });
 });
 
 app.post('/api/character', (req, res) => {
     const newId = Date.now().toString();
     const data = JSON.stringify({ pName: "新进职员" });
-    db.run('INSERT INTO characters (id, user_id, data, created_at) VALUES (?, ?, ?, ?)', 
-        [newId, req.body.userId, data, Date.now()], 
+    db.run('INSERT INTO characters (id, user_id, data, created_at) VALUES (?, ?, ?, ?)',
+        [newId, req.body.userId, data, Date.now()],
         function(err) { res.json({ success: true, id: newId }); }
     );
 });
 
-app.put('/api/character/:id', (req, res) => {
-    db.run('UPDATE characters SET data = ? WHERE id = ?', [JSON.stringify(req.body), req.params.id], function(err) {
-        if (err) res.status(500).json({ success: false });
-        else res.json({ success: true });
+app.put('/api/character/:id', optionalAuth, (req, res) => {
+    // 检查编辑权限
+    db.get('SELECT user_id FROM characters WHERE id = ?', [req.params.id], (err, row) => {
+        if (!row) return res.status(404).json({ success: false });
+
+        const checkEditAccess = () => {
+            if (req.user && req.user.role >= ROLE.SUPER_ADMIN) return true;
+            if (req.user && req.user.userId === row.user_id) return true;
+
+            return new Promise((resolve) => {
+                if (!req.user || req.user.role < ROLE.MANAGER) {
+                    resolve(false);
+                    return;
+                }
+                db.get('SELECT id FROM character_authorizations WHERE character_id = ? AND manager_id = ?',
+                    [req.params.id, req.user.userId], (err, auth) => {
+                        resolve(!!auth);
+                    });
+            });
+        };
+
+        Promise.resolve(checkEditAccess()).then(canEdit => {
+            if (!canEdit) {
+                return res.status(403).json({ success: false, message: '无权编辑此角色卡' });
+            }
+
+            db.run('UPDATE characters SET data = ? WHERE id = ?',
+                [JSON.stringify(req.body), req.params.id],
+                function(err) {
+                    if (err) res.status(500).json({ success: false });
+                    else res.json({ success: true });
+                });
+        });
     });
 });
 
@@ -123,66 +815,438 @@ app.delete('/api/character/:id', (req, res) => {
     });
 });
 
-app.post('/api/login', (req, res) => {
-    db.get('SELECT * FROM users WHERE username = ? AND password = ?', [req.body.username, req.body.password], (err, row) => {
-        if (err) return res.status(500).json({ success: false });
-        if (row) res.json({ success: true, userId: row.id, isAdmin: !!row.is_admin });
-        else res.status(401).json({ success: false, message: "账号或密码错误" });
+// ==========================================
+// 授权管理 API
+// ==========================================
+
+// 生成授权码
+app.post('/api/character/:id/auth-code', authenticateToken, (req, res) => {
+    const charId = req.params.id;
+
+    // 验证是所有者
+    db.get('SELECT user_id FROM characters WHERE id = ?', [charId], (err, row) => {
+        if (!row) return res.status(404).json({ success: false, message: '角色不存在' });
+        if (row.user_id !== req.user.userId && req.user.role < ROLE.SUPER_ADMIN) {
+            return res.status(403).json({ success: false, message: '只有所有者可以生成授权码' });
+        }
+
+        const authCode = uuidv4();
+        db.run('INSERT INTO character_authorizations (character_id, auth_code, created_at) VALUES (?, ?, ?)',
+            [charId, authCode, Date.now()],
+            function(err) {
+                if (err) return res.status(500).json({ success: false });
+                res.json({ success: true, authCode: authCode });
+            });
     });
 });
 
-app.get('/api/users', (req, res) => {
-    db.all('SELECT id, username, password, name, is_admin FROM users', [], (err, users) => {
-        if (err || !users || users.length === 0) return res.json([]);
-        let processed = 0; 
-        const result = [];
-        users.forEach(u => {
-            db.get('SELECT COUNT(*) as count FROM characters WHERE user_id = ?', [u.id], (err, row) => {
-                result.push({ id: u.id, username: u.username, password: u.password, name: u.name, isAdmin: !!u.is_admin, charCount: row ? row.count : 0 });
-                processed++; 
-                if(processed === users.length) res.json(result);
-            });
+// 获取角色的授权列表
+app.get('/api/character/:id/authorizations', authenticateToken, (req, res) => {
+    const charId = req.params.id;
+
+    db.get('SELECT user_id FROM characters WHERE id = ?', [charId], (err, row) => {
+        if (!row) return res.status(404).json([]);
+        if (row.user_id !== req.user.userId && req.user.role < ROLE.SUPER_ADMIN) {
+            return res.status(403).json([]);
+        }
+
+        db.all(`SELECT ca.id, ca.auth_code, ca.manager_id, ca.created_at, u.name as manager_name, u.username as manager_username
+                FROM character_authorizations ca
+                LEFT JOIN users u ON ca.manager_id = u.id
+                WHERE ca.character_id = ?`, [charId], (err, rows) => {
+            res.json(rows || []);
         });
     });
 });
 
-app.post('/api/users', (req, res) => {
-    db.run('INSERT INTO users (id, username, password, name, is_admin) VALUES (?, ?, ?, ?, ?)', [Date.now(), req.body.username, req.body.password, req.body.name || "新职员", 0], function(err) {
-        if (err) res.json({ success: false, message: "账号已存在" }); else res.json({ success: true });
+// 经理认领授权
+app.post('/api/auth/claim', authenticateToken, requireRole(ROLE.MANAGER), (req, res) => {
+    const { authCode } = req.body;
+
+    if (!authCode) {
+        return res.status(400).json({ success: false, message: '授权码不能为空' });
+    }
+
+    db.get('SELECT * FROM character_authorizations WHERE auth_code = ?', [authCode], (err, auth) => {
+        if (!auth) {
+            return res.status(404).json({ success: false, message: '授权码无效' });
+        }
+
+        if (auth.manager_id) {
+            return res.status(400).json({ success: false, message: '该授权码已被使用' });
+        }
+
+        // 检查是否已有该角色的授权
+        db.get('SELECT id FROM character_authorizations WHERE character_id = ? AND manager_id = ?',
+            [auth.character_id, req.user.userId], (err, existing) => {
+                if (existing) {
+                    return res.status(400).json({ success: false, message: '您已拥有该角色的授权' });
+                }
+
+                // 绑定经理
+                db.run('UPDATE character_authorizations SET manager_id = ? WHERE id = ?',
+                    [req.user.userId, auth.id],
+                    function(err) {
+                        if (err) return res.status(500).json({ success: false });
+                        res.json({ success: true, message: '授权成功' });
+                    });
+            });
     });
 });
 
-app.delete('/api/users/:id', (req, res) => {
-    db.get('SELECT is_admin FROM users WHERE id = ?', [req.params.id], (err, row) => {
-        if (row && row.is_admin) return res.json({ success: false, message: "不能删除管理员" });
-        db.run('DELETE FROM users WHERE id = ?', [req.params.id], function(err) { res.json({ success: true }); });
+// 经理获取已授权的角色列表
+app.get('/api/manager/characters', authenticateToken, requireRole(ROLE.MANAGER), (req, res) => {
+    db.all(`SELECT c.id, c.data, c.user_id, u.name as owner_name
+            FROM characters c
+            JOIN character_authorizations ca ON c.id = ca.character_id
+            JOIN users u ON c.user_id = u.id
+            WHERE ca.manager_id = ?`, [req.user.userId], (err, rows) => {
+        const list = (rows || []).map(row => {
+            let d = {};
+            try { d = JSON.parse(row.data); } catch(e) {}
+            return {
+                id: row.id,
+                name: d.pName || "未命名干员",
+                func: d.pFunc || "---",
+                anom: d.pAnom || "---",
+                real: d.pReal || "---",
+                ownerName: row.owner_name
+            };
+        });
+        res.json(list);
     });
 });
 
-app.put('/api/users/:id', (req, res) => {
-    db.run('UPDATE users SET password = ? WHERE id = ?', [req.body.password, req.params.id], function(err) { res.json({ success: true }); });
+// 撤销授权
+app.delete('/api/auth/:authId', authenticateToken, (req, res) => {
+    db.get(`SELECT ca.*, c.user_id FROM character_authorizations ca
+            JOIN characters c ON ca.character_id = c.id
+            WHERE ca.id = ?`, [req.params.authId], (err, auth) => {
+        if (!auth) return res.status(404).json({ success: false });
+
+        // 只有角色所有者或超管可以撤销
+        if (auth.user_id !== req.user.userId && req.user.role < ROLE.SUPER_ADMIN) {
+            return res.status(403).json({ success: false, message: '无权撤销此授权' });
+        }
+
+        db.run('DELETE FROM character_authorizations WHERE id = ?', [req.params.authId],
+            function(err) {
+                if (err) return res.status(500).json({ success: false });
+                res.json({ success: true });
+            });
+    });
 });
 
-app.get('/api/admin/monitor', (req, res) => {
-    db.all('SELECT id, name, username, is_admin FROM users', [], (err, users) => {
-        if(err || !users || users.length === 0) return res.json([]);
-        let completed = 0; 
+// ==========================================
+// 槽位管理 API（经理/超管）
+// ==========================================
+
+// 获取角色槽位信息
+app.get('/api/character/:id/slots', authenticateToken, (req, res) => {
+    const charId = req.params.id;
+
+    db.get('SELECT data, user_id FROM characters WHERE id = ?', [charId], (err, row) => {
+        if (!row) return res.status(404).json({ error: '角色不存在' });
+
+        // 检查权限：经理需要有授权，或者是超管
+        const checkAccess = () => {
+            if (req.user.role >= ROLE.SUPER_ADMIN) return Promise.resolve(true);
+            if (req.user.userId === row.user_id) return Promise.resolve(true);
+
+            return new Promise((resolve) => {
+                if (req.user.role < ROLE.MANAGER) {
+                    resolve(false);
+                    return;
+                }
+                db.get('SELECT id FROM character_authorizations WHERE character_id = ? AND manager_id = ?',
+                    [charId, req.user.userId], (err, auth) => {
+                        resolve(!!auth);
+                    });
+            });
+        };
+
+        Promise.resolve(checkAccess()).then(hasAccess => {
+            if (!hasAccess) {
+                return res.status(403).json({ error: '无权访问' });
+            }
+
+            try {
+                const data = JSON.parse(row.data);
+                res.json({
+                    anomSlots: data.anomSlots || 3,  // 默认3个槽位
+                    realSlots: data.realSlots || 3,  // 默认3个槽位
+                    currentAnoms: (data.anoms || []).length,
+                    currentReals: (data.reals || []).length
+                });
+            } catch (e) {
+                res.json({ anomSlots: 3, realSlots: 3, currentAnoms: 0, currentReals: 0 });
+            }
+        });
+    });
+});
+
+// 经理增加槽位
+app.put('/api/character/:id/slots', authenticateToken, requireRole(ROLE.MANAGER), (req, res) => {
+    const charId = req.params.id;
+    const { anomSlots, realSlots } = req.body;
+
+    db.get('SELECT data, user_id FROM characters WHERE id = ?', [charId], (err, row) => {
+        if (!row) return res.status(404).json({ success: false, message: '角色不存在' });
+
+        // 检查权限：需要有授权或是超管
+        const checkAccess = () => {
+            if (req.user.role >= ROLE.SUPER_ADMIN) return Promise.resolve(true);
+
+            return new Promise((resolve) => {
+                db.get('SELECT id FROM character_authorizations WHERE character_id = ? AND manager_id = ?',
+                    [charId, req.user.userId], (err, auth) => {
+                        resolve(!!auth);
+                    });
+            });
+        };
+
+        Promise.resolve(checkAccess()).then(hasAccess => {
+            if (!hasAccess) {
+                return res.status(403).json({ success: false, message: '无权修改此角色' });
+            }
+
+            try {
+                const data = JSON.parse(row.data);
+
+                // 更新槽位数量（只能增加，不能减少现有数量以下）
+                if (anomSlots !== undefined) {
+                    const currentAnomSlots = data.anomSlots || 3;
+                    const currentAnomCount = (data.anoms || []).length;
+                    // 新槽位数不能低于当前已有数量，且不能低于默认值3
+                    data.anomSlots = Math.max(anomSlots, currentAnomCount, 3);
+                }
+
+                if (realSlots !== undefined) {
+                    const currentRealSlots = data.realSlots || 3;
+                    const currentRealCount = (data.reals || []).length;
+                    data.realSlots = Math.max(realSlots, currentRealCount, 3);
+                }
+
+                db.run('UPDATE characters SET data = ? WHERE id = ?',
+                    [JSON.stringify(data), charId],
+                    function(err) {
+                        if (err) return res.status(500).json({ success: false });
+                        res.json({
+                            success: true,
+                            anomSlots: data.anomSlots,
+                            realSlots: data.realSlots
+                        });
+                    });
+            } catch (e) {
+                res.status(500).json({ success: false, message: '数据解析失败' });
+            }
+        });
+    });
+});
+
+// ==========================================
+// 分享 API
+// ==========================================
+
+// 创建分享链接
+app.post('/api/character/:id/share', authenticateToken, async (req, res) => {
+    try {
+        const charId = req.params.id;
+        const { password, expiresIn } = req.body; // expiresIn: 小时数，null为永久
+
+        // 验证是所有者
+        const char = await new Promise((resolve, reject) => {
+            db.get('SELECT user_id FROM characters WHERE id = ?', [charId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!char) return res.status(404).json({ success: false, message: '角色不存在' });
+        if (char.user_id !== req.user.userId && req.user.role < ROLE.SUPER_ADMIN) {
+            return res.status(403).json({ success: false, message: '只有所有者可以分享' });
+        }
+
+        // 删除旧的分享
+        await new Promise((resolve) => {
+            db.run('DELETE FROM character_shares WHERE character_id = ?', [charId], resolve);
+        });
+
+        const shareCode = generateShortCode(8);
+        const passwordHash = password ? await bcrypt.hash(password, BCRYPT_ROUNDS) : null;
+        const expiresAt = expiresIn ? Date.now() + expiresIn * 60 * 60 * 1000 : null;
+
+        db.run('INSERT INTO character_shares (character_id, share_code, password_hash, created_at, expires_at) VALUES (?, ?, ?, ?, ?)',
+            [charId, shareCode, passwordHash, Date.now(), expiresAt],
+            function(err) {
+                if (err) return res.status(500).json({ success: false });
+                res.json({
+                    success: true,
+                    shareCode: shareCode,
+                    hasPassword: !!password,
+                    expiresAt: expiresAt
+                });
+            });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// 获取分享的角色数据
+app.post('/api/share/:code', async (req, res) => {
+    try {
+        const { password } = req.body;
+
+        const share = await new Promise((resolve, reject) => {
+            db.get('SELECT * FROM character_shares WHERE share_code = ?', [req.params.code], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!share) {
+            return res.status(404).json({ success: false, message: '分享链接不存在' });
+        }
+
+        // 检查是否过期
+        if (share.expires_at && share.expires_at < Date.now()) {
+            return res.status(410).json({ success: false, message: '分享链接已过期' });
+        }
+
+        // 检查密码
+        if (share.password_hash) {
+            if (!password) {
+                return res.json({ success: false, needPassword: true });
+            }
+            const valid = await bcrypt.compare(password, share.password_hash);
+            if (!valid) {
+                return res.status(401).json({ success: false, message: '密码错误' });
+            }
+        }
+
+        // 获取角色数据
+        const char = await new Promise((resolve, reject) => {
+            db.get('SELECT data FROM characters WHERE id = ?', [share.character_id], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!char) {
+            return res.status(404).json({ success: false, message: '角色不存在' });
+        }
+
+        res.json({ success: true, data: JSON.parse(char.data) });
+    } catch (e) {
+        res.status(500).json({ success: false, message: e.message });
+    }
+});
+
+// 检查分享状态（是否需要密码）
+app.get('/api/share/:code/status', async (req, res) => {
+    const share = await new Promise((resolve, reject) => {
+        db.get('SELECT password_hash, expires_at FROM character_shares WHERE share_code = ?', [req.params.code], (err, row) => {
+            if (err) reject(err);
+            else resolve(row);
+        });
+    });
+
+    if (!share) {
+        return res.status(404).json({ exists: false });
+    }
+
+    if (share.expires_at && share.expires_at < Date.now()) {
+        return res.status(410).json({ exists: false, expired: true });
+    }
+
+    res.json({
+        exists: true,
+        needPassword: !!share.password_hash
+    });
+});
+
+// 删除分享
+app.delete('/api/character/:id/share', authenticateToken, (req, res) => {
+    db.get('SELECT user_id FROM characters WHERE id = ?', [req.params.id], (err, row) => {
+        if (!row) return res.status(404).json({ success: false });
+        if (row.user_id !== req.user.userId && req.user.role < ROLE.SUPER_ADMIN) {
+            return res.status(403).json({ success: false });
+        }
+
+        db.run('DELETE FROM character_shares WHERE character_id = ?', [req.params.id],
+            function(err) {
+                res.json({ success: true });
+            });
+    });
+});
+
+// 获取角色的分享状态
+app.get('/api/character/:id/share', authenticateToken, (req, res) => {
+    db.get('SELECT user_id FROM characters WHERE id = ?', [req.params.id], (err, row) => {
+        if (!row) return res.status(404).json({ exists: false });
+        if (row.user_id !== req.user.userId && req.user.role < ROLE.SUPER_ADMIN) {
+            return res.status(403).json({ exists: false });
+        }
+
+        db.get('SELECT share_code, password_hash, created_at, expires_at FROM character_shares WHERE character_id = ?',
+            [req.params.id], (err, share) => {
+                if (!share) return res.json({ exists: false });
+                res.json({
+                    exists: true,
+                    shareCode: share.share_code,
+                    hasPassword: !!share.password_hash,
+                    createdAt: share.created_at,
+                    expiresAt: share.expires_at
+                });
+            });
+    });
+});
+
+// ==========================================
+// 监控 API（管理员）
+// ==========================================
+app.get('/api/admin/monitor', authenticateToken, requireRole(ROLE.SUPER_ADMIN), (req, res) => {
+    db.all('SELECT id, name, username, is_admin, role FROM users', [], (err, users) => {
+        if (err || !users || users.length === 0) return res.json([]);
+        let completed = 0;
         const result = [];
         users.forEach(u => {
             db.all('SELECT id, data FROM characters WHERE user_id = ?', [u.id], (err, chars) => {
-                const userChars = (chars || []).map(c => { 
-                    let d = {}; 
-                    try { d = JSON.parse(c.data); } catch(e) {} 
-                    return { id: c.id, name: d.pName || "未命名", func: d.pFunc || "未知" }; 
+                const userChars = (chars || []).map(c => {
+                    let d = {};
+                    try { d = JSON.parse(c.data); } catch(e) {}
+                    return { id: c.id, name: d.pName || "未命名", func: d.pFunc || "未知" };
                 });
-                result.push({ userId: u.id, userName: u.name, userAccount: u.username, isAdmin: !!u.is_admin, characters: userChars });
-                completed++; 
-                if(completed === users.length) res.json(result);
+                result.push({
+                    userId: u.id,
+                    userName: u.name,
+                    userAccount: u.username,
+                    isAdmin: u.role >= ROLE.SUPER_ADMIN || !!u.is_admin,
+                    role: u.role || (u.is_admin ? ROLE.SUPER_ADMIN : ROLE.PLAYER),
+                    characters: userChars
+                });
+                completed++;
+                if (completed === users.length) res.json(result);
             });
         });
     });
 });
 
+// ==========================================
+// 验证 Token
+// ==========================================
+app.get('/api/verify-token', authenticateToken, (req, res) => {
+    res.json({
+        valid: true,
+        userId: req.user.userId,
+        username: req.user.username,
+        role: req.user.role
+    });
+});
+
+// ==========================================
+// 首页重定向
+// ==========================================
 app.get('/', (req, res) => res.redirect('/login.html'));
 
 app.listen(PORT, () => {
