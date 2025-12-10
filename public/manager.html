@@ -521,7 +521,6 @@
         }
     }
 
-    // MODIFIED: 增加了高墙文件授权按钮
     function renderCharacters(chars) {
         const container = document.getElementById('charList');
 
@@ -578,8 +577,11 @@
         }).join('');
     }
 
+    // ==========================================================
+    // MODIFIED: 在跳转时增加 from=manager 参数
+    // ==========================================================
     function openSheet(id) {
-        window.location.href = `sheet.html?id=${id}`;
+        window.location.href = `sheet.html?id=${id}&from=manager`;
     }
 
     // 认领授权
@@ -715,7 +717,7 @@
     }
     
     // ==========================================
-    // NEW: 高墙文件授权功能
+    // 高墙文件授权功能
     // ==========================================
     let currentDocUserId = null;
 
@@ -729,7 +731,6 @@
         document.getElementById('docAuthModal').classList.add('show');
 
         try {
-            // NEW: 使用经理专用的API
             const res = await fetch(`/api/manager/user/${userId}/permissions`, {
                 headers: getAuthHeaders()
             });
@@ -780,7 +781,6 @@
         btn.disabled = true;
 
         try {
-            // NEW: 使用经理专用的API
             const res = await fetch(`/api/manager/user/${currentDocUserId}/permissions`, {
                 method: 'PUT',
                 headers: getAuthHeaders(),
