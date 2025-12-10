@@ -915,6 +915,7 @@ app.post('/api/auth/claim', authenticateToken, requireRole(ROLE.MANAGER), (req, 
 });
 
 // 经理获取已授权的角色列表
+// MODIFIED: 增加了 ownerId 的返回
 app.get('/api/manager/characters', authenticateToken, requireRole(ROLE.MANAGER), (req, res) => {
     db.all(`SELECT c.id, c.data, c.user_id, u.name as owner_name
             FROM characters c
@@ -930,7 +931,8 @@ app.get('/api/manager/characters', authenticateToken, requireRole(ROLE.MANAGER),
                 func: d.pFunc || "---",
                 anom: d.pAnom || "---",
                 real: d.pReal || "---",
-                ownerName: row.owner_name
+                ownerName: row.owner_name,
+                ownerId: row.user_id // MODIFIED: 返回职员ID
             };
         });
         res.json(list);
@@ -1382,6 +1384,94 @@ app.put('/api/admin/user/:id/permissions', authenticateToken, requireRole(ROLE.S
         });
     });
 });
+
+
+// ==========================================
+// NEW: 高墙文件 API (经理专用)
+// ==========================================
+
+// 封装一个检查经理是否对某个用户有管理权限的函数
+function checkManagerAuthorization(managerId, targetUserId) {
+    return new Promise((resolve, reject) => {
+        const sql = `
+            SELECT 1 FROM character_authorizations ca
+            JOIN characters c ON ca.character_id = c.id
+            WHERE ca.manager_id = ? AND c.user_id = ?
+            LIMIT 1
+        `;
+        db.get(sql, [managerId, targetUserId], (err, row) => {
+            if (err) reject(err);
+            else resolve(!!row);
+        });
+    });
+}
+
+// 5. (经理) 获取其下属用户的文件权限
+app.get('/api/manager/user/:userId/permissions', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
+    try {
+        const managerId = req.user.userId;
+        const targetUserId = req.params.userId;
+
+        // 安全检查：确认该经理有权管理此用户
+        const isAuthorized = await checkManagerAuthorization(managerId, targetUserId);
+        if (!isAuthorized) {
+            return res.status(403).json({ error: '无权管理该用户的权限' });
+        }
+
+        // 权限检查通过，执行与管理员相同的逻辑
+        fs.readdir(HIGH_SECURITY_DIR, (err, files) => {
+            if (err) return res.json([]);
+            const mdFiles = files.filter(f => f.endsWith('.md'));
+
+            db.all('SELECT filename FROM document_permissions WHERE user_id = ?', [targetUserId], (err, rows) => {
+                const allowedSet = new Set(rows ? rows.map(r => r.filename) : []);
+                const result = mdFiles.map(f => ({
+                    filename: f,
+                    hasPerm: allowedSet.has(f)
+                }));
+                res.json(result);
+            });
+        });
+
+    } catch (e) {
+        res.status(500).json({ error: '服务器内部错误' });
+    }
+});
+
+// 6. (经理) 更新其下属用户的权限
+app.put('/api/manager/user/:userId/permissions', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
+    try {
+        const managerId = req.user.userId;
+        const targetUserId = req.params.userId;
+        const { permissions } = req.body; // Array of filenames to grant
+
+        // 安全检查：确认该经理有权管理此用户
+        const isAuthorized = await checkManagerAuthorization(managerId, targetUserId);
+        if (!isAuthorized) {
+            return res.status(403).json({ success: false, message: '无权管理该用户的权限' });
+        }
+
+        // 权限检查通过，执行与管理员相同的逻辑
+        db.serialize(() => {
+            db.run('BEGIN TRANSACTION');
+            db.run('DELETE FROM document_permissions WHERE user_id = ?', [targetUserId]);
+            
+            const stmt = db.prepare('INSERT INTO document_permissions (user_id, filename, granted_at) VALUES (?, ?, ?)');
+            permissions.forEach(file => {
+                stmt.run(targetUserId, file, Date.now());
+            });
+            stmt.finalize();
+
+            db.run('COMMIT', (err) => {
+                if (err) res.status(500).json({ success: false, message: err.message });
+                else res.json({ success: true });
+            });
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, message: '服务器内部错误' });
+    }
+});
+
 
 app.listen(PORT, () => {
     console.log(`服务器运行中: http://localhost:${PORT}`);
