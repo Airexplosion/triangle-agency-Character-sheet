@@ -364,6 +364,9 @@ function setHybridInputState(fieldId, value) {
 }
 
 document.addEventListener('wheel', (e) => { const a=document.querySelectorAll('.tab-view')[currentTab]; if(a&&!a.contains(e.target))a.scrollTop+=e.deltaY;}, {passive:true});
+// ==========================================
+// 修复：防止拖拽误触 + 防止弹窗/按钮穿透
+// ==========================================
 let mouseStartX = 0;
 let mouseStartY = 0;
 
@@ -372,38 +375,47 @@ document.addEventListener('mousedown', (e) => {
     mouseStartX = e.clientX;
     mouseStartY = e.clientY;
 });
+
+// 2. 点击监听（包含穿透修复）
 document.addEventListener('click', (e) => {
-    // 计算移动距离
+    // A. 拖拽检测：如果移动超过 5 像素，视为选中文本或拖拽，不触发翻页
     const diffX = Math.abs(e.clientX - mouseStartX);
     const diffY = Math.abs(e.clientY - mouseStartY);
-
-    // 如果移动超过 5 像素，视为拖拽，不触发页面切换
     if (diffX > 5 || diffY > 5) return;
 
     const c = document.querySelector('.container');
     const n = document.querySelector('.nav-bar');
     
-    // 排除条件：
-    // 1. 屏幕宽度小于等于 930px (手机端由触摸逻辑接管)
-    // 2. 点击在内容容器内
-    // 3. 点击在底部导航栏内
-    // 4. 点击的是左右箭头按钮 (箭头有自己的 onclick 事件)
+    // B. 排除区域（点击这些地方不会触发翻页）
+    // 1. 手机端 (<=930px) 由触摸逻辑接管，禁用点击翻页
+    // 2. 点击在内容容器内部 (.container)
+    // 3. 点击在底部导航栏 (.nav-bar)
+    // 4. 点击左右悬浮箭头 (.nav-arrow)
+    // 5. [新增] 点击在弹窗/遮罩层上 (.modal-overlay)
+    // 6. [新增] 点击在任何按钮上 (button)
+    // 7. [新增] 点击在任何输入框/下拉框上 (input, select, textarea)
     if (window.innerWidth <= 930 || 
         c.contains(e.target) || 
         (n && n.contains(e.target)) || 
-        e.target.closest('.nav-arrow')) {
+        e.target.closest('.nav-arrow') ||
+        e.target.closest('.modal-overlay') || // 关键修复：防止点击弹窗触发翻页
+        e.target.closest('button') ||         // 防止点击未被捕获的按钮触发翻页
+        ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
         return;
     }
 
-    // 执行切换逻辑
+    // C. 执行翻页逻辑
     const x = e.clientX;
     const m = window.innerWidth / 2;
+    
     if (x < m) {
+        // 点击左侧 -> 上一页
         if (currentTab > 0) {
             currentTab--;
             updateSwiper();
         }
     } else {
+        // 点击右侧 -> 下一页
         if (currentTab < tabOrder.length - 1) {
             currentTab++;
             updateSwiper();
