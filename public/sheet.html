@@ -780,6 +780,198 @@
 	.nav-arrow.disabled { color: #555; cursor: default; opacity: 0.3; pointer-events: none; }
 	@media (min-width: 1150px) { .nav-arrow { display: block; } }
 	@media (max-width: 1149px) { .nav-arrow { display: none !important; } }
+	/* =========================================
+           邮箱系统 - 红色主题统一补丁
+           ========================================= */
+        
+        /* 1. 邮箱标签页 (Tabs) */
+        .mail-tab.active {
+            color: var(--signal-red) !important; /* 选中文字变红 */
+        }
+        
+        /* 2. 收件箱列表项 (Inbox Items) */
+        .mail-item {
+            border-left-color: var(--signal-red) !important; /* 左侧指示条变红 */
+        }
+        .mail-item:hover {
+            background-color: #fff5f5 !important; /* 悬停背景淡红 */
+        }
+        .mail-item.unread {
+            background-color: #fdf2f2 !important; /* 未读背景淡红 */
+        }
+        
+        /* 3. 已发邮件列表项 (Sent Items) */
+        .mail-item.sent-mail-item {
+            border-left-color: var(--signal-red) !important;
+        }
+        .mail-icon.sent-icon {
+            color: var(--signal-red) !important; /* 纸飞机图标变红 */
+        }
+        .mail-recipient {
+            color: var(--signal-red) !important; /* 收件人名字变红 */
+        }
+
+        /* 4. 写信选项卡 (Compose Options) */
+        .outbox-option:hover,
+        .outbox-option.active {
+            border-color: var(--signal-red) !important;
+        }
+        .outbox-option.active {
+            background: linear-gradient(135deg, #fff5f5, #fff) !important;
+            box-shadow: 0 4px 15px rgba(192, 57, 43, 0.2) !important;
+        }
+        
+        /* 强制所有选项图标变红 */
+        .outbox-option.opt-containment i,
+        .outbox-option.opt-report i,
+        .outbox-option.opt-mail i {
+            color: var(--signal-red) !important;
+        }
+
+        /* 5. 表单样式 (Forms) */
+        .outbox-form input:focus, 
+        .outbox-form textarea:focus, 
+        .outbox-form select:focus {
+            border-color: var(--signal-red) !important;
+            box-shadow: 0 0 0 2px rgba(192, 57, 43, 0.1) !important;
+        }
+        
+        /* 表单标题图标 */
+        .outbox-form h4 i {
+            color: var(--signal-red) !important;
+        }
+
+        /* 发送按钮 */
+        .outbox-form .btn-send {
+            background: linear-gradient(135deg, var(--signal-red), #e74c3c) !important;
+            box-shadow: 0 4px 15px rgba(192, 57, 43, 0.4) !important;
+        }
+        .outbox-form .btn-send:hover {
+            background: linear-gradient(135deg, #a93226, var(--signal-red)) !important;
+        }
+
+        /* 6. 高墙文件图标 (Highwall) */
+        .hw-file i {
+            color: var(--signal-red) !important;
+        }
+        
+        /* 7. 报告中的复选框 */
+        .report-status-item input[type="checkbox"] {
+            accent-color: var(--signal-red) !important;
+        }
+        .report-section h5 {
+            color: var(--signal-red) !important;
+        }
+		/* =========================================
+           桌面端邮箱弹窗适配 (Desktop Mail Modal)
+           ========================================= */
+        @media (min-width: 900px) {
+            .full-page-modal {
+                /* 取消全屏，固定大小 */
+                width: 900px !important;
+                height: 85vh !important;
+                
+                /* 绝对定位居中 */
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) !important;
+                
+                /* 视觉样式优化 */
+                border-radius: 12px !important;
+                border: 1px solid rgba(192, 57, 43, 0.3); /* 红色微光边框 */
+                
+                /* 使用超大阴影来模拟半透明遮罩层，让背景变暗 */
+                box-shadow: 0 30px 60px rgba(0,0,0,0.5), 0 0 0 200vw rgba(0,0,0,0.6) !important;
+            }
+
+            /* 修正头部圆角 */
+            .mail-modal-header {
+                border-radius: 12px 12px 0 0;
+            }
+
+            /* 修正扫描线背景的圆角 */
+            .full-page-modal::before {
+                border-radius: 12px;
+            }
+            
+            /* 调整内部容器宽度，使其填满弹窗 */
+            .mail-container-inner {
+                max-width: 100%;
+                padding: 0 10px;
+            }
+        }
+		/* =========================================
+           移动端体验优化补丁 (Mobile Layout Fix)
+           ========================================= */
+        @media (max-width: 768px) {
+            /* 1. 修复邮箱弹窗被地址栏/底部Bar遮挡的问题 */
+            .full-page-modal {
+                /* 关键：使用动态高度，自动减去浏览器地址栏的高度 */
+                height: 100vh; /* 兼容旧浏览器 */
+                height: 100dvh; /* 新浏览器 */
+                
+                /* 确保底部不被 iPhone 的手势条遮挡 */
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+            
+            .mail-modal-body {
+                /* 增加底部滚动余量，防止最后的内容被挡住 */
+                padding-bottom: 80px !important;
+            }
+
+            /* 2. 优化"写信/寄送"选项 - 改为紧凑横向布局 */
+            .outbox-options {
+                /* 强制单列 */
+                grid-template-columns: 1fr !important;
+                gap: 10px !important;
+            }
+
+            .outbox-option {
+                /* 使用 Grid 布局实现：左边图标，右边文字 */
+                display: grid !important;
+                grid-template-columns: 40px 1fr !important; /* 图标宽40px，文字自适应 */
+                grid-template-rows: auto auto !important;
+                align-items: center !important;
+                text-align: left !important;
+                
+                /* 缩小内边距 */
+                padding: 12px 15px !important;
+                min-height: auto !important;
+            }
+
+            /* 图标调整 */
+            .outbox-option i {
+                grid-row: 1 / 3 !important; /* 图标跨两行 */
+                grid-column: 1 !important;
+                margin-bottom: 0 !important;
+                font-size: 24px !important; /* 缩小图标 */
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            /* 标题调整 */
+            .outbox-option h4 {
+                grid-row: 1 !important;
+                grid-column: 2 !important;
+                margin: 0 !important;
+                font-size: 14px !important;
+                line-height: 1.2;
+            }
+
+            /* 描述文字调整 */
+            .outbox-option p {
+                grid-row: 2 !important;
+                grid-column: 2 !important;
+                margin: 2px 0 0 0 !important;
+                font-size: 11px !important;
+                color: #999;
+                /* 防止文字换行导致太高 */
+                white-space: nowrap;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+        }
 </style>
 </head>
 <body>
