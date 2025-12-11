@@ -7,11 +7,13 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const nodemailer = require('nodemailer');
-
+const cors = require('cors');
 const app = express();
+app.use(cors());
 const PORT = 3333;
 const JWT_SECRET = process.env.JWT_SECRET || 'triangle-agency-secret-key-change-in-production';
 const BCRYPT_ROUNDS = 10;
+
 
 // 角色常量
 const ROLE = {
@@ -34,6 +36,14 @@ if (!fs.existsSync(DATA_DIR)) {
 const db = new sqlite3.Database(DB_PATH);
 db.run("PRAGMA foreign_keys = ON");
 
+const HIGH_SECURITY_DIR = path.join(DATA_DIR, 'high-security');
+
+// 确保目录存在
+if (!fs.existsSync(HIGH_SECURITY_DIR)) {
+    fs.mkdirSync(HIGH_SECURITY_DIR, { recursive: true });
+    // 创建一个示例文件，避免文件夹为空
+    fs.writeFileSync(path.join(HIGH_SECURITY_DIR, 'welcome.md'), '# 欢迎访问高墙数据库\n\n此区域存放绝密档案。\n\n- 请遵守保密协议\n- 违者将被抹除');
+}
 // ==========================================
 // 数据库初始化
 // ==========================================
@@ -98,6 +108,14 @@ db.serialize(() => {
         expires_at INTEGER,
         FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE
     )`);
+	    // 高墙文件权限表
+    db.run(`CREATE TABLE IF NOT EXISTS document_permissions (
+        user_id INTEGER,
+        filename TEXT,
+        granted_at INTEGER,
+        PRIMARY KEY (user_id, filename),
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`);
 
     // 初始化默认配置
     const defaultConfigs = [
@@ -152,23 +170,25 @@ db.serialize(() => {
         });
     });
 
-    // 初始化默认用户
-    db.get('SELECT * FROM users WHERE username = ?', ['admin'], async (err, row) => {
-        if (!row) {
-            const adminHash = await bcrypt.hash('admin', BCRYPT_ROUNDS);
-            const testHash = await bcrypt.hash('111', BCRYPT_ROUNDS);
-            db.run('INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [999, 'admin', 'admin', adminHash, '管理员', 1, ROLE.SUPER_ADMIN, null, 0, Date.now()]);
-            db.run('INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                [1, '111', '111', testHash, '测试员', 0, ROLE.PLAYER, null, 0, Date.now()]);
-        }
-    });
-});
+// 初始化默认用户，修改admin在此处。
+const NEW_ADMIN_USERNAME = 'sss'; 
+const NEW_ADMIN_PASSWORD = 'sss';
 
+db.get('SELECT * FROM users WHERE username = ?', [NEW_ADMIN_USERNAME], async (err, row) => {
+    if (!row) {
+        const adminHash = await bcrypt.hash(NEW_ADMIN_PASSWORD, BCRYPT_ROUNDS);
+        const testHash = await bcrypt.hash('111', BCRYPT_ROUNDS);
+        // 参数顺序: id, username, password(旧兼容字段), password_hash, name, is_admin, role, email, email_verified, created_at
+        db.run('INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [999, NEW_ADMIN_USERNAME, NEW_ADMIN_PASSWORD, adminHash, '管理员', 1, ROLE.SUPER_ADMIN, null, 0, Date.now()]);
+        db.run('INSERT INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [1, '111', '111', testHash, '测试员', 0, ROLE.PLAYER, null, 0, Date.now()]);
+		}
+	}); 
+}); 
 // ==========================================
 // 工具函数
 // ==========================================
-
 // 获取系统配置
 function getConfig(key) {
     return new Promise((resolve, reject) => {
@@ -895,6 +915,7 @@ app.post('/api/auth/claim', authenticateToken, requireRole(ROLE.MANAGER), (req, 
 });
 
 // 经理获取已授权的角色列表
+// MODIFIED: 增加了 ownerId 的返回
 app.get('/api/manager/characters', authenticateToken, requireRole(ROLE.MANAGER), (req, res) => {
     db.all(`SELECT c.id, c.data, c.user_id, u.name as owner_name
             FROM characters c
@@ -910,7 +931,8 @@ app.get('/api/manager/characters', authenticateToken, requireRole(ROLE.MANAGER),
                 func: d.pFunc || "---",
                 anom: d.pAnom || "---",
                 real: d.pReal || "---",
-                ownerName: row.owner_name
+                ownerName: row.owner_name,
+                ownerId: row.user_id // MODIFIED: 返回职员ID
             };
         });
         res.json(list);
@@ -1248,6 +1270,208 @@ app.get('/api/verify-token', authenticateToken, (req, res) => {
 // 首页重定向
 // ==========================================
 app.get('/', (req, res) => res.redirect('/login.html'));
+
+// ==========================================
+// 高墙文件 API
+// ==========================================
+
+// 1. 获取当前用户的文件列表（包含权限状态）
+// server.js - 找到这个路由并确认/替换
+// 这个接口只读取目录和数据库权限，绝对不读取 .md 文件的具体内容
+app.get('/api/documents/list', authenticateToken, (req, res) => {
+    fs.readdir(HIGH_SECURITY_DIR, (err, files) => {
+        if (err) return res.status(500).json({ error: '无法读取文件目录' });
+
+        // 1. 只获取 .md 文件名
+        const mdFiles = files.filter(f => f.endsWith('.md'));
+
+        // 2. 查询权限 (SQL 查询很快)
+        db.all('SELECT filename FROM document_permissions WHERE user_id = ?', [req.user.userId], (err, rows) => {
+            if (err) return res.status(500).json({ error: '数据库错误' });
+
+            const allowedFiles = new Set(rows.map(r => r.filename));
+            
+            // 3. 构造返回数据 (仅包含文件名和标题，无 content)
+            const result = mdFiles.map(file => ({
+                filename: file,
+                title: file.replace(/\.md$/i, ''), // 简单的字符串处理
+                allowed: allowedFiles.has(file) || req.user.role >= ROLE.SUPER_ADMIN
+            }));
+
+            // 4. 简单的排序
+            result.sort((a, b) => {
+                // 有权限的排前面
+                if (a.allowed !== b.allowed) return a.allowed ? -1 : 1;
+                // 同权限按文件名排
+                return a.filename.localeCompare(b.filename);
+            });
+
+            res.json(result);
+        });
+    });
+});
+
+// 2. 读取文件内容 (需权限验证)
+app.get('/api/documents/read/:filename', authenticateToken, (req, res) => {
+    const filename = req.params.filename;
+    
+    // 安全检查：防止路径遍历
+    if (filename.includes('..') || filename.includes('/') || !filename.endsWith('.md')) {
+        return res.status(400).json({ error: '非法的文件名' });
+    }
+
+    const checkPermission = () => {
+        if (req.user.role >= ROLE.SUPER_ADMIN) return Promise.resolve(true);
+        return new Promise((resolve) => {
+            db.get('SELECT 1 FROM document_permissions WHERE user_id = ? AND filename = ?', 
+                [req.user.userId, filename], (err, row) => resolve(!!row));
+        });
+    };
+
+    checkPermission().then(allowed => {
+        if (!allowed) return res.status(403).json({ error: '权限不足：无法访问此高墙文件' });
+
+        const filePath = path.join(HIGH_SECURITY_DIR, filename);
+        if (!fs.existsSync(filePath)) return res.status(404).json({ error: '文件不存在' });
+
+        fs.readFile(filePath, 'utf8', (err, data) => {
+            if (err) return res.status(500).json({ error: '读取失败' });
+            res.json({ content: data });
+        });
+    });
+});
+
+// 3. (管理员) 获取某用户的文件权限列表
+app.get('/api/admin/user/:id/permissions', authenticateToken, requireRole(ROLE.SUPER_ADMIN), (req, res) => {
+    const userId = req.params.id;
+    
+    fs.readdir(HIGH_SECURITY_DIR, (err, files) => {
+        if (err) return res.json([]);
+        const mdFiles = files.filter(f => f.endsWith('.md'));
+
+        db.all('SELECT filename FROM document_permissions WHERE user_id = ?', [userId], (err, rows) => {
+            const allowedSet = new Set(rows ? rows.map(r => r.filename) : []);
+            const result = mdFiles.map(f => ({
+                filename: f,
+                hasPerm: allowedSet.has(f)
+            }));
+            res.json(result);
+        });
+    });
+});
+
+// 4. (管理员) 更新某用户的权限
+app.put('/api/admin/user/:id/permissions', authenticateToken, requireRole(ROLE.SUPER_ADMIN), (req, res) => {
+    const userId = req.params.id;
+    const { permissions } = req.body; // Array of filenames to grant
+
+    db.serialize(() => {
+        db.run('BEGIN TRANSACTION');
+        
+        // 先删除该用户所有文件权限
+        db.run('DELETE FROM document_permissions WHERE user_id = ?', [userId]);
+        
+        // 重新插入选中的权限
+        const stmt = db.prepare('INSERT INTO document_permissions (user_id, filename, granted_at) VALUES (?, ?, ?)');
+        permissions.forEach(file => {
+            stmt.run(userId, file, Date.now());
+        });
+        stmt.finalize();
+
+        db.run('COMMIT', (err) => {
+            if (err) res.status(500).json({ success: false, message: err.message });
+            else res.json({ success: true });
+        });
+    });
+});
+
+
+// ==========================================
+// NEW: 高墙文件 API (经理专用)
+// ==========================================
+
+// 封装一个检查经理是否对某个用户有管理权限的函数
+function checkManagerAuthorization(managerId, targetUserId) {
+    return new Promise((resolve, reject) => {
+        const sql = `
+            SELECT 1 FROM character_authorizations ca
+            JOIN characters c ON ca.character_id = c.id
+            WHERE ca.manager_id = ? AND c.user_id = ?
+            LIMIT 1
+        `;
+        db.get(sql, [managerId, targetUserId], (err, row) => {
+            if (err) reject(err);
+            else resolve(!!row);
+        });
+    });
+}
+
+// 5. (经理) 获取其下属用户的文件权限
+app.get('/api/manager/user/:userId/permissions', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
+    try {
+        const managerId = req.user.userId;
+        const targetUserId = req.params.userId;
+
+        // 安全检查：确认该经理有权管理此用户
+        const isAuthorized = await checkManagerAuthorization(managerId, targetUserId);
+        if (!isAuthorized) {
+            return res.status(403).json({ error: '无权管理该用户的权限' });
+        }
+
+        // 权限检查通过，执行与管理员相同的逻辑
+        fs.readdir(HIGH_SECURITY_DIR, (err, files) => {
+            if (err) return res.json([]);
+            const mdFiles = files.filter(f => f.endsWith('.md'));
+
+            db.all('SELECT filename FROM document_permissions WHERE user_id = ?', [targetUserId], (err, rows) => {
+                const allowedSet = new Set(rows ? rows.map(r => r.filename) : []);
+                const result = mdFiles.map(f => ({
+                    filename: f,
+                    hasPerm: allowedSet.has(f)
+                }));
+                res.json(result);
+            });
+        });
+
+    } catch (e) {
+        res.status(500).json({ error: '服务器内部错误' });
+    }
+});
+
+// 6. (经理) 更新其下属用户的权限
+app.put('/api/manager/user/:userId/permissions', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
+    try {
+        const managerId = req.user.userId;
+        const targetUserId = req.params.userId;
+        const { permissions } = req.body; // Array of filenames to grant
+
+        // 安全检查：确认该经理有权管理此用户
+        const isAuthorized = await checkManagerAuthorization(managerId, targetUserId);
+        if (!isAuthorized) {
+            return res.status(403).json({ success: false, message: '无权管理该用户的权限' });
+        }
+
+        // 权限检查通过，执行与管理员相同的逻辑
+        db.serialize(() => {
+            db.run('BEGIN TRANSACTION');
+            db.run('DELETE FROM document_permissions WHERE user_id = ?', [targetUserId]);
+            
+            const stmt = db.prepare('INSERT INTO document_permissions (user_id, filename, granted_at) VALUES (?, ?, ?)');
+            permissions.forEach(file => {
+                stmt.run(targetUserId, file, Date.now());
+            });
+            stmt.finalize();
+
+            db.run('COMMIT', (err) => {
+                if (err) res.status(500).json({ success: false, message: err.message });
+                else res.json({ success: true });
+            });
+        });
+    } catch (e) {
+        res.status(500).json({ success: false, message: '服务器内部错误' });
+    }
+});
+
 
 app.listen(PORT, () => {
     console.log(`服务器运行中: http://localhost:${PORT}`);

@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>高墙档案库 // PLAYWALLED DOCUMENTS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        :root {
+            --deep-bg: #0f172a;
+            --sidebar-bg: #1e293b;
+            --text-main: #e2e8f0;
+            --accent: #d50000;
+            --locked: #475569;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body {
+            margin: 0; padding: 0;
+            font-family: "Roboto Mono", "Noto Sans SC", sans-serif;
+            background: var(--deep-bg);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            overflow: hidden;
+        }
+
+        /* 侧边栏 */
+        .sidebar {
+            width: 300px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid #334155;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 10;
+            transition: transform 0.3s ease;
+        }
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #334155;
+            background: #0b1120;
+            flex-shrink: 0;
+        }
+        .brand { font-size: 18px; font-weight: 900; letter-spacing: 2px; color: white; }
+        .brand span { color: var(--accent); }
+        .back-btn {
+            display: inline-block; margin-top: 10px; font-size: 12px; 
+            color: #94a3b8; text-decoration: none; cursor: pointer;
+            padding: 5px 0;
+        }
+
+        .file-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 10px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .file-item {
+            padding: 15px;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255,255,255,0.02);
+            border: 1px solid transparent;
+            font-size: 14px;
+        }
+        .file-item:active { background: rgba(255,255,255,0.1); }
+        .file-item.active { background: var(--accent); color: white; border-color: var(--accent); }
+        .file-item.locked { opacity: 0.5; }
+
+        /* 阅读器 */
+        .reader {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-image: radial-gradient(#334155 1px, transparent 1px);
+            background-size: 20px 20px;
+            position: relative;
+            z-index: 5;
+            width: 100%;
+        }
+
+        .mobile-nav {
+            display: none;
+            padding: 15px;
+            background: var(--sidebar-bg);
+            border-bottom: 1px solid #334155;
+            align-items: center;
+            gap: 10px;
+        }
+        .btn-close {
+            background: transparent; border: 1px solid #475569; color: #cbd5e1;
+            padding: 6px 12px; border-radius: 4px; font-size: 12px;
+        }
+
+        .doc-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            -webkit-overflow-scrolling: touch;
+        }
+        .markdown-body { 
+            max-width: 800px; margin: 0 auto; 
+            background: rgba(30, 41, 59, 0.95);
+            padding: 25px; border-radius: 8px;
+            min-height: 50vh;
+        }
+
+        /* Markdown 基础样式 (防止CDN加载失败时没样式) */
+        .markdown-body h1 { border-bottom: 1px solid #444; padding-bottom: 10px; color: white; font-size: 1.5em; }
+        .markdown-body p { line-height: 1.6; color: #ccc; margin-bottom: 1em; }
+        .markdown-body pre { background: #111; padding: 10px; overflow-x: auto; border-radius: 4px; }
+        .markdown-body code { background: #222; padding: 2px 5px; font-family: monospace; }
+        .markdown-body a { color: var(--accent); }
+
+        /* 错误提示样式 */
+        .error-box {
+            padding: 20px;
+            text-align: center;
+            color: #ef4444;
+            background: rgba(239, 68, 68, 0.1);
+            border-radius: 8px;
+            margin: 20px;
+            font-size: 13px;
+        }
+        .btn-retry {
+            margin-top: 10px;
+            padding: 8px 16px;
+            background: var(--sidebar-bg);
+            border: 1px solid #475569;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .sidebar { width: 100%; position: absolute; height: 100%; }
+            .reader { position: absolute; width: 100%; height: 100%; transform: translateX(100%); transition: transform 0.3s ease; }
+            .mobile-nav { display: flex; }
+            
+            /* 阅读模式激活 */
+            body.reading-mode .sidebar { transform: translateX(-30%); opacity: 0; pointer-events: none; }
+            body.reading-mode .reader { transform: translateX(0); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="sidebar">
+    <div class="sidebar-header">
+        <div class="brand">PLAY<span>WALLED</span></div>
+        <div onclick="window.location.href='dashboard.html'" class="back-btn">
+            <i class="fas fa-chevron-left"></i> 返回终端首页
+        </div>
+    </div>
+    <div class="file-list" id="fileList">
+        <div style="padding:40px; text-align:center; color:#64748b;">
+            <i class="fas fa-circle-notch fa-spin" style="font-size:24px; margin-bottom:10px;"></i>
+            <div>连接高墙数据库...</div>
+        </div>
+    </div>
+</div>
+
+<div class="reader">
+    <div class="mobile-nav">
+        <button class="btn-close" onclick="closeReader()">
+            <i class="fas fa-arrow-left"></i> 返回列表
+        </button>
+        <div style="font-weight:bold; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" id="mobileTitle">文档预览</div>
+    </div>
+    <div class="doc-container">
+        <div class="markdown-body" id="docContent">
+            <div style="text-align:center; padding-top:50px; color:#64748b;">
+                <i class="fas fa-file-contract" style="font-size:48px; opacity:0.2;"></i>
+                <p>请选择文件</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 异步加载 Marked，防止阻塞页面 -->
+<script src="/js/marked.min.js"></script>
+
+<script>
+    const token = localStorage.getItem('ta_token');
+
+    // 1. 强制登录检查
+    if (!token) {
+        alert("未检测到身份令牌，请重新登录");
+        window.location.href = 'login.html';
+    }
+
+    async function loadFiles() {
+        const listEl = document.getElementById('fileList');
+        
+        try {
+            // 设置超时机制，防止一直转圈
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); // 5秒超时
+
+            const res = await fetch('/api/documents/list', {
+                headers: { 'Authorization': `Bearer ${token}` },
+                signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+
+            if (res.status === 401 || res.status === 403) {
+                localStorage.clear();
+                alert("登录已过期，请重新接入");
+                window.location.href = 'login.html';
+                return;
+            }
+
+            if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+
+            const files = await res.json();
+            renderList(files);
+
+        } catch (e) {
+            console.error(e);
+            let errorMsg = "连接失败";
+            if (e.name === 'AbortError') errorMsg = "连接服务器超时";
+            else if (e.message.includes('Failed to fetch')) errorMsg = "网络无法连接 (请检查IP)";
+
+            listEl.innerHTML = `
+                <div class="error-box">
+                    <i class="fas fa-wifi" style="font-size:24px; margin-bottom:10px;"></i>
+                    <div>${errorMsg}</div>
+                    <div style="font-size:11px; margin-top:5px; opacity:0.8;">请确认手机已连接同一局域网，且电脑防火墙已允许端口访问。</div>
+                    <button class="btn-retry" onclick="location.reload()">重试</button>
+                </div>
+            `;
+        }
+    }
+
+    function renderList(files) {
+        const container = document.getElementById('fileList');
+        container.innerHTML = '';
+
+        if (!files || files.length === 0) {
+            container.innerHTML = '<div style="padding:20px;text-align:center;color:#64748b;">暂无文件权限</div>';
+            return;
+        }
+
+        files.forEach(file => {
+            const el = document.createElement('div');
+            el.className = `file-item ${file.allowed ? '' : 'locked'}`;
+            el.innerHTML = `
+                <div style="display:flex;align-items:center;overflow:hidden;">
+                    <i class="fas ${file.allowed ? 'fa-file-alt' : 'fa-lock'}" style="margin-right:10px; width:20px; text-align:center;"></i>
+                    <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${file.title}</span>
+                </div>
+                ${file.allowed ? '<i class="fas fa-chevron-right" style="opacity:0.3;font-size:12px;"></i>' : ''}
+            `;
+            
+            if (file.allowed) {
+                el.onclick = () => loadContent(file.filename, file.title);
+            }
+            container.appendChild(el);
+        });
+    }
+
+    async function loadContent(filename, title) {
+        // 切换到阅读模式
+        document.body.classList.add('reading-mode');
+        document.getElementById('mobileTitle').textContent = title;
+        
+        const contentEl = document.getElementById('docContent');
+        contentEl.innerHTML = '<div style="text-align:center;padding:50px;"><i class="fas fa-circle-notch fa-spin"></i><br>正在解密...</div>';
+
+        try {
+            const res = await fetch(`/api/documents/read/${filename}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            
+            if (!res.ok) throw new Error('无法读取文件');
+            const data = await res.json();
+
+            // 检查 Marked 是否加载成功
+            if (typeof marked !== 'undefined') {
+                contentEl.innerHTML = marked.parse(data.content);
+            } else {
+                // 如果 CDN 挂了，显示纯文本，不让用户看不了
+                contentEl.innerHTML = `<pre style="white-space:pre-wrap; font-family:sans-serif;">${data.content}</pre>
+                <div style="color:orange;font-size:12px;margin-top:20px;">* Markdown 解析器加载失败，显示原始文本</div>`;
+            }
+
+        } catch (e) {
+            contentEl.innerHTML = `<div class="error-box">读取失败: ${e.message}</div>`;
+        }
+    }
+
+    function closeReader() {
+        document.body.classList.remove('reading-mode');
+    }
+
+    // 启动
+    loadFiles();
+</script>
+</body>
+</html>

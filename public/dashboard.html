@@ -9,13 +9,11 @@
         :root {
             --deep-bg: #1a252f;
             --bg-pattern: radial-gradient(#2c3e50 1px, transparent 1px);
-            
             --card-bg: #ffffff;
             --text-main: #1e293b;
             --text-sub: #64748b;
             --signal-red: #c0392b;
             --border-color: #ecf0f1;
-
             --c-anom: #0284c7; 
             --c-real: #ea580c; 
             --c-func: #dc2626; 
@@ -31,7 +29,30 @@
             color: var(--text-main);
             min-height: 100vh;
         }
+		
+        /* 动态背景碎片 */
+        .char-card::before, .char-card::after {
+            content: ''; position: absolute; z-index: -1; pointer-events: none;
+            opacity: 0.12; transform-origin: center;
+        }
+        .char-card::before {
+            background: #cbd5e1; width: 400px; height: 400px;
+            top: calc(-120px + 220px * var(--r1)); left: calc(-120px + 220px * var(--r2));
+            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+            animation: float-shard calc(25s + 10s * var(--r3)) infinite linear;
+        }
+        .char-card::after {
+            background: var(--signal-red); width: 280px; height: 280px; opacity: 0.08;
+            top: calc(40% + 100px * var(--r2)); right: calc(-60px + 120px * var(--r1));
+            clip-path: polygon(0 0, 100% 50%, 0 100%);
+            animation: float-shard calc(30s + 15s * var(--r1)) infinite reverse linear;
+        }
 
+        .char-card:hover { 
+            transform: translateY(-5px) scale(1.02); 
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
         .container { max-width: 900px; margin: 0 auto; }
         
         header { 
@@ -57,88 +78,24 @@
         .btn-new { background: var(--signal-red); color: white; }
         .btn-new:hover { background: #e74c3c; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(192, 57, 43, 0.3); }
         .btn-logout { background: #fff; color: #555; }
-        .btn-logout:hover { background: #f0f0f0; }
+        /* 修改: 为退出按钮增加悬浮特效 */
+        .btn-logout:hover { background: #f0f0f0; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1); }
         .btn-console { background: #3498db; color: white; }
         .btn-console:hover { background: #2980b9; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(52, 152, 219, 0.3); }
         .btn-console.admin { background: #9b59b6; }
         .btn-console.admin:hover { background: #8e44ad; box-shadow: 0 5px 15px rgba(155, 89, 182, 0.3); }
+        
+        /* 新增: 高墙按钮样式 */
+        .btn-highwall { background: #2c3e50; color: white; }
+        .btn-highwall:hover { background: #34495e; transform: translateY(-2px); box-shadow: 0 5px 15px rgba(44, 62, 80, 0.3); }
+
         
         .grid { 
             display: grid; 
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); 
             gap: 20px; 
         }
-        
-        /* === 卡片样式 === */
-        .char-card { 
-            background-color: var(--card-bg);
-            padding: 20px; 
-            border-radius: 6px; 
-            border-top: 4px solid var(--signal-red);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
-            
-            position: relative; 
-            overflow: hidden; 
-            isolation: isolate;
-            
-            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
-            display: flex;
-            flex-direction: column;
-        }
-
-        /* 动态背景碎片 */
-        .char-card::before, .char-card::after {
-            content: ''; position: absolute; z-index: -1; pointer-events: none;
-            opacity: 0.12; transform-origin: center;
-        }
-        .char-card::before {
-            background: #cbd5e1; width: 400px; height: 400px;
-            top: calc(-120px + 220px * var(--r1)); left: calc(-120px + 220px * var(--r2));
-            clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
-            animation: float-shard calc(25s + 10s * var(--r3)) infinite linear;
-        }
-        .char-card::after {
-            background: var(--signal-red); width: 280px; height: 280px; opacity: 0.08;
-            top: calc(40% + 100px * var(--r2)); right: calc(-60px + 120px * var(--r1));
-            clip-path: polygon(0 0, 100% 50%, 0 100%);
-            animation: float-shard calc(30s + 15s * var(--r1)) infinite reverse linear;
-        }
-
-        .char-card:hover { 
-            transform: translateY(-5px) scale(1.02); 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-            z-index: 10;
-        }
-
-        /* 点击激活状态 */
-        .char-card.accessing {
-            transform: scale(0.95);
-            box-shadow: 0 0 0 2px var(--signal-red), 0 0 20px var(--signal-red);
-            border-top-color: transparent; 
-        }
-
-        @keyframes float-shard {
-            0% { transform: rotate(0deg) translate(0, 0); }
-            50% { transform: rotate(180deg) translate(20px, 20px); }
-            100% { transform: rotate(360deg) translate(0, 0); }
-        }
-
-        .card-content-wrapper {
-            flex-grow: 1; display: flex; flex-direction: column;
-            justify-content: center; cursor: pointer; padding: 10px 0; z-index: 2; 
-        }
-        
-        .card-header {
-            margin-bottom: 20px; padding-bottom: 15px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .c-name { 
-            font-size: 22px; font-weight: 800; color: var(--text-main); letter-spacing: 0.5px;
-        }
-
-        .info-group { display: flex; flex-direction: column; gap: 12px; }
-
-        /* 半透明磨砂信息块 */
+		        /* 半透明磨砂信息块 */
         .info-field {
             display: flex; flex-direction: column; padding: 10px 14px; border-radius: 4px;
             background: rgba(241, 245, 249, 0.65); 
@@ -172,189 +129,20 @@
         .anim-breathe { animation: breathe 3s infinite ease-in-out; }
         @keyframes floatPulse { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2px); } }
         .anim-float { animation: floatPulse 2.5s infinite ease-in-out; }
-
+        @keyframes float-shard {
+            0% { transform: rotate(0deg) translate(0, 0); }
+            50% { transform: rotate(180deg) translate(20px, 20px); }
+            100% { transform: rotate(360deg) translate(0, 0); }
+        }
         .c-actions { 
             padding-top: 15px; border-top: 1px dashed var(--border-color);
             text-align: right; margin-top: auto; position: relative; z-index: 2;
         }
-        .btn-del {
-            color: var(--text-sub); background: none; border: none;
+        .btn-del { 
+            color: var(--text-sub); background: none; border: none; 
             font-size: 11px; cursor: pointer; padding: 5px; transition: color 0.2s;
         }
         .btn-del:hover { color: var(--signal-red); text-decoration: underline; }
-
-        /* 卡片操作按钮 */
-        .card-tools {
-            display: flex;
-            gap: 8px;
-            margin-bottom: 10px;
-            flex-wrap: wrap;
-        }
-        .tool-btn {
-            background: #f1f5f9;
-            border: none;
-            padding: 6px 10px;
-            border-radius: 4px;
-            font-size: 10px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-            color: #64748b;
-            transition: all 0.2s;
-            text-transform: uppercase;
-            font-weight: bold;
-        }
-        .tool-btn:hover { background: #e2e8f0; color: var(--text-main); }
-        .tool-btn.active { background: var(--signal-red); color: white; }
-        .tool-btn i { font-size: 11px; }
-
-        /* 模态框 */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0,0,0,0.7);
-            z-index: 5000;
-            justify-content: center;
-            align-items: center;
-        }
-        .modal-overlay.show { display: flex; }
-        .modal {
-            background: white;
-            padding: 25px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 450px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-        .modal h3 {
-            margin: 0 0 20px;
-            color: var(--text-main);
-            font-size: 16px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .modal h3 i { color: var(--signal-red); }
-        .modal-close {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            background: none;
-            border: none;
-            font-size: 20px;
-            cursor: pointer;
-            color: #999;
-        }
-        .modal-content { margin-bottom: 20px; }
-        .code-display {
-            background: #f8f9fa;
-            border: 2px dashed #cbd5e1;
-            border-radius: 6px;
-            padding: 15px;
-            text-align: center;
-            margin: 15px 0;
-        }
-        .code-display code {
-            font-size: 14px;
-            font-family: monospace;
-            color: var(--signal-red);
-            word-break: break-all;
-        }
-        .code-display.link code {
-            font-size: 12px;
-            color: var(--c-anom);
-        }
-        .modal-input {
-            width: 100%;
-            padding: 10px;
-            border: 2px solid #ecf0f1;
-            border-radius: 4px;
-            font-size: 13px;
-            box-sizing: border-box;
-        }
-        .modal-input:focus {
-            outline: none;
-            border-color: var(--signal-red);
-        }
-        .modal-btns {
-            display: flex;
-            gap: 10px;
-        }
-        .modal-btns button {
-            flex: 1;
-            padding: 10px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 12px;
-        }
-        .btn-cancel { background: #ecf0f1; color: #555; }
-        .btn-confirm { background: var(--signal-red); color: white; }
-        .btn-copy { background: var(--c-anom); color: white; }
-        .btn-copy:hover { background: #0369a1; }
-
-        .option-row {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 0;
-            border-bottom: 1px solid #ecf0f1;
-        }
-        .option-row:last-child { border-bottom: none; }
-        .option-label { font-size: 13px; color: var(--text-main); }
-        .option-desc { font-size: 11px; color: #94a3b8; margin-top: 3px; }
-
-        /* 开关 */
-        .switch {
-            position: relative;
-            width: 44px;
-            height: 24px;
-        }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #ccc;
-            transition: .3s;
-            border-radius: 24px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: .3s;
-            border-radius: 50%;
-        }
-        input:checked + .slider { background-color: var(--signal-red); }
-        input:checked + .slider:before { transform: translateX(20px); }
-
-        /* Toast */
-        .toast {
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--signal-red);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 4px;
-            font-size: 13px;
-            font-weight: bold;
-            z-index: 6000;
-            display: none;
-        }
-        .toast.show { display: block; animation: slideUp 0.3s ease; }
-        .toast.success { background: #27ae60; }
-        @keyframes slideUp { from { opacity: 0; transform: translate(-50%, 20px); } to { opacity: 1; transform: translate(-50%, 0); } }
 
         .empty-state {
             grid-column: 1 / -1; text-align: center; background: rgba(255,255,255,0.05);
@@ -580,87 +368,189 @@
             top: 0; left: 0; 
             width: 100vw; height: 100vh;
             background: #0f172a; 
+        /* === 移动端适配优化 === */
+        @media (max-width: 768px) {
+            header { flex-direction: column; align-items: flex-start; gap: 15px; margin-bottom: 20px; padding-bottom: 15px; }
+            .btn-group { width: 100%; display: flex; justify-content: space-between; gap: 8px; }
+            .btn { flex: 1; justify-content: center; padding: 10px 0; font-size: 14px; min-width: 40px; }
+            .btn-text { display: none; }
+            .brand-logo .top { font-size: 20px; }
+            .brand-logo .btm { font-size: 12px; }
+        }
+        
+        /* === 卡片样式 === */
+        .char-card { 
+            background-color: var(--card-bg); padding: 20px; border-radius: 6px; 
+            border-top: 4px solid var(--signal-red); box-shadow: 0 4px 6px rgba(0,0,0,0.05); 
+            position: relative; overflow: hidden; isolation: isolate;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s;
+            display: flex; flex-direction: column;
+        }
+        .char-card:hover { transform: translateY(-5px) scale(1.02); box-shadow: 0 20px 40px rgba(0,0,0,0.2); z-index: 10; }
+        .char-card.accessing { transform: scale(0.95); box-shadow: 0 0 0 2px var(--signal-red), 0 0 20px var(--signal-red); border-top-color: transparent; }
+        .card-content-wrapper { flex-grow: 1; display: flex; flex-direction: column; justify-content: center; cursor: pointer; padding: 10px 0; z-index: 2; }
+        .card-header { margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid var(--border-color); }
+        .c-name { font-size: 22px; font-weight: 800; color: var(--text-main); letter-spacing: 0.5px; }
+        .info-group { display: flex; flex-direction: column; gap: 12px; }
+        .info-field { display: flex; flex-direction: column; padding: 10px 14px; border-radius: 4px; background: rgba(241, 245, 249, 0.65); backdrop-filter: blur(4px); border-left: 4px solid #ccc; transition: all 0.3s ease; border: 1px solid rgba(255,255,255,0.5); border-left-width: 4px; }
+        .info-field:hover { background: rgba(241, 245, 249, 0.9); transform: translateX(2px); }
+        .if-anom { border-left-color: var(--c-anom); } .if-anom .field-label { color: var(--c-anom); }
+        .if-real { border-left-color: var(--c-real); } .if-real .field-label { color: var(--c-real); }
+        .if-func { border-left-color: var(--c-func); } .if-func .field-label { color: var(--c-func); }
+        .field-label { font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 800; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; opacity: 0.9; }
+        .field-val { font-size: 15px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-main); font-family: "Noto Sans SC", sans-serif; letter-spacing: 0.5px; }
+        .c-actions { padding-top: 15px; border-top: 1px dashed var(--border-color); text-align: right; margin-top: auto; position: relative; z-index: 2; }
+        .btn-del { color: var(--text-sub); background: none; border: none; font-size: 11px; cursor: pointer; padding: 5px; transition: color 0.2s; }
+        .btn-del:hover { color: var(--signal-red); text-decoration: underline; }
+        .card-tools { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+        .tool-btn { background: #f1f5f9; border: none; padding: 6px 10px; border-radius: 4px; font-size: 10px; cursor: pointer; display: flex; align-items: center; gap: 5px; color: #64748b; transition: all 0.2s; text-transform: uppercase; font-weight: bold; }
+        .tool-btn:hover { background: #e2e8f0; color: var(--text-main); }
+
+        /* === 普通文档加载过渡 === */
+        #transition-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #0f172a; z-index: 8000; pointer-events: none; clip-path: inset(50% 0 50% 0); transition: clip-path 0.8s cubic-bezier(0.8, 0, 0.2, 1); display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #transition-overlay.active { pointer-events: all; clip-path: inset(0 0 0 0); }
+        #transition-overlay::before { content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 2px; background: var(--signal-red); z-index: 100; box-shadow: 0 0 15px var(--signal-red); opacity: 0; transition: opacity 0.2s; }
+        #transition-overlay.active::before { opacity: 1; animation: line-fade 0.8s forwards; }
+        @keyframes line-fade { 0% { opacity: 1; transform: scaleX(0.1); } 50% { opacity: 1; transform: scaleX(1); } 100% { opacity: 0; transform: scaleX(1); } }
+        .loader-content { text-align: center; color: var(--signal-red); opacity: 0; transform: scale(0.9); transition: all 0.4s ease 0.2s; }
+        #transition-overlay.active .loader-content { opacity: 1; transform: scale(1); }
+        .loader-icon { font-size: 40px; margin-bottom: 20px; }
+        .loader-text { font-family: "Noto Sans SC", sans-serif; font-size: 16px; letter-spacing: 2px; font-weight: 900; display: flex; align-items: center; justify-content: center; }
+        .dots::after { content: ''; width: 1.5em; text-align: left; display: inline-block; animation: dot-steps 1.5s infinite steps(4, end); }
+        @keyframes dot-steps { 0%, 20% { content: ''; } 40% { content: '.'; } 60% { content: '..'; } 80%, 100% { content: '...'; } }
+
+        /* === 高墙特效 (V1 优化版) === */
+        
+        #hw-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #0f172a;
             z-index: 9999;
             pointer-events: none;
-            
-            /* 初始状态：中间一条线 */
             clip-path: inset(50% 0 50% 0);
-            
-            /* 修改点：时间从 0.6s 延长到 1.2s，更慢更沉重 */
             transition: clip-path 0.8s cubic-bezier(0.8, 0, 0.2, 1);
-            
             display: flex; flex-direction: column; justify-content: center; align-items: center;
+            overflow: hidden;
         }
+        #hw-overlay.active { pointer-events: all; clip-path: inset(0 0 0 0); }
+        #hw-overlay.glitch-mode { background: #000; animation: bg-flash 0.1s infinite; }
         
-        #transition-overlay.active {
-            pointer-events: all;
-            clip-path: inset(0 0 0 0);
+        .hw-normal-content { text-align: center; color: var(--signal-red); transition: opacity 0.1s; z-index: 10; }
+        #hw-overlay.glitch-mode .hw-normal-content { filter: invert(1) blur(1px); transform: scale(1.1); }
+        .hw-scanlines { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.2)); background-size: 100% 4px; animation: scanline 0.2s linear infinite; pointer-events: none; display: none; z-index: 21; }
+        @keyframes bg-flash { 0%, 100% { background-color: #100000; } 50% { background-color: #000000; } }
+        @keyframes scanline { to { transform: translateY(4px); } }
+
+        .hw-eye-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000;
+            z-index: 30;
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0;
+            transition: opacity 0.2s;
         }
 
-        /* 装饰线 */
-        #transition-overlay::before {
-            content: ''; position: absolute; top: 50%; left: 0; width: 100%; height: 2px;
-            background: var(--signal-red); z-index: 100;
-            box-shadow: 0 0 15px var(--signal-red);
-            opacity: 0; transition: opacity 0.2s;
+        .hw-eye-svg {
+            width: 150px; opacity: 0; transform-origin: center center;
+            transform: scaleY(0.01); filter: drop-shadow(0 0 20px #00f3ff);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            position: relative; z-index: 31;
         }
-        /* 修改点：线条动画也跟随延长到 1.2s */
-        #transition-overlay.active::before {
+        .hw-eye-svg.eye-open { opacity: 1; transform: scaleY(1); }
+        
+        .hw-eye-svg.scared {
+            animation: eye-tremble 0.1s infinite;
+        }
+        @keyframes eye-tremble {
+            0% { transform: scale(1) translate(0, 0); }
+            50% { transform: scale(0.98) translate(1px, -1px); }
+            100% { transform: scale(1) translate(0, 0); }
+        }
+
+        .hw-tentacles-layer {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 35;
+            pointer-events: none;
+            overflow: hidden;
+        }
+
+        .tendril {
+            position: absolute;
+            top: 50%; left: 50%;
+            width: 8vw;
+            height: 120vmax;
+            background: #000;
+            transform-origin: top center;
+            opacity: 0;
+            border-radius: 0 0 50% 50%;
+            filter: blur(12px) contrast(1.5);
+        }
+
+        .tendril.creeping {
             opacity: 1;
-            animation: line-fade 0.8s forwards;
-        }
-        @keyframes line-fade { 
-            0% { opacity: 1; transform: scaleX(0.1); } 
-            50% { opacity: 1; transform: scaleX(1); } 
-            100% { opacity: 0; transform: scaleX(1); } 
+            animation: creep-in 2.2s cubic-bezier(0.6, 0, 0.1, 1) forwards;
         }
 
-        .loader-content {
-            text-align: center; color: var(--signal-red);
-            opacity: 0; transform: scale(0.9);
-            /* 修改点：延迟稍微加长，配合变慢的展开 */
-            transition: all 0.4s ease 0.2s; 
-        }
-        #transition-overlay.active .loader-content {
-            opacity: 1; transform: scale(1);
-        }
-
-        .loader-icon { font-size: 40px; margin-bottom: 20px; }
-        
-        .loader-text {
-            font-family: "Noto Sans SC", sans-serif;
-            font-size: 16px; letter-spacing: 2px;
-            font-weight: 900;
-            display: flex; align-items: center; justify-content: center;
+        @keyframes creep-in {
+            from {
+                transform: translate(-50%, -110%) rotate(var(--r));
+            }
+            to {
+                transform: translate(-50%, 0%) rotate(var(--r));
+            }
         }
 
-        .dots::after {
-            content: '';
-            width: 1.5em; 
-            text-align: left;
-            display: inline-block;
-            animation: dot-steps 1.5s infinite steps(4, end);
+        #hw-blackout {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 100;
+            opacity: 0; pointer-events: none; transition: opacity 0.3s;
         }
+        #hw-blackout.active { opacity: 1; }
 
-        @keyframes dot-steps {
-            0%, 20% { content: ''; }
-            40% { content: '.'; }
-            60% { content: '..'; }
-            80%, 100% { content: '...'; }
-        }
-
+        /* Toast & Modal */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 5000; justify-content: center; align-items: center; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: white; padding: 25px; border-radius: 8px; width: 90%; max-width: 450px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--signal-red); color: white; padding: 12px 24px; border-radius: 4px; font-size: 13px; font-weight: bold; z-index: 6000; display: none; }
+        .toast.show { display: block; animation: slideUp 0.3s ease; }
+        .toast.success { background: #27ae60; }
+        .empty-state { grid-column: 1 / -1; text-align: center; background: rgba(255,255,255,0.05); color: rgba(255,255,255,0.4); padding: 60px 0; font-size: 14px; border-radius: 8px; border: 2px dashed rgba(255,255,255,0.1); }
     </style>
 </head>
 <body>
     
-    <!-- 过渡遮罩层 -->
+    <!-- 普通过渡 (正常档案) -->
     <div id="transition-overlay">
         <div class="loader-content">
             <i class="fas fa-circle-notch fa-spin loader-icon"></i>
-            <div class="loader-text">
-                访问终端中<span class="dots"></span>
-            </div>
+            <div class="loader-text">访问终端中<span class="dots"></span></div>
         </div>
+    </div>
+
+   <!-- 高墙特效 (伪装 -> 故障 -> 眼睛 -> 吞噬) -->
+    <div id="hw-overlay">
+        <!-- 1. 伪装层 -->
+        <div class="hw-normal-content" id="hw-content">
+            <i class="fas fa-circle-notch fa-spin loader-icon" id="hw-icon"></i>
+            <div class="loader-text" id="hw-text">访问高墙文件<span class="dots"></span></div>
+        </div>
+
+        <!-- 2. 故障层 -->
+        <div class="hw-scanlines" id="hw-scanlines"></div>
+        
+        <!-- 3. 眼睛层 (背景将是纯黑) -->
+        <div class="hw-eye-layer" id="hw-eye-layer">
+            <svg class="hw-eye-svg" id="hw-eye-icon" viewBox="0 0 100 90">
+                <path d="M5 45 Q 50 5 95 45 Q 50 85 5 45 Z" fill="#000" stroke="#00f3ff" stroke-width="3"/>
+                <circle cx="50" cy="45" r="16" fill="#00f3ff" opacity="0.8" />
+                <path d="M50 30 Q 54 45 50 60 Q 46 45 50 30 Z" fill="#fff" />
+            </svg>
+        </div>
+        
+        <!-- 4. 暗影触手层 (新增) -->
+        <div class="hw-tentacles-layer" id="hw-tentacles"></div>
+
+        <!-- 5. 最终熄灭层 (用于平滑过渡) -->
+        <div id="hw-blackout"></div>
     </div>
 
     <div class="container">
@@ -673,6 +563,20 @@
                 <button class="btn btn-console" id="btnConsole" style="display:none;" onclick="goConsole()"><i class="fas fa-cog"></i> <span>控制台</span></button>
                 <button class="btn btn-logout" onclick="logout()"><i class="fas fa-sign-out-alt"></i> <span>退出</span></button>
                 <button class="btn btn-new" onclick="createNew()"><i class="fas fa-plus"></i> <span class="btn-text">新建档案</span></button>
+                <!-- 修改: 移除行内style, 添加class -->
+				<button class="btn btn-new" onclick="createNew()" title="新建档案">
+                    <i class="fas fa-plus"></i> <span class="btn-text">新建</span>
+                </button>
+                <button class="btn btn-highwall" onclick="enterHighWall()" title="高墙文件">
+                    <i class="fas fa-file-shield"></i> <span class="btn-text">高墙</span>
+                </button>
+                <button class="btn btn-console" id="btnConsole" style="display:none;" onclick="goConsole()" title="管理台">
+                    <i class="fas fa-cog"></i> <span class="btn-text" id="btnConsoleText">控制台</span>
+                </button>
+                <button class="btn btn-logout" onclick="logout()" title="登出">
+                    <i class="fas fa-sign-out-alt"></i> <span class="btn-text">退出</span>
+                </button>
+
             </div>
             <!-- 移动端菜单按钮 -->
             <button class="menu-toggle" onclick="toggleSideMenu()">
@@ -713,69 +617,16 @@
         </div>
     </div>
 
-    <!-- 授权模态框 -->
+    <!-- 授权/分享模态框 -->
     <div class="modal-overlay" id="authModal">
         <div class="modal">
             <h3><i class="fas fa-key"></i> 生成授权码</h3>
-            <div class="modal-content">
-                <p style="font-size:13px;color:#64748b;margin-bottom:15px;">生成授权码后，经理可以通过该码获得此角色卡的编辑权限。</p>
-                <div id="authCodeDisplay" class="code-display" style="display:none;">
-                    <p style="font-size:11px;color:#94a3b8;margin:0 0 10px;">授权码</p>
-                    <code id="authCode"></code>
-                </div>
-                <div id="authLinkDisplay" class="code-display link" style="display:none;">
-                    <p style="font-size:11px;color:#94a3b8;margin:0 0 10px;">授权链接</p>
-                    <code id="authLink"></code>
-                </div>
+            <div id="authCodeDisplay" style="background:#f8f9fa;padding:15px;text-align:center;margin:15px 0;border-radius:6px;font-family:monospace;color:var(--signal-red);">
+                <code id="authCode">Generating...</code>
             </div>
-            <div class="modal-btns" id="authBtns">
-                <button class="btn-cancel" onclick="closeModal('authModal')">关闭</button>
-                <button class="btn-confirm" id="btnGenAuth" onclick="generateAuthCode()">生成授权码</button>
-            </div>
-            <div class="modal-btns" id="authCopyBtns" style="display:none;">
-                <button class="btn-cancel" onclick="closeModal('authModal')">关闭</button>
-                <button class="btn-copy" onclick="copyAuthCode()"><i class="fas fa-copy"></i> 复制授权码</button>
-                <button class="btn-copy" onclick="copyAuthLink()"><i class="fas fa-link"></i> 复制链接</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- 分享模态框 -->
-    <div class="modal-overlay" id="shareModal">
-        <div class="modal">
-            <h3><i class="fas fa-share-alt"></i> 分享角色卡</h3>
-            <div class="modal-content" id="shareSetup">
-                <p style="font-size:13px;color:#64748b;margin-bottom:15px;">生成分享链接，任何人都可以通过链接查看此角色卡（只读）。</p>
-                <div class="option-row">
-                    <div>
-                        <div class="option-label">密码保护</div>
-                        <div class="option-desc">需要输入密码才能查看</div>
-                    </div>
-                    <label class="switch">
-                        <input type="checkbox" id="shareNeedPwd" onchange="togglePwdInput()">
-                        <span class="slider"></span>
-                    </label>
-                </div>
-                <div id="sharePwdRow" style="display:none;margin-top:15px;">
-                    <input type="password" class="modal-input" id="sharePwd" placeholder="设置查看密码">
-                </div>
-            </div>
-            <div class="modal-content" id="shareResult" style="display:none;">
-                <div class="code-display link">
-                    <p style="font-size:11px;color:#94a3b8;margin:0 0 10px;">分享链接</p>
-                    <code id="shareLink"></code>
-                </div>
-                <p id="sharePwdHint" style="font-size:12px;color:#94a3b8;text-align:center;display:none;">
-                    <i class="fas fa-lock"></i> 已设置密码保护
-                </p>
-            </div>
-            <div class="modal-btns" id="shareBtns">
-                <button class="btn-cancel" onclick="closeModal('shareModal')">取消</button>
-                <button class="btn-confirm" onclick="createShare()">生成链接</button>
-            </div>
-            <div class="modal-btns" id="shareCopyBtns" style="display:none;">
-                <button class="btn-cancel" onclick="closeModal('shareModal')">关闭</button>
-                <button class="btn-copy" onclick="copyShareLink()"><i class="fas fa-copy"></i> 复制链接</button>
+            <div style="display:flex;gap:10px;">
+                <button style="flex:1;padding:10px;border:none;background:#ecf0f1;cursor:pointer;" onclick="document.getElementById('authModal').classList.remove('show')">关闭</button>
+                <button style="flex:1;padding:10px;border:none;background:var(--signal-red);color:white;cursor:pointer;" onclick="copyAuthCode()">复制</button>
             </div>
         </div>
     </div>
@@ -788,15 +639,11 @@
         const userRole = parseInt(localStorage.getItem('ta_role') || '0');
         if(!uid) window.location.href = 'login.html';
 
-        let currentCharId = null;
-
-        // 根据角色显示控制台按钮
         (function initConsoleButton() {
             const btnConsole = document.getElementById('btnConsole');
             const menuConsole = document.getElementById('menuConsole');
 
             if (userRole >= 2) {
-                // 超级管理员 - 紫色按钮
                 btnConsole.style.display = 'inline-flex';
                 btnConsole.classList.add('admin');
                 btnConsole.innerHTML = '<i class="fas fa-shield-alt"></i> <span>管理台</span>';
@@ -805,8 +652,8 @@
                 menuConsole.classList.remove('console');
                 menuConsole.classList.add('admin');
                 menuConsole.innerHTML = '<i class="fas fa-shield-alt"></i> <span>管理台</span>';
+                btnConsole.innerHTML = '<i class="fas fa-shield-alt"></i> <span class="btn-text">管理台</span>';
             } else if (userRole >= 1) {
-                // 经理 - 蓝色按钮
                 btnConsole.style.display = 'inline-flex';
                 btnConsole.innerHTML = '<i class="fas fa-user-tie"></i> <span>经理台</span>';
                 // 移动端菜单
@@ -834,13 +681,111 @@
             } else if (userRole >= 1) {
                 window.location.href = 'manager.html';
             }
+                btnConsole.innerHTML = '<i class="fas fa-user-tie"></i> <span class="btn-text">经理台</span>';
+            }
+        })();
+
+        // === 高墙特效逻辑 (V1 优化版) ===
+        function enterHighWall() {
+            const overlay = document.getElementById('hw-overlay');
+            const icon = document.getElementById('hw-icon');
+            const text = document.getElementById('hw-text');
+            const scanlines = document.getElementById('hw-scanlines');
+            const eyeLayer = document.getElementById('hw-eye-layer');
+            const eyeIcon = document.getElementById('hw-eye-icon');
+            const tentaclesLayer = document.getElementById('hw-tentacles');
+            const blackout = document.getElementById('hw-blackout');
+            
+            // 阶段 1: 伪装 (0s - 1.0s)
+            overlay.classList.add('active');
+            
+            // 阶段 2: 故障 (1.0s)
+            setTimeout(() => {
+                icon.classList.remove('fa-spin');
+                icon.style.transform = 'rotate(160deg)';
+                
+                setTimeout(() => {
+                    icon.className = 'fas fa-exclamation-triangle loader-icon';
+                    icon.style.color = '#ff0000';
+                    text.style.color = '#ff0000';
+                    text.style.fontFamily = 'monospace';
+                    text.innerHTML = 'SYSTEM FAILURE /// 0xFF'; 
+                    overlay.classList.add('glitch-mode');
+                    scanlines.style.display = 'block';
+                }, 100);
+            }, 1000);
+
+            // 阶段 3: 凝视 (1.5s) - 眼睛在黑暗中睁开
+            setTimeout(() => {
+                overlay.classList.remove('glitch-mode');
+                scanlines.style.display = 'none';
+                document.getElementById('hw-content').style.display = 'none';
+                
+                eyeLayer.style.opacity = '1';
+                
+                setTimeout(() => {
+                    eyeIcon.classList.add('eye-open');
+                }, 100);
+
+            }, 1500);
+
+            // 阶段 4: 吞噬 (1.9s) - 触手开始蔓延
+            setTimeout(() => {
+                eyeIcon.classList.add('scared');
+
+                tentaclesLayer.innerHTML = ''; 
+                const count = 20;
+                for (let i = 0; i < count; i++) {
+                    const div = document.createElement('div');
+                    div.className = 'tendril';
+                    
+                    const deg = i * (360 / count);
+                    div.style.setProperty('--r', `${deg}deg`);
+                    
+                    div.style.animationDelay = `${Math.random() * 0.4}s`;
+                    
+                    tentaclesLayer.appendChild(div);
+                    
+                    requestAnimationFrame(() => div.classList.add('creeping'));
+                }
+            }, 1900);
+
+            // 阶段 5: 熄灭 & 跳转 (4.5s)
+            setTimeout(() => {
+                blackout.classList.add('active');
+                setTimeout(() => {
+                    window.location.href = 'documents.html';
+                }, 500);
+            }, 2500);
         }
 
-        function getAuthHeaders() {
-            return {
-                'Content-Type': 'application/json',
-                'Authorization': token ? `Bearer ${token}` : ''
-            };
+        function goConsole() {
+            const overlay = document.getElementById('transition-overlay');
+            const loaderText = overlay.querySelector('.loader-text');
+
+            // 更改加载文本
+            if (loaderText) {
+                loaderText.innerHTML = '授权认证中<span class="dots"></span>';
+            }
+
+            // 激活过渡动画
+            overlay.classList.add('active');
+
+            // 在动画播放后跳转页面
+            setTimeout(() => {
+                if (userRole >= 2) {
+                    window.location.href = 'admin.html';
+                } else if (userRole >= 1) {
+                    window.location.href = 'manager.html';
+                }
+            }, 1200); // 延迟与打开档案的动画时间一致
+        }
+
+        function logout() {
+            localStorage.removeItem('ta_uid');
+            localStorage.removeItem('ta_token');
+            localStorage.removeItem('ta_role');
+            window.location.href = 'login.html';
         }
 
         function showToast(msg, success = false) {
@@ -852,7 +797,11 @@
 
         async function loadList() {
             try {
-                const res = await fetch(`/api/characters?userId=${uid}`);
+                const res = await fetch(`/api/characters?userId=${uid}`, { headers: {'Authorization': `Bearer ${token}`} });
+                if (res.status === 401) { // 如果token失效，自动登出
+                    logout();
+                    return;
+                }
                 const list = await res.json();
                 const container = document.getElementById('list');
                 container.innerHTML = '';
@@ -862,32 +811,26 @@
                     return;
                 }
 
-                list.forEach(c => {
+				list.forEach(c => {
                     const el = document.createElement('div');
                     el.className = 'char-card';
 
+                    /* === START: 需要添加的代码 === */
+                    // 为动画设置随机的 CSS 变量
                     el.style.setProperty('--r1', Math.random());
                     el.style.setProperty('--r2', Math.random());
                     el.style.setProperty('--r3', Math.random());
-
+                    /* === END: 需要添加的代码 === */
+                    
                     el.innerHTML = `
                         <div class="card-tools">
-                            <button class="tool-btn" onclick="openAuthModal(event, '${c.id}')" title="生成授权码给经理">
-                                <i class="fas fa-key"></i> 授权
-                            </button>
-                            <button class="tool-btn" onclick="openShareModal(event, '${c.id}')" title="分享给他人查看">
-                                <i class="fas fa-share-alt"></i> 分享
-                            </button>
-                            <button class="tool-btn" onclick="exportCard(event, '${c.id}')" title="导出为图片">
-                                <i class="fas fa-image"></i> 导出
-                            </button>
+                            <button class="tool-btn" onclick="openAuthModal(event, '${c.id}')"><i class="fas fa-key"></i> 授权</button>
+                            <button class="tool-btn" onclick="delChar(event, '${c.id}')"><i class="fas fa-trash"></i></button>
                         </div>
                         <div class="card-content-wrapper" onclick="openSheet(event, '${c.id}')">
-                            <div class="card-header">
-                                <span class="c-name">${c.name}</span>
-                            </div>
+                            <div class="card-header"><span class="c-name">${c.name}</span></div>
                             <div class="info-group">
-                                <div class="info-field if-anom">
+							<div class="info-field if-anom">
                                     <span class="field-label">
                                         <i class="fas fa-bolt anim-flicker"></i> 异常 // ANOMALY
                                     </span>
@@ -899,7 +842,7 @@
                                     </span>
                                     <span class="field-val">${c.real}</span>
                                 </div>
-                                <div class="info-field if-func">
+								<div class="info-field if-func">
                                     <span class="field-label">
                                         <i class="fas fa-briefcase anim-float"></i> 职能 // COMPETENCY
                                     </span>
@@ -907,187 +850,101 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="c-actions">
-                            <button class="btn-del" onclick="delChar(event, '${c.id}')">销毁档案</button>
-                        </div>
                     `;
                     container.appendChild(el);
                 });
-            } catch(e) { console.error(e); }
-        }
-
-        // 模态框控制
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('show');
-            // 重置状态
-            if (id === 'authModal') {
-                document.getElementById('authCodeDisplay').style.display = 'none';
-                document.getElementById('authLinkDisplay').style.display = 'none';
-                document.getElementById('authBtns').style.display = 'flex';
-                document.getElementById('authCopyBtns').style.display = 'none';
+            } catch(e) { 
+                console.error("加载列表失败:", e);
+                showToast("无法连接至服务器");
             }
-            if (id === 'shareModal') {
-                document.getElementById('shareSetup').style.display = 'block';
-                document.getElementById('shareResult').style.display = 'none';
-                document.getElementById('shareBtns').style.display = 'flex';
-                document.getElementById('shareCopyBtns').style.display = 'none';
-                document.getElementById('shareNeedPwd').checked = false;
-                document.getElementById('sharePwdRow').style.display = 'none';
-                document.getElementById('sharePwd').value = '';
-            }
-        }
-
-        // 授权功能
-        function openAuthModal(event, id) {
-            event.stopPropagation();
-            currentCharId = id;
-            document.getElementById('authModal').classList.add('show');
-        }
-
-        async function generateAuthCode() {
-            if (!currentCharId) return;
-            const btn = document.getElementById('btnGenAuth');
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-
-            try {
-                const res = await fetch(`/api/character/${currentCharId}/auth-code`, {
-                    method: 'POST',
-                    headers: getAuthHeaders()
-                });
-                const data = await res.json();
-
-                if (data.success) {
-                    document.getElementById('authCode').textContent = data.authCode;
-                    document.getElementById('authLink').textContent = `${location.origin}/manager.html?auth=${data.authCode}`;
-                    document.getElementById('authCodeDisplay').style.display = 'block';
-                    document.getElementById('authLinkDisplay').style.display = 'block';
-                    document.getElementById('authBtns').style.display = 'none';
-                    document.getElementById('authCopyBtns').style.display = 'flex';
-                } else {
-                    showToast(data.message || '生成失败');
-                }
-            } catch (e) {
-                showToast('生成失败');
-            }
-            btn.innerHTML = '生成授权码';
-        }
-
-        function copyAuthCode() {
-            const code = document.getElementById('authCode').textContent;
-            navigator.clipboard.writeText(code).then(() => showToast('授权码已复制', true));
-        }
-
-        function copyAuthLink() {
-            const link = document.getElementById('authLink').textContent;
-            navigator.clipboard.writeText(link).then(() => showToast('链接已复制', true));
-        }
-
-        // 分享功能
-        function openShareModal(event, id) {
-            event.stopPropagation();
-            currentCharId = id;
-            document.getElementById('shareModal').classList.add('show');
-        }
-
-        function togglePwdInput() {
-            const checked = document.getElementById('shareNeedPwd').checked;
-            document.getElementById('sharePwdRow').style.display = checked ? 'block' : 'none';
-        }
-
-        async function createShare() {
-            if (!currentCharId) return;
-            const needPwd = document.getElementById('shareNeedPwd').checked;
-            const password = needPwd ? document.getElementById('sharePwd').value : null;
-
-            if (needPwd && !password) {
-                showToast('请设置密码');
-                return;
-            }
-
-            try {
-                const res = await fetch(`/api/character/${currentCharId}/share`, {
-                    method: 'POST',
-                    headers: getAuthHeaders(),
-                    body: JSON.stringify({ password })
-                });
-                const data = await res.json();
-
-                if (data.success) {
-                    document.getElementById('shareLink').textContent = `${location.origin}/share.html?code=${data.shareCode}`;
-                    document.getElementById('shareSetup').style.display = 'none';
-                    document.getElementById('shareResult').style.display = 'block';
-                    document.getElementById('shareBtns').style.display = 'none';
-                    document.getElementById('shareCopyBtns').style.display = 'flex';
-                    document.getElementById('sharePwdHint').style.display = data.hasPassword ? 'block' : 'none';
-                } else {
-                    showToast(data.message || '生成失败');
-                }
-            } catch (e) {
-                showToast('生成失败');
-            }
-        }
-
-        function copyShareLink() {
-            const link = document.getElementById('shareLink').textContent;
-            navigator.clipboard.writeText(link).then(() => showToast('链接已复制', true));
-        }
-
-        // 导出图片
-        function exportCard(event, id) {
-            event.stopPropagation();
-            window.open(`card-export.html?id=${id}`, '_blank');
-        }
-
-        function openSheet(event, id) {
-            event.preventDefault(); 
-            
-            const card = event.currentTarget.closest('.char-card');
-            if(card) {
-                card.classList.add('accessing');
-            }
-
-            const overlay = document.getElementById('transition-overlay');
-            overlay.classList.add('active');
-
-            // 修改点：延迟从 800ms 延长到 1600ms，等待动画充分展示
-            setTimeout(() => {
-                window.location.href = `sheet.html?id=${id}`;
-            }, 1200); 
         }
 
         async function createNew() {
             const btn = document.querySelector('.btn-new');
             const original = btn.innerHTML;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 处理中';
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            btn.disabled = true;
             try {
                 const res = await fetch('/api/character', {
                     method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
                     body: JSON.stringify({ userId: uid })
                 });
+                if (res.status === 401) { logout(); return; }
                 const data = await res.json();
                 if(data.success) {
+                    // 恢复默认加载文本
+                    const defaultLoaderText = document.querySelector('#transition-overlay .loader-text');
+                    if (defaultLoaderText) {
+                        defaultLoaderText.innerHTML = '访问终端中<span class="dots"></span>';
+                    }
                     const overlay = document.getElementById('transition-overlay');
                     overlay.classList.add('active');
-                    // 同样延长
-                    setTimeout(() => {
-                        window.location.href = `sheet.html?id=${data.id}`;
-                    }, 1200);
+                    setTimeout(() => window.location.href = `sheet.html?id=${data.id}`, 1200);
                 }
-            } catch(e) { btn.innerHTML = original; }
-        }
-        
-        async function delChar(event, id) {
-            event.stopPropagation();
-            if(!confirm('警告：此操作不可逆。\n确定要销毁这份档案吗？')) return;
-            await fetch(`/api/character/${id}`, { method: 'DELETE' });
-            loadList();
+            } catch(e) { 
+                btn.innerHTML = original; 
+                btn.disabled = false;
+            }
         }
 
-        function logout() {
-            localStorage.removeItem('ta_uid');
-            window.location.href = 'login.html';
+        function openSheet(event, id) {
+            event.preventDefault();
+            // 恢复默认加载文本
+            const defaultLoaderText = document.querySelector('#transition-overlay .loader-text');
+            if (defaultLoaderText) {
+                defaultLoaderText.innerHTML = '访问终端中<span class="dots"></span>';
+            }
+            const card = event.currentTarget.closest('.char-card');
+            if(card) card.classList.add('accessing');
+            const overlay = document.getElementById('transition-overlay');
+            overlay.classList.add('active');
+            setTimeout(() => window.location.href = `sheet.html?id=${id}`, 1200);
         }
+
+        let currentAuthId = null;
+        async function openAuthModal(e, id) {
+            e.stopPropagation();
+            currentAuthId = id;
+            document.getElementById('authCode').textContent = 'Loading...';
+            document.getElementById('authModal').classList.add('show');
+            try {
+                const res = await fetch(`/api/character/${id}/auth-code`, { 
+                    method: 'POST', 
+                    headers: {'Authorization': `Bearer ${token}`} 
+                });
+                if (res.status === 401) { logout(); return; }
+                const data = await res.json();
+                document.getElementById('authCode').textContent = data.authCode || 'Error';
+            } catch(e) { document.getElementById('authCode').textContent = 'Failed'; }
+        }
+        function copyAuthCode() {
+            const code = document.getElementById('authCode').textContent;
+            if(navigator.clipboard && code) {
+                navigator.clipboard.writeText(code).then(() => {
+                    showToast('已复制', true);
+                });
+            }
+        }
+        async function delChar(e, id) {
+            e.stopPropagation();
+            if(!confirm('确定销毁档案？此操作不可逆。')) return;
+            try {
+                const res = await fetch(`/api/character/${id}`, { 
+                    method: 'DELETE',
+                    headers: {'Authorization': `Bearer ${token}`}
+                });
+                if (res.status === 401) { logout(); return; }
+                showToast("档案已销毁", true);
+                loadList();
+            } catch(e) {
+                showToast("销毁失败");
+            }
+        }
+
         loadList();
     </script>
 </body>
