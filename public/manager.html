@@ -2256,17 +2256,19 @@
                 <span class="branch-name"><i class="fas fa-building"></i> <span id="branchNameDisplay">--</span></span>
                 <span class="branch-scatter">总逸散端: <span id="branchScatterDisplay">0</span></span>
             </div>
-
-            <!-- 管理台 (仅 Role=2 显示) -->
-            <button class="btn-nav admin" id="deskBtnAdmin" onclick="goAdmin()" style="display:none;">
-                <i class="fas fa-shield-alt"></i> 管理台
-            </button>
-            
+			
             <!-- 收件箱 -->
             <button class="btn-nav inbox" onclick="openInboxModal()">
                 <i class="fas fa-envelope"></i> 收件箱
                 <span class="inbox-badge" id="inboxBadge">0</span>
             </button>
+			
+            <!-- 管理台 (仅 Role=2 显示) -->
+            <button class="btn-nav admin" id="deskBtnAdmin" onclick="goAdmin()" style="display:none;">
+                <i class="fas fa-shield-alt"></i> 管理台
+            </button>
+            
+
 
             <!-- 档案库 -->
             <button class="btn-nav archive" onclick="goToDashboard()">
