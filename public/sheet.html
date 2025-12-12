@@ -972,6 +972,26 @@
                 text-overflow: ellipsis;
             }
         }
+		
+/* =========================================
+   邮箱标签页移动端图标模式补丁
+   ========================================= */
+@media (max-width: 768px) {
+    /* 1. 隐藏所有标签页按钮内的文字 */
+    .mail-tab span {
+        display: none;
+    }
+
+    /* 2. 移除图标右侧的间距 */
+    .mail-tab i {
+        margin-right: 0;
+    }
+    
+    /* 3. 让图标在按钮内水平居中 */
+    .mail-tab {
+        justify-content: center;
+    }
+}
 </style>
 </head>
 <body>
@@ -1052,12 +1072,12 @@
     </div>
     <div class="mail-modal-body">
         <div class="mail-container-inner">
-            <div class="mail-tabs">
-                <button class="mail-tab active" onclick="switchMailTab('inbox')"><i class="fas fa-inbox"></i> 收件箱</button>
-                <button class="mail-tab" onclick="switchMailTab('sent')"><i class="fas fa-paper-plane"></i> 已发邮件</button>
-                <button class="mail-tab" onclick="switchMailTab('compose')"><i class="fas fa-pen"></i> 写信</button>
-                <button class="mail-tab" id="tab-highwall" onclick="switchMailTab('highwall')" style="display:none;"><i class="fas fa-file-shield"></i> 高墙文件</button>
-            </div>
+			<div class="mail-tabs">
+				<button class="mail-tab active" onclick="switchMailTab('inbox')"><i class="fas fa-inbox"></i><span>收件箱</span></button>
+				<button class="mail-tab" onclick="switchMailTab('sent')"><i class="fas fa-paper-plane"></i><span>已发邮件</span></button>
+				<button class="mail-tab" onclick="switchMailTab('compose')"><i class="fas fa-pen"></i><span>写信</span></button>
+				<button class="mail-tab" id="tab-highwall" onclick="switchMailTab('highwall')" style="display:none;"><i class="fas fa-file-shield"></i><span>高墙文件</span></button>
+			</div>
             <div class="mail-content" id="mailContent">
                 <div class="mail-empty">
                     <i class="fas fa-envelope-open"></i>
@@ -1870,6 +1890,15 @@ async function sendContainment() {
     }
 }
 
+function closeSuccessModal() {
+    const modal = document.getElementById('reportSuccessModal');
+    if (modal) {
+        modal.classList.remove('show');
+    }
+}
+
+
+
 async function sendReport() {
     const reportData = {
         status: {
@@ -1910,18 +1939,31 @@ async function sendReport() {
     try {
         const res = await fetch(`/api/character/${charId}/send-report`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
+            headers: getAuthHeaders(),
             body: JSON.stringify(reportData)
         });
 
-        if (!res.ok) throw new Error('提交失败');
-
-        showToast('任务报告已提交', 'success');
+        if (!res.ok) {
+            if (res.status === 409) {
+                 const errorData = await res.json();
+                 showToast(errorData.message || '您已提交过报告', 'error');
+            } else {
+                throw new Error('提交失败，请稍后重试');
+            }
+        } else {
+            // 提交成功！显示弹窗并设置延时关闭
+            const modal = document.getElementById('reportSuccessModal');
+            if (modal) {
+                modal.classList.add('show');
+                
+                // 设置一个 2.5 秒的计时器，之后自动调用关闭函数
+                setTimeout(() => {
+                    closeSuccessModal();
+                }, 2500); 
+            }
+        }
     } catch (e) {
-        showToast('提交失败: ' + e.message, 'error');
+        showToast(e.message, 'error');
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-paper-plane"></i> 提交报告';
@@ -2579,8 +2621,178 @@ function escapeHtmlText(text) {
     .record-meta { font-size: 11px; color: rgba(255,255,255,0.5); }
     .record-meta i { margin-right: 4px; }
     .record-empty { text-align: center; padding: 30px 20px; color: rgba(255,255,255,0.5); }
+/* =========================================
+   报告提交成功 - 动态红勾动画样式 (V2.2)
+   ========================================= */
+.transition-overlay { 
+    position: fixed; top: 0; left: 0; 
+    width: 100vw; height: 100vh; 
+    background: #0f172a; 
+    z-index: 6000;
+    clip-path: inset(50% 0 50% 0); 
+    pointer-events: none;
+    transition: clip-path 0.8s cubic-bezier(0.8, 0, 0.2, 1); 
+    display: flex; 
+    flex-direction: column; 
+    justify-content: center; 
+    align-items: center; 
+}
+.transition-overlay.active { 
+    pointer-events: all; 
+    clip-path: inset(0 0 0 0); 
+}
+.transition-overlay::before { 
+    content: ''; position: absolute; top: 50%; left: 0; 
+    width: 100%; height: 2px; background: var(--signal-red); 
+    z-index: 100; box-shadow: 0 0 15px var(--signal-red); 
+    opacity: 0; transition: opacity 0.2s; 
+}
+.transition-overlay.active::before { 
+    opacity: 1; animation: line-fade 0.8s forwards; 
+}
+@keyframes line-fade { 
+    0% { opacity: 1; transform: scaleX(0.1); } 
+    50% { opacity: 1; transform: scaleX(1); } 
+    100% { opacity: 0; transform: scaleX(1); } 
+}
+.transition-overlay .loader-content { 
+    text-align: center; color: var(--signal-red); 
+    opacity: 0; transform: scale(0.9); 
+    transition: all 0.4s ease 0.2s; 
+}
+.transition-overlay.active .loader-content { 
+    opacity: 1; transform: scale(1); 
+}
+.transition-overlay .loader-text { 
+    font-family: "Noto Sans SC", sans-serif; 
+    font-size: 16px; letter-spacing: 2px; font-weight: 900; 
+    display: flex; align-items: center; justify-content: center; 
+}
+.transition-overlay .dots::after { 
+    content: ''; width: 1.5em; text-align: left; 
+    display: inline-block; animation: dot-steps 1.5s infinite steps(4, end); 
+}
+@keyframes dot-steps { 
+    0%, 20% { content: ''; } 40% { content: '.'; } 60% { content: '..'; } 80%, 100% { content: '...'; } 
+}
+
+/* --- SVG 动态红勾动画 --- */
+.success-icon-wrapper { 
+    width: 80px; 
+    height: 80px; 
+    margin: 0 auto 20px; /* 调整与文字的间距 */
+}
+.checkmark { 
+    width: 100%; height: 100%; 
+    display: block; 
+    stroke-width: 2.5; 
+    stroke-miterlimit: 10; 
+}
+.checkmark__circle {
+    stroke-dasharray: 166; stroke-dashoffset: 166;
+    stroke-width: 2.5; fill: none;
+    /* 关键修改：圆圈也使用红色 */
+    stroke: var(--signal-red);
+    animation: stroke 0.8s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+.checkmark__check {
+    transform-origin: 50% 50%;
+    stroke-dasharray: 48; stroke-dashoffset: 48;
+    /* 关键修改：对勾使用红色 */
+    stroke: var(--signal-red);
+    animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+}
+@keyframes stroke {
+    100% { stroke-dashoffset: 0; }
+}
+
+/* =========================================
+   任务报告提交成功 - 动态弹窗样式 (V2.1 - 自动消失)
+   ========================================= */
+.success-modal-overlay {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(15, 23, 42, 0.8);
+    backdrop-filter: blur(5px);
+    z-index: 6000;
+    display: none;
+    align-items: center; justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.success-modal-overlay.show {
+    display: flex;
+    opacity: 1;
+}
+
+.success-modal-box {
+    background: rgba(15, 25, 45, 0.95);
+    border: 1px solid rgba(192, 57, 43, 0.3);
+    padding: 30px 40px;
+    border-radius: 12px;
+    text-align: center;
+    box-shadow: 0 0 40px rgba(192, 57, 43, 0.2), inset 0 0 20px rgba(192, 57, 43, 0.1);
+    transform: scale(0.8) translateY(20px);
+    opacity: 0;
+    animation: success-swoop-in 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+}
+@keyframes success-swoop-in {
+    to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+.success-modal-box h3 {
+    margin: 20px 0 5px; font-size: 18px; font-weight: 700;
+    color: #e0f0ff; letter-spacing: 1px;
+}
+/* 关键修改：移除了p标签的下边距 */
+.success-modal-box p {
+    margin: 0; font-size: 13px; color: #6090b0;
+}
+
+/* --- SVG 动画样式 --- */
+.success-modal-icon { width: 80px; height: 80px; margin: 0 auto; }
+.checkmark { width: 100%; height: 100%; display: block; stroke-width: 2.5; stroke-miterlimit: 10; }
+.checkmark__circle {
+    stroke-dasharray: 166; stroke-dashoffset: 166;
+    stroke-width: 2.5; fill: none;
+    /* 修改：将描边从渐变改为红色变量 */
+    stroke: var(--signal-red); 
+    animation: stroke 0.8s cubic-bezier(0.65, 0, 0.45, 1) forwards;
+}
+.checkmark__check {
+    transform-origin: 50% 50%;
+    stroke-dasharray: 48; stroke-dashoffset: 48;
+    /* 保持红色 */
+    stroke: var(--signal-red); 
+    animation: stroke 0.3s cubic-bezier(0.65, 0, 0.45, 1) 0.8s forwards;
+}
+@keyframes stroke {
+    100% { stroke-dashoffset: 0; }
+}
+
 </style>
 <div class="nav-arrow arrow-left" onclick="moveTab(-1)"><i class="fas fa-caret-left"></i></div>
 <div class="nav-arrow arrow-right" onclick="moveTab(1)"><i class="fas fa-caret-right"></i></div>
+
+<!-- =========================================
+     报告提交成功 
+     ========================================= -->
+<div id="reportSuccessModal" class="success-modal-overlay">
+    <div class="success-modal-box">
+        <div class="success-modal-icon">
+            <svg class="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+                <defs>
+                    <linearGradient id="gradient-circle" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#3498db; stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#c0392b; stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <circle class="checkmark__circle" cx="26" cy="26" r="25" fill="none"/>
+                <path class="checkmark__check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+            </svg>
+        </div>
+        <h3>任务报告已提交</h3>
+    </div>
+</div>
 </body>
 </html>
