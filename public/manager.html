@@ -2311,7 +2311,7 @@
             </div>
 
             <!-- 档案库 -->
-            <div class="menu-item archive" onclick="goToDashboard()">
+            <div class="menu-item archive" onclick="closeSideMenu(); goToDashboard();">
                 <i class="fas fa-folder"></i> 档案库
             </div>
 
@@ -2791,10 +2791,10 @@
         createTransition('权限认证中', 'admin.html');
     }
 
-    // 覆盖原有的 goToDashboard (使用过渡动画)
     function goToDashboard() {
         createTransition('档案读取中', 'dashboard.html');
     }
+	
     function getAuthHeaders() {
         return {
             'Content-Type': 'application/json',
@@ -2807,23 +2807,6 @@
         toast.textContent = msg;
         toast.className = 'toast show' + (success ? ' success' : '');
         setTimeout(() => toast.classList.remove('show'), 3000);
-    }
-    
-    // 新增：跳转到Dashboard的函数
-    function goToDashboard() {
-        const overlay = document.getElementById('transition-overlay');
-        const loaderText = document.getElementById('transition-text');
-
-        // 设置指定的加载文本
-        loaderText.innerHTML = '档案读取中<span class="dots"></span>';
-        
-        // 激活过渡动画
-        overlay.classList.add('active');
-
-        // 动画播放后跳转
-        setTimeout(() => {
-            window.location.href = 'dashboard.html';
-        }, 1200);
     }
 
     // 加载已授权的角色
