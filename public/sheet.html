@@ -139,9 +139,11 @@
         transition: clip-path 0.55s cubic-bezier(0.7, 0, 0.2, 1);
         will-change: clip-path;
         box-shadow: inset 0 0 150px rgba(0,0,0,0.8);
+        pointer-events: none; /* 关闭时不接收点击 */
     }
     .mission-full-modal.active {
         clip-path: inset(0 0 0 0);
+        pointer-events: auto; /* 打开时接收点击 */
     }
     /* 扫描线背景 */
     .mission-full-modal::before {
@@ -318,6 +320,7 @@
         display: none;
         position: fixed;
         top: 0; left: 0; right: 0; bottom: 0;
+        pointer-events: auto;
         background: rgba(0,0,0,0.6);
         z-index: 9999;
         justify-content: center;
@@ -370,7 +373,8 @@
     /* Swiper 调整：宽度改为500%因为有5页了（档案、异常、关系、物品、商店） */
     .swiper-container { flex-grow: 1; width: 100%; overflow: hidden; position: relative; }
     .swiper-wrapper { display: flex; width: 500%; height: 100%; transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1); }
-    .tab-view { width: 20%; height: 100%; overflow-y: auto; display: block !important; padding-right: 5px; padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 60px); -ms-overflow-style: none; scrollbar-width: none; }
+    .tab-view { width: 20%; height: 100%; overflow-y: auto; display: block; padding-right: 5px; padding-bottom: calc(var(--nav-height) + var(--safe-bottom) + 60px); -ms-overflow-style: none; scrollbar-width: none; flex-shrink: 0; }
+    .tab-view.hidden { display: none !important; }
     .tab-view::-webkit-scrollbar { display: none; }
     
     .panel, .card { background: var(--panel-bg); border-radius: 6px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); padding: 20px; margin-bottom: 16px; border: 1px solid var(--border-color); position: relative; overflow: hidden; z-index: 1; }
@@ -482,6 +486,7 @@
         background: rgba(15, 23, 42, 0.98);
         z-index: 5000;
         flex-direction: column;
+        pointer-events: none; /* 关闭时不接收点击 */
 
         /* 关键：使用 inset 裁剪，模拟从右上角(0,0)展开的矩形闸门 */
         /* 初始状态：上0，右0，下100%(切掉底部)，左100%(切掉左侧) -> 实际上是一个右上角的点 */
@@ -500,6 +505,7 @@
     .full-page-modal.active {
         /* 展开状态：完全无裁剪 */
         clip-path: inset(0 0 0 0);
+        pointer-events: auto; /* 打开时接收点击 */
     }
 
     /* 增加一个扫描线背景层，增强科技感 */
@@ -2051,7 +2057,30 @@ function switchView(id, btn) {
     }
 }
 function moveTab(dir) { const n=currentTab+dir; if(n>=0&&n<tabOrder.length){currentTab=n;updateSwiper(); if(tabOrder[currentTab]==='view-shop')loadShopView();} }
-function updateSwiper() { swiperWrapper.style.transform=`translateX(-${currentTab*20}%)`; navBtns.forEach((b,i)=>{if(i===currentTab)b.classList.add('active');else b.classList.remove('active');}); document.querySelectorAll('.tab-view')[currentTab].scrollTop=0; const l=document.querySelector('.arrow-left'), r=document.querySelector('.arrow-right'); if(l&&r){ if(currentTab===0)l.classList.add('disabled');else l.classList.remove('disabled'); if(currentTab===tabOrder.length-1)r.classList.add('disabled');else r.classList.remove('disabled');} }
+function updateSwiper() {
+    // 根据可见页面数量计算百分比
+    const tabPercent = 100 / tabOrder.length;
+    swiperWrapper.style.transform = `translateX(-${currentTab * tabPercent}%)`;
+
+    // 更新导航按钮状态（只更新可见的按钮）
+    const visibleNavBtns = Array.from(navBtns).filter(b => b.style.display !== 'none');
+    visibleNavBtns.forEach((b, i) => {
+        if (i === currentTab) b.classList.add('active');
+        else b.classList.remove('active');
+    });
+
+    // 滚动到顶部（使用 tabOrder 找到正确的元素）
+    const currentViewId = tabOrder[currentTab];
+    const currentView = document.getElementById(currentViewId);
+    if (currentView) currentView.scrollTop = 0;
+
+    // 更新箭头状态
+    const l = document.querySelector('.arrow-left'), r = document.querySelector('.arrow-right');
+    if (l && r) {
+        if (currentTab === 0) l.classList.add('disabled'); else l.classList.remove('disabled');
+        if (currentTab === tabOrder.length - 1) r.classList.add('disabled'); else r.classList.remove('disabled');
+    }
+}
 let touchStartX=0, touchStartY=0, isSwipingDisabled=false; const minSwipe=60, container=document.getElementById('swiperContainer');
 container.addEventListener('touchstart',e=>{ const t=e.target; if(t.tagName.toLowerCase()==='input'||t.tagName.toLowerCase()==='textarea'||t.isContentEditable||t.tagName.toLowerCase()==='select'){isSwipingDisabled=true;}else{isSwipingDisabled=false;touchStartX=e.changedTouches[0].screenX;touchStartY=e.changedTouches[0].screenY;}},{passive:true});
 container.addEventListener('touchend',e=>{ if(isSwipingDisabled)return; const x=e.changedTouches[0].screenX, y=e.changedTouches[0].screenY; handleSwipe(x,y);},{passive:true});
@@ -2110,7 +2139,58 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         catch(e) { if(!document.getElementById('list-anom').children.length) addAnom(null, false); if(!document.getElementById('list-real').children.length) document.getElementById('list-real').appendChild(addReal()); if(!document.getElementById('list-item').children.length) addItem(null, false); }
     }
+
+    // 设置全局自动保存：监听所有输入变化
+    setupAutoSave();
 });
+
+// 设置自动保存事件监听
+function setupAutoSave() {
+    // 监听所有 input 和 textarea 的变化
+    document.querySelectorAll('input, textarea, select').forEach(el => {
+        // 排除搜索框和临时输入
+        if (el.id === 'jsonInput' || el.classList.contains('no-autosave')) return;
+
+        el.addEventListener('input', triggerAutoSave);
+        el.addEventListener('change', triggerAutoSave);
+    });
+
+    // 监听所有 contenteditable 元素的变化
+    document.querySelectorAll('[contenteditable="true"]').forEach(el => {
+        el.addEventListener('input', triggerAutoSave);
+        el.addEventListener('blur', triggerAutoSave);
+    });
+
+    // 监听动态添加的卡片（异常、关系、物品）
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+                if (node.nodeType === 1) { // Element node
+                    // 为新添加的输入元素绑定自动保存
+                    node.querySelectorAll?.('input, textarea, select').forEach(el => {
+                        if (!el.classList.contains('no-autosave')) {
+                            el.addEventListener('input', triggerAutoSave);
+                            el.addEventListener('change', triggerAutoSave);
+                        }
+                    });
+                    node.querySelectorAll?.('[contenteditable="true"]').forEach(el => {
+                        el.addEventListener('input', triggerAutoSave);
+                        el.addEventListener('blur', triggerAutoSave);
+                    });
+                }
+            });
+        });
+    });
+
+    // 观察列表容器的变化
+    ['list-anom', 'list-real', 'list-item'].forEach(id => {
+        const container = document.getElementById(id);
+        if (container) {
+            observer.observe(container, { childList: true, subtree: true });
+        }
+    });
+}
+
 if (isReadOnly) {
     document.body.classList.add('readonly-mode');
     document.addEventListener('DOMContentLoaded', () => {
@@ -2181,6 +2261,29 @@ let canSendMessages = true; // 是否有发信权限（经理可控制）
 
 // 任务和经理信息
 let missionInfo = { inMission: false, missions: [], managers: [] };
+
+// 职能进度嘉奖跟踪（本地记录，保存时合并到rewards数组）
+let funcProgressRewards = [];
+
+// 自动保存相关
+let autoSaveTimer = null;
+let isPopulating = false; // 数据加载中标志，防止加载时触发保存
+const AUTO_SAVE_DELAY = 800; // 800ms 延迟，避免频繁保存
+
+function triggerAutoSave() {
+    if (isReadOnly || isPopulating) return;
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+    autoSaveTimer = setTimeout(() => {
+        saveData(true); // silent save
+    }, AUTO_SAVE_DELAY);
+}
+
+// 立即保存（不延迟）
+function saveImmediately() {
+    if (isReadOnly || isPopulating) return;
+    if (autoSaveTimer) clearTimeout(autoSaveTimer);
+    saveData(true);
+}
 
 // 点击任务按钮切换全屏模态框
 function toggleMissionPanel() {
@@ -2277,6 +2380,7 @@ async function loadMissionInfo() {
     if (!charId || !token) {
         updateMissionButtonContent();
         renderMissionModalContent();
+        updateUIForManagerStatus(); // 更新无经理状态的UI
         return;
     }
 
@@ -2292,13 +2396,112 @@ async function loadMissionInfo() {
             updateMissionButton();
             updateMissionButtonContent();
             renderMissionModalContent(); // 重新渲染模态框内容
+            updateUIForManagerStatus(); // 根据是否有经理更新UI
         } else {
             if (content) content.textContent = '加载失败';
+            updateUIForManagerStatus();
         }
     } catch (e) {
         console.error('加载任务信息失败:', e);
         if (content) content.textContent = '加载失败';
+        updateUIForManagerStatus();
     }
+}
+
+// 根据是否有经理绑定来更新UI
+function updateUIForManagerStatus() {
+    const hasManager = missionInfo.managers && missionInfo.managers.length > 0;
+
+    // 更新槽位限制：无经理时设为无限
+    if (!hasManager) {
+        SLOT_LIMITS.anomSlots = 999;
+        SLOT_LIMITS.realSlots = 999;
+    }
+
+    // 更新商店标签显示
+    const shopNavBtn = document.querySelector('.nav-btn.n-shop');
+    const shopView = document.getElementById('view-shop');
+    if (shopNavBtn) {
+        shopNavBtn.style.display = hasManager ? '' : 'none';
+    }
+    if (shopView) {
+        if (hasManager) {
+            shopView.classList.remove('hidden');
+        } else {
+            shopView.classList.add('hidden');
+        }
+    }
+
+    // 调整swiper布局（4个或5个标签）
+    const swiperWrapper = document.getElementById('swiperWrapper');
+    // 只选择可见的tab-view
+    const visibleTabViews = Array.from(document.querySelectorAll('.tab-view')).filter(v => !v.classList.contains('hidden'));
+
+    if (!hasManager) {
+        // 4个标签，每个25%
+        if (swiperWrapper) swiperWrapper.style.width = '400%';
+        visibleTabViews.forEach(v => v.style.width = '25%');
+        // 移除商店标签从tabOrder
+        if (tabOrder.includes('view-shop')) {
+            tabOrder.splice(tabOrder.indexOf('view-shop'), 1);
+        }
+    } else {
+        // 5个标签，每个20%
+        if (swiperWrapper) swiperWrapper.style.width = '500%';
+        document.querySelectorAll('.tab-view').forEach(v => v.style.width = '20%');
+        // 确保商店标签在tabOrder中
+        if (!tabOrder.includes('view-shop')) {
+            tabOrder.push('view-shop');
+        }
+    }
+
+    // 更新添加按钮状态
+    updateSlotButtons();
+
+    // 更新自由编辑模式
+    updateFreeEditMode(hasManager);
+
+    // 重新计算swiper位置
+    updateSwiper();
+}
+
+// 无经理时启用自由编辑模式（MVP、嘉奖、申诫、查看期）
+function updateFreeEditMode(hasManager) {
+    const fields = ['pComm', 'mvpCount', 'watchCount', 'pRep'];
+
+    fields.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            if (!hasManager && !isReadOnly) {
+                // 无经理且非只读模式：可编辑
+                el.removeAttribute('readonly');
+                el.style.cursor = 'text';
+                el.style.backgroundColor = '#fff';
+                // 添加自动保存监听（避免重复添加）
+                if (!el.dataset.autoSaveEnabled) {
+                    el.addEventListener('input', triggerAutoSave);
+                    el.addEventListener('change', triggerAutoSave);
+                    el.addEventListener('blur', saveImmediately); // 失去焦点时立即保存
+                    el.dataset.autoSaveEnabled = 'true';
+                }
+            } else {
+                // 有经理或只读模式：不可编辑
+                el.setAttribute('readonly', 'readonly');
+                el.style.cursor = 'default';
+                el.style.backgroundColor = '';
+            }
+        }
+    });
+
+    // 无经理时隐藏点击查看历史的提示（因为没有经理发放记录）
+    const clickableStats = document.querySelectorAll('.clickable-stat');
+    clickableStats.forEach(stat => {
+        if (!hasManager) {
+            stat.classList.remove('clickable-stat');
+            stat.style.cursor = 'default';
+            stat.onclick = null;
+        }
+    });
 }
 
 function updateMissionButton() {
@@ -3510,6 +3713,7 @@ function initAttrs(){
             const newCurrent = newMax - markedCount;
             i.value = `${newCurrent}/${newMax}`;
             renderDotsNew(a, newMax);
+            triggerAutoSave();
         };
 
         d.querySelector('.attr-btn-plus').onclick = () => {
@@ -3522,6 +3726,7 @@ function initAttrs(){
             const newCurrent = newMax - markedCount;
             i.value = `${newCurrent}/${newMax}`;
             renderDotsNew(a, newMax);
+            triggerAutoSave();
         };
 
         // 输入框变化时更新点
@@ -3577,6 +3782,7 @@ function initAttrs(){
                     i.value = `${newCurrent}/${idx}`;
                     renderDotsNew(a, idx);
                 }
+                triggerAutoSave();
             };
         });
     });
@@ -3639,6 +3845,7 @@ function deleteCard(btn, type) {
     if(!confirm('确定删除?')) return;
     btn.parentElement.remove();
     updateSlotButtons();
+    triggerAutoSave();
 }
 
 // 更新添加按钮状态
@@ -3649,29 +3856,38 @@ function updateSlotButtons() {
     const btnAddAnom = document.querySelector('#view-anom .btn-add');
     const btnAddReal = document.querySelector('#view-real .btn-add');
 
+    // 检查是否有经理（槽位999表示无限制）
+    const hasNoLimit = SLOT_LIMITS.anomSlots >= 999;
+
     if (btnAddAnom) {
-        if (anomCount >= SLOT_LIMITS.anomSlots) {
+        if (!hasNoLimit && anomCount >= SLOT_LIMITS.anomSlots) {
             btnAddAnom.disabled = true;
             btnAddAnom.innerHTML = `<i class="fas fa-lock"></i> 已满 (${anomCount}/${SLOT_LIMITS.anomSlots})`;
             btnAddAnom.style.opacity = '0.5';
             btnAddAnom.style.cursor = 'not-allowed';
         } else {
             btnAddAnom.disabled = false;
-            btnAddAnom.innerHTML = `<i class="fas fa-plus"></i> 添加 (${anomCount}/${SLOT_LIMITS.anomSlots})`;
+            // 无限制时不显示槽位数
+            btnAddAnom.innerHTML = hasNoLimit
+                ? `<i class="fas fa-plus"></i> 添加`
+                : `<i class="fas fa-plus"></i> 添加 (${anomCount}/${SLOT_LIMITS.anomSlots})`;
             btnAddAnom.style.opacity = '1';
             btnAddAnom.style.cursor = 'pointer';
         }
     }
 
     if (btnAddReal) {
-        if (realCount >= SLOT_LIMITS.realSlots) {
+        if (!hasNoLimit && realCount >= SLOT_LIMITS.realSlots) {
             btnAddReal.disabled = true;
             btnAddReal.innerHTML = `<i class="fas fa-lock"></i> 已满 (${realCount}/${SLOT_LIMITS.realSlots})`;
             btnAddReal.style.opacity = '0.5';
             btnAddReal.style.cursor = 'not-allowed';
         } else {
             btnAddReal.disabled = false;
-            btnAddReal.innerHTML = `<i class="fas fa-plus"></i> 添加 (${realCount}/${SLOT_LIMITS.realSlots})`;
+            // 无限制时不显示槽位数
+            btnAddReal.innerHTML = hasNoLimit
+                ? `<i class="fas fa-plus"></i> 添加`
+                : `<i class="fas fa-plus"></i> 添加 (${realCount}/${SLOT_LIMITS.realSlots})`;
             btnAddReal.style.opacity = '1';
             btnAddReal.style.cursor = 'pointer';
         }
@@ -3752,7 +3968,7 @@ function addItem(d=null, prepend=false){const div=document.createElement('div');
 
 function get3Sq(){return` <div class="sq-dot"></div><div class="sq-dot"></div><div class="sq-dot"></div> `;}
 function get9Dots(){return Array(9).fill(0).map((_,i)=>`<div class="dot" data-i="${i+1}"></div>`).join('');}
-function setupSq(div){div.querySelectorAll('.sq-dot').forEach(d=>d.onclick=()=>{if(!isReadOnly)d.classList.toggle('active');});}
+function setupSq(div){div.querySelectorAll('.sq-dot').forEach(d=>d.onclick=()=>{if(!isReadOnly){d.classList.toggle('active');triggerAutoSave();}});}
 
 function addRealSafe() {
     const card = addReal(null, false);
@@ -3760,7 +3976,7 @@ function addRealSafe() {
         document.getElementById('list-real').appendChild(card);
     }
 }
-function setupRDots(div){const d=div.querySelectorAll('.r-dots .dot');d.forEach(dot=>{dot.onclick=()=>{if(isReadOnly)return;const idx=parseInt(dot.dataset.i);d.forEach((dd,i)=>{if(i<idx)dd.classList.add('active');else dd.classList.remove('active');});}});}
+function setupRDots(div){const d=div.querySelectorAll('.r-dots .dot');d.forEach(dot=>{dot.onclick=()=>{if(isReadOnly)return;const idx=parseInt(dot.dataset.i);d.forEach((dd,i)=>{if(i<idx)dd.classList.add('active');else dd.classList.remove('active');});triggerAutoSave();}});}
 function fillAnom(div,d){div.querySelector('.f-name').value=d.name||'';div.querySelector('.f-trig').value=d.trig||'';div.querySelector('.f-qual').value=d.qual||'';div.querySelector('.f-succ').innerHTML=d.succ||'';div.querySelector('.f-fail').innerHTML=d.fail||'';if(d.chk)div.querySelector('.f-chk').checked=d.chk;if(d.tdesc)div.querySelector('.f-tdesc').value=d.tdesc;if(d.t1)div.querySelector('.f-t1').value=d.t1;if(d.t1v)div.querySelector('.f-t1-val').value=d.t1v;if(d.t2)div.querySelector('.f-t2').value=d.t2;if(d.t2v)div.querySelector('.f-t2-val').value=d.t2v;if(d.p1)div.querySelectorAll('.d1 .sq-dot').forEach((e,i)=>{if(d.p1[i])e.classList.add('active')});if(d.p2)div.querySelectorAll('.d2 .sq-dot').forEach((e,i)=>{if(d.p2[i])e.classList.add('active')});}
 
 function fillReal(div, d) {
@@ -3780,8 +3996,115 @@ function fillReal(div, d) {
     });
 }
 
-document.querySelectorAll('.p-cell').forEach(c=>{c.addEventListener('click',()=>{if(isReadOnly)return;if(c.classList.contains('active')){c.classList.remove('active');c.classList.add('ignored');}else if(c.classList.contains('ignored')){c.classList.remove('ignored');}else{c.classList.add('active');}});c.addEventListener('contextmenu',(e)=>{e.preventDefault();if(isReadOnly)return;c.classList.remove('active');c.classList.add('ignored');});});
+document.querySelectorAll('.p-cell').forEach(c=>{
+    c.addEventListener('click',()=>{
+        if(isReadOnly)return;
+        const isFCell = c.classList.contains('f-cell');
+        const isRCell = c.classList.contains('r-cell');
+        const isACell = c.classList.contains('a-cell');
+        const hasManager = missionInfo.managers && missionInfo.managers.length > 0;
+
+        if(c.classList.contains('active')){
+            c.classList.remove('active');
+            c.classList.add('ignored');
+            // 职能进度从红色变灰色时，减少3嘉奖
+            if(isFCell && hasManager){
+                updateFuncProgressReward(c.dataset.idx, -3);
+            }
+        }else if(c.classList.contains('ignored')){
+            c.classList.remove('ignored');
+        }else{
+            c.classList.add('active');
+            // 职能进度变红色时，增加3嘉奖
+            if(isFCell && hasManager){
+                updateFuncProgressReward(c.dataset.idx, 3);
+            }
+            // 有经理时，点击一个轨道使其他两个轨道的最后一格变灰
+            if(hasManager) {
+                ignoreLastCellOfOtherTracks(isFCell, isRCell, isACell);
+            }
+        }
+        // 职能进度改变时立即保存，其他进度延迟保存
+        if(isFCell && hasManager) {
+            saveImmediately();
+        } else {
+            triggerAutoSave();
+        }
+    });
+    c.addEventListener('contextmenu',(e)=>{
+        e.preventDefault();
+        if(isReadOnly)return;
+        const isFCell = c.classList.contains('f-cell');
+        const hasManager = missionInfo.managers && missionInfo.managers.length > 0;
+        const wasActive = c.classList.contains('active');
+
+        // 如果从红色变灰色，减少嘉奖
+        if(wasActive && isFCell && hasManager){
+            updateFuncProgressReward(c.dataset.idx, -3);
+        }
+        c.classList.remove('active');
+        c.classList.add('ignored');
+        // 职能进度改变时立即保存，其他进度延迟保存
+        if(wasActive && isFCell && hasManager) {
+            saveImmediately();
+        } else {
+            triggerAutoSave();
+        }
+    });
+});
+
+// 有经理时，点击一个轨道让其他两个轨道的最后一个非灰色格子变灰
+function ignoreLastCellOfOtherTracks(isFCell, isRCell, isACell) {
+    const trackTypes = [];
+    if(!isFCell) trackTypes.push('f-cell');
+    if(!isRCell) trackTypes.push('r-cell');
+    if(!isACell) trackTypes.push('a-cell');
+
+    trackTypes.forEach(trackClass => {
+        // 获取该轨道所有格子
+        const cells = Array.from(document.querySelectorAll(`.p-cell.${trackClass}`));
+
+        // 按data-idx排序（大到小），从最高索引开始找
+        cells.sort((a, b) => parseInt(b.dataset.idx) - parseInt(a.dataset.idx));
+
+        // 找到最后一个非灰色(非ignored)的格子，让它变灰
+        for(const cell of cells) {
+            if(!cell.classList.contains('ignored')) {
+                cell.classList.remove('active'); // 如果是激活状态先移除
+                cell.classList.add('ignored');
+                break; // 只处理一个格子
+            }
+        }
+    });
+}
+
+// 更新职能进度嘉奖
+function updateFuncProgressReward(cellIdx, amount) {
+    const mvpCountEl = document.getElementById('mvpCount');
+    let currentVal = parseInt(mvpCountEl.value) || 0;
+    currentVal += amount;
+    if(currentVal < 0) currentVal = 0;
+    mvpCountEl.value = currentVal;
+
+    // 记录到本地数组
+    if(amount > 0) {
+        // 添加嘉奖记录
+        funcProgressRewards.push({
+            cellIdx: cellIdx,
+            count: amount,
+            date: new Date().toISOString(),
+            reason: '消耗时间在职能上'
+        });
+    } else {
+        // 移除对应的嘉奖记录
+        const idx = funcProgressRewards.findIndex(r => r.cellIdx === cellIdx);
+        if(idx !== -1) {
+            funcProgressRewards.splice(idx, 1);
+        }
+    }
+}
 function populateData(d){
+    isPopulating = true; // 防止加载数据时触发自动保存
     SLOT_LIMITS.anomSlots = d.anomSlots || 3;
     SLOT_LIMITS.realSlots = d.realSlots || 3;
     ['pName','pTrig1','pTrig2','pTrig3','perm1','perm2','perm3','pComm','pRep','mvpCount','watchCount','noteTitle','noteBody'].forEach(id=>{const e=document.getElementById(id);if(d[id]&&e){if(e.tagName==='DIV')e.innerHTML=d[id];else e.value=d[id];}});
@@ -3833,6 +4156,14 @@ function populateData(d){
     if(!document.getElementById('list-real').children.length){const card = addReal(null, true); if(card) document.getElementById('list-real').appendChild(card);}
     if(!document.getElementById('list-item').children.length)addItem(null, false);
     (d.pf||[]).forEach(i=>document.querySelector(`.f-cell[data-idx="${i}"]`)?.classList.add('active'));(d.pr||[]).forEach(i=>document.querySelector(`.r-cell[data-idx="${i}"]`)?.classList.add('active'));(d.pa||[]).forEach(i=>document.querySelector(`.a-cell[data-idx="${i}"]`)?.classList.add('active'));(d.pf_ign||[]).forEach(i=>document.querySelector(`.f-cell[data-idx="${i}"]`)?.classList.add('ignored'));(d.pr_ign||[]).forEach(i=>document.querySelector(`.r-cell[data-idx="${i}"]`)?.classList.add('ignored'));(d.pa_ign||[]).forEach(i=>document.querySelector(`.a-cell[data-idx="${i}"]`)?.classList.add('ignored'));
+
+    // 恢复职能进度嘉奖跟踪数组（用于后续保存时比对）
+    funcProgressRewards = (d.funcProgressRewardIds || []).map(cellIdx => ({
+        cellIdx: cellIdx,
+        count: 3,
+        reason: '消耗时间在职能上'
+    }));
+
     updateSlotButtons();
 
     // 处理发信权限
@@ -3841,6 +4172,8 @@ function populateData(d){
     if (composeTab) {
         composeTab.style.display = canSendMessages ? '' : 'none';
     }
+
+    isPopulating = false; // 数据加载完成，允许自动保存
 }
 function gatherData(){
     const d={
@@ -3861,8 +4194,11 @@ function gatherData(){
         noteTitle:document.getElementById('noteTitle').value,
         noteBody:document.getElementById('noteBody').innerHTML,
         qs:[],attrs:{},anoms:[],reals:[],items:[],pf:[],pr:[],pa:[],pf_ign:[],pr_ign:[],pa_ign:[],
-        anomSlots:SLOT_LIMITS.anomSlots,
-        realSlots:SLOT_LIMITS.realSlots
+        // 无经理时（槽位999）不保存槽位限制，保持默认值
+        anomSlots: SLOT_LIMITS.anomSlots >= 999 ? 3 : SLOT_LIMITS.anomSlots,
+        realSlots: SLOT_LIMITS.realSlots >= 999 ? 3 : SLOT_LIMITS.realSlots,
+        // 职能进度嘉奖（需要服务器合并到rewards数组）
+        funcProgressRewards: funcProgressRewards
     };
     for(let i=1;i<=8;i++)d.qs.push(document.getElementById(`q${i}`).innerHTML);
     // 保存属性数据 - 新格式，同时兼容旧格式v字段
@@ -3894,7 +4230,7 @@ function showToast(msg, type='success') {
     m.style.display = 'block';
     setTimeout(() => m.style.display = 'none', 2500);
 }
-async function saveData(silent=false){if(isReadOnly)return;const d=gatherData();const res=await fetch(`/api/character/${charId}`,{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(d)});if(res.ok){if(!silent){showToast('DATA_SAVED', 'success');}}else if(res.status===401||res.status===403){window.location.href='login.html';}else{showToast('保存失败', 'error');}}
+async function saveData(silent=false){if(isReadOnly)return;const d=gatherData();const res=await fetch(`/api/character/${charId}`,{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(d)});if(res.ok){cachedRecords=null;if(!silent){showToast('DATA_SAVED', 'success');}}else if(res.status===401||res.status===403){window.location.href='login.html';}else{showToast('保存失败', 'error');}}
 function exportOffline(){const d=gatherData();let h=document.documentElement.outerHTML;h=h.replace(/<script id="__SAVED_DATA__" type="application\/json">.*?<\/script>/s,`<script id="__SAVED_DATA__" type="application/json">${JSON.stringify(d)}<\/script>`);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([h],{type:'text/html'}));a.download=`${d.pName||'角色'}_离线备份.html`;a.click();}
 
 function exportJson() {
@@ -4331,7 +4667,7 @@ function escapeHtmlText(text) {
     </div>
 </div>
 <style>
-    .record-history-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; }
+    .record-history-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 9999; display: flex; align-items: center; justify-content: center; pointer-events: auto; }
     .record-history-overlay { position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); }
     .record-history-box { position: relative; background: #2c3e50; border-radius: 8px; width: 90%; max-width: 400px; max-height: 70vh; display: flex; flex-direction: column; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
     .record-history-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }

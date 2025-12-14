@@ -1124,7 +1124,7 @@ app.get('/api/character/:id', optionalAuth, (req, res) => {
                     totalReprimands += parseInt(data.reprimands) || 0;
 
                     data.mvpCount = data.mvpCount || 0;
-                    data.watchCount = data.probationCount || 0;
+                    data.watchCount = data.watchCount || 0;
                     data.commendations = totalRewards;
                     data.reprimandsCount = totalReprimands;
                     // ===================== 核心修正 END ======================
@@ -1191,11 +1191,56 @@ app.put('/api/character/:id', optionalAuth, (req, res) => {
                 } catch (e) {}
 
                 // 合并数据，保留嘉奖/申诫记录
+                let rewards = existingData.rewards || [];
+                const reprimands = existingData.reprimands || [];
+
+                // 处理职能进度嘉奖：合并新的记录到rewards数组
+                // 重要：只有实际在pf（职能进度红格子）中的才算有效
+                const activeFuncCells = req.body.pf || []; // 当前实际的红色职能格子
+                const funcProgressRewards = req.body.funcProgressRewards || [];
+                const existingFuncRewardIds = existingData.funcProgressRewardIds || [];
+
+                // 只保留实际存在于pf中的funcProgressRewards
+                const validFuncRewards = funcProgressRewards.filter(fpr =>
+                    activeFuncCells.includes(parseInt(fpr.cellIdx)) || activeFuncCells.includes(fpr.cellIdx)
+                );
+                const currentFuncRewardIds = validFuncRewards.map(r => r.cellIdx);
+
+                // 添加新激活的格子的嘉奖
+                const existingFuncRewardIdsStr = existingFuncRewardIds.map(String);
+                validFuncRewards.forEach(fpr => {
+                    // 检查是否已存在（避免重复添加，统一转字符串比较）
+                    if (!existingFuncRewardIdsStr.includes(String(fpr.cellIdx))) {
+                        rewards.push({
+                            reason: fpr.reason || '消耗时间在职能上',
+                            count: fpr.count || 3,
+                            date: fpr.date || new Date().toISOString(),
+                            addedByName: '职能进度',
+                            funcCellIdx: fpr.cellIdx
+                        });
+                    }
+                });
+
+                // 移除已取消激活的格子的嘉奖（包括不在pf中的）
+                existingFuncRewardIds.forEach(cellIdx => {
+                    if (!currentFuncRewardIds.includes(cellIdx)) {
+                        // 找到并移除对应的嘉奖记录
+                        const idx = rewards.findIndex(r => r.funcCellIdx === cellIdx);
+                        if (idx !== -1) {
+                            rewards.splice(idx, 1);
+                        }
+                    }
+                });
+
                 const newData = {
                     ...req.body,
-                    rewards: existingData.rewards || [],
-                    reprimands: existingData.reprimands || []
+                    rewards: rewards,
+                    reprimands: reprimands,
+                    funcProgressRewardIds: currentFuncRewardIds
                 };
+
+                // 删除funcProgressRewards，不需要保存到数据
+                delete newData.funcProgressRewards;
 
                 db.run('UPDATE characters SET data = ? WHERE id = ?',
                     [JSON.stringify(newData), req.params.id],
@@ -3283,6 +3328,15 @@ app.post('/api/manager/mission/:id/report/:reportId/send', authenticateToken, re
     });
 });
 
+// 辅助函数：找到轨道中下一个空格子（1-30），避开已激活和已忽略的格子
+function findNextEmptyCell(activeCells, ignoredCells) {
+    const occupied = new Set([...(activeCells || []), ...(ignoredCells || [])].map(Number));
+    for (let i = 1; i <= 30; i++) {
+        if (!occupied.has(i)) return i;
+    }
+    return null; // 所有格子都被占用
+}
+
 // 发送初评（所有参与特工都收到通知，各自决定接受或申诉）
 app.post('/api/manager/mission/:id/report/:reportId/send-with-rewards', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
     const missionId = req.params.id;
@@ -3319,7 +3373,7 @@ app.post('/api/manager/mission/:id/report/:reportId/send-with-rewards', authenti
         // 检查是否已有其他报告在初审或最终确认状态（一个任务只能有一个正式报告）
         const existingProcessedReport = await new Promise((resolve, reject) => {
             db.get(`SELECT id, status FROM mission_reports
-                    WHERE mission_id = ? AND id != ? AND status IN ('initial', 'appealing', 'finalized')`,
+                    WHERE mission_id = ? AND id != ? AND status IN ('initial', 'appealing', 'finalized', 'sent')`,
                 [missionId, reportId], (err, row) => {
                     if (err) reject(err);
                     else resolve(row);
@@ -3327,8 +3381,12 @@ app.post('/api/manager/mission/:id/report/:reportId/send-with-rewards', authenti
         });
 
         if (existingProcessedReport) {
-            const statusText = existingProcessedReport.status === 'finalized' ? '已有最终确认的报告' :
-                existingProcessedReport.status === 'initial' ? '已有正在初审的报告' : '已有正在处理申诉的报告';
+            const statusText = {
+                'finalized': '已有最终确认的报告',
+                'sent': '已有已结算的报告',
+                'initial': '已有正在初审的报告',
+                'appealing': '已有正在处理申诉的报告'
+            }[existingProcessedReport.status] || '已有其他报告通过初审';
             return res.status(400).json({ success: false, message: `该任务${statusText}，无法对其他报告进行初审` });
         }
 
@@ -3635,9 +3693,33 @@ app.post('/api/character/:charId/accept-rating/:reportId', authenticateToken, as
                     targetCharData.watchCount = (parseInt(targetCharData.watchCount) || 0) + (rewards.reprimand || 0);
                     if (rewards.probation) {
                         targetCharData.pRep = (parseInt(targetCharData.pRep) || 0) + 1;
+                        // 察看期自动在异常轨道点1格（不需要从其他轨道移除）
+                        if (!Array.isArray(targetCharData.pa)) targetCharData.pa = [];
+                        const nextACell = findNextEmptyCell(targetCharData.pa, targetCharData.pa_ign || []);
+                        if (nextACell) {
+                            targetCharData.pa.push(nextACell);
+                        }
                     }
                     if (rewards.mvp) {
                         targetCharData.pComm = (parseInt(targetCharData.pComm) || 0) + 1;
+                        // MVP自动在职能轨道点1格（不需要从其他轨道移除）+ 自动3嘉奖
+                        if (!Array.isArray(targetCharData.pf)) targetCharData.pf = [];
+                        const nextFCell = findNextEmptyCell(targetCharData.pf, targetCharData.pf_ign || []);
+                        if (nextFCell) {
+                            targetCharData.pf.push(nextFCell);
+                            // 职能轨道自动+3嘉奖
+                            targetCharData.mvpCount = (parseInt(targetCharData.mvpCount) || 0) + 3;
+                            if (!Array.isArray(targetCharData.rewards)) targetCharData.rewards = [];
+                            targetCharData.rewards.push({
+                                reason: '消耗时间在职能上',
+                                count: 3,
+                                date: now,
+                                addedByName: '职能进度',
+                                funcCellIdx: nextFCell
+                            });
+                            if (!Array.isArray(targetCharData.funcProgressRewardIds)) targetCharData.funcProgressRewardIds = [];
+                            targetCharData.funcProgressRewardIds.push(nextFCell);
+                        }
                     }
 
                     // 同时添加记录到数组（用于查看历史）
@@ -3794,9 +3876,33 @@ app.post('/api/manager/mission/:id/report/:reportId/finalize', authenticateToken
                     charData.watchCount = (parseInt(charData.watchCount) || 0) + (rewards.reprimand || 0);
                     if (rewards.probation) {
                         charData.pRep = (parseInt(charData.pRep) || 0) + 1;
+                        // 察看期自动在异常轨道点1格（不需要从其他轨道移除）
+                        if (!Array.isArray(charData.pa)) charData.pa = [];
+                        const nextACell = findNextEmptyCell(charData.pa, charData.pa_ign || []);
+                        if (nextACell) {
+                            charData.pa.push(nextACell);
+                        }
                     }
                     if (rewards.mvp) {
                         charData.pComm = (parseInt(charData.pComm) || 0) + 1;
+                        // MVP自动在职能轨道点1格（不需要从其他轨道移除）+ 自动3嘉奖
+                        if (!Array.isArray(charData.pf)) charData.pf = [];
+                        const nextFCell = findNextEmptyCell(charData.pf, charData.pf_ign || []);
+                        if (nextFCell) {
+                            charData.pf.push(nextFCell);
+                            // 职能轨道自动+3嘉奖
+                            charData.mvpCount = (parseInt(charData.mvpCount) || 0) + 3;
+                            if (!Array.isArray(charData.rewards)) charData.rewards = [];
+                            charData.rewards.push({
+                                reason: '消耗时间在职能上',
+                                count: 3,
+                                date: now,
+                                addedByName: '职能进度',
+                                funcCellIdx: nextFCell
+                            });
+                            if (!Array.isArray(charData.funcProgressRewardIds)) charData.funcProgressRewardIds = [];
+                            charData.funcProgressRewardIds.push(nextFCell);
+                        }
                     }
 
                     // 同时添加记录到数组（用于查看历史）
