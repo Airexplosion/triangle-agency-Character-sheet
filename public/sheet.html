@@ -608,6 +608,224 @@
     .mail-time { font-size: 10px; color: #bdc3c7; margin-top: 8px; }
     .mail-empty { text-align: center; padding: 40px; color: #95a5a6; }
     .mail-empty i { font-size: 48px; margin-bottom: 15px; opacity: 0.5; }
+
+    /* === Siphon商店按钮（类似收件箱展开效果） === */
+    .siphon-expandable-btn {
+        position: relative;
+        font-size: 16px;
+        color: #9b59b6;
+        cursor: pointer;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        gap: 0;
+        padding: 6px 10px;
+        border-radius: 20px;
+        background: rgba(155, 89, 182, 0.1);
+        overflow: hidden;
+        max-width: 38px;
+        margin-right: 8px;
+    }
+    .siphon-expandable-btn .btn-icon {
+        flex-shrink: 0;
+        width: 18px;
+        text-align: center;
+    }
+    .siphon-expandable-btn .btn-content {
+        max-width: 0;
+        opacity: 0;
+        white-space: nowrap;
+        overflow: hidden;
+        font-size: 12px;
+        font-weight: bold;
+        transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        color: #9b59b6;
+    }
+    .siphon-expandable-btn:hover {
+        color: white;
+        background: linear-gradient(135deg, #9b59b6, #8e44ad);
+        max-width: 150px;
+        box-shadow: 0 4px 15px rgba(155, 89, 182, 0.4);
+    }
+    .siphon-expandable-btn:hover .btn-content {
+        max-width: 100px;
+        opacity: 1;
+        margin-left: 6px;
+        color: white;
+    }
+
+    /* === Siphon商店全屏模态框 === */
+    .zephyr-modal-header, .zephyr-modal-body {
+        opacity: 0;
+        transform: translateY(30px) scale(0.98);
+        transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .full-page-modal.active .zephyr-modal-header,
+    .full-page-modal.active .zephyr-modal-body {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        transition:
+            opacity 0.4s ease 0.3s,
+            transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s;
+    }
+    .zephyr-modal-header {
+        background: linear-gradient(135deg, #2c2042 0%, #1a1030 100%);
+        padding: 15px 20px;
+        display: flex; justify-content: space-between; align-items: center;
+        border-bottom: 3px solid #9b59b6;
+        color: white;
+        flex-shrink: 0;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+    }
+    .zephyr-modal-header h2 {
+        margin: 0; border: none; padding: 0; color: white;
+        font-family: "Roboto Mono", monospace;
+        letter-spacing: 1px;
+    }
+    .zephyr-currency-display {
+        display: flex; gap: 15px; margin-left: auto; margin-right: 20px;
+    }
+    .zephyr-currency-display .currency-badge {
+        display: flex; align-items: center; gap: 5px;
+        background: rgba(155, 89, 182, 0.2);
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        color: #bb8fce;
+    }
+    .btn-close-zephyr {
+        background: none; border: none; color: rgba(255,255,255,0.5);
+        font-size: 24px; cursor: pointer; transition: 0.3s;
+    }
+    .btn-close-zephyr:hover {
+        color: #9b59b6;
+        text-shadow: 0 0 10px #9b59b6;
+        transform: rotate(90deg) scale(1.1);
+    }
+    .zephyr-modal-body {
+        flex: 1;
+        padding: 20px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        background: linear-gradient(180deg, #1a1030 0%, #0f172a 100%);
+    }
+    .zephyr-items-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 15px;
+        max-width: 1200px;
+        margin: 0 auto;
+        width: 100%;
+    }
+    .zephyr-item-card {
+        background: linear-gradient(135deg, #2c2042, #1a1030);
+        border: 1px solid rgba(155, 89, 182, 0.3);
+        border-radius: 10px;
+        padding: 15px;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    .zephyr-item-card:hover {
+        transform: translateY(-3px);
+        border-color: #9b59b6;
+        box-shadow: 0 8px 25px rgba(155, 89, 182, 0.3);
+    }
+    .zephyr-item-title {
+        font-weight: bold;
+        color: #bb8fce;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+    .zephyr-item-desc {
+        font-size: 12px;
+        color: rgba(255,255,255,0.6);
+        margin-bottom: 10px;
+        line-height: 1.4;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+    }
+    .zephyr-price-options { display: flex; flex-wrap: wrap; gap: 8px; }
+    .zephyr-price-btn {
+        background: rgba(155, 89, 182, 0.2);
+        border: 1px solid rgba(155, 89, 182, 0.5);
+        border-radius: 6px;
+        padding: 6px 10px;
+        font-size: 11px;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: #bb8fce;
+        display: flex;
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 2px;
+    }
+    .zephyr-price-btn:hover:not(.disabled) {
+        background: rgba(155, 89, 182, 0.4);
+        border-color: #9b59b6;
+    }
+    .zephyr-price-btn.disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    .zephyr-price-btn .price-name { font-weight: bold; }
+    .zephyr-price-btn .price-cost { color: #f39c12; }
+    .zephyr-price-btn .price-usage { font-size: 10px; color: rgba(255,255,255,0.5); }
+    .zephyr-empty {
+        text-align: center;
+        padding: 60px;
+        color: rgba(155, 89, 182, 0.6);
+        grid-column: 1 / -1;
+    }
+    .zephyr-empty i { font-size: 48px; margin-bottom: 15px; opacity: 0.5; }
+
+    /* Siphon商店详情弹窗紫色主题 */
+    .zephyr-detail .shop-detail-header.zephyr-header {
+        background: linear-gradient(135deg, #9b59b6, #8e44ad);
+    }
+    .zephyr-detail .shop-detail-price-btn {
+        background: rgba(155, 89, 182, 0.1);
+        border-color: rgba(155, 89, 182, 0.3);
+    }
+    .zephyr-detail .shop-detail-price-btn:hover:not(.disabled) {
+        background: rgba(155, 89, 182, 0.2);
+        border-color: #9b59b6;
+    }
+    .zephyr-detail .shop-detail-price-cost {
+        color: #9b59b6;
+    }
+
+    /* === 进度追踪自定义编辑模式按钮 === */
+    .btn-track-custom {
+        background: rgba(52, 152, 219, 0.1);
+        border: 1px solid rgba(52, 152, 219, 0.3);
+        color: #3498db;
+        padding: 4px 8px;
+        border-radius: 6px;
+        font-size: 12px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-left: 10px;
+        vertical-align: middle;
+    }
+    .btn-track-custom:hover {
+        background: rgba(52, 152, 219, 0.2);
+        border-color: #3498db;
+        transform: scale(1.05);
+    }
+    .btn-track-custom.active {
+        background: linear-gradient(135deg, #3498db, #2980b9);
+        color: white;
+        border-color: transparent;
+        box-shadow: 0 2px 10px rgba(52, 152, 219, 0.4);
+    }
+    .btn-track-custom.active:hover {
+        background: linear-gradient(135deg, #2980b9, #1f6dad);
+        box-shadow: 0 4px 15px rgba(52, 152, 219, 0.5);
+    }
+
     /* 高墙文件夹样式 */
     .hw-folder { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; }
     .hw-file { background: linear-gradient(135deg, #2c3e50, #34495e); border-radius: 8px; padding: 20px 15px; text-align: center; cursor: pointer; transition: all 0.3s; color: white; }
@@ -1561,6 +1779,181 @@
     margin-bottom: 20px;
     font-size: 13px;
 }
+
+/* 申领物详情弹窗 */
+.shop-detail-modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    backdrop-filter: blur(3px);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+}
+.shop-detail-modal.show {
+    display: flex;
+}
+.shop-detail-box {
+    background: white;
+    border-radius: 12px;
+    width: 90%;
+    max-width: 450px;
+    max-height: 80vh;
+    overflow: hidden;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    animation: shopDetailSlideIn 0.3s ease;
+}
+@keyframes shopDetailSlideIn {
+    from { opacity: 0; transform: scale(0.9) translateY(20px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.shop-detail-header {
+    background: linear-gradient(135deg, #f39c12, #e67e22);
+    color: white;
+    padding: 18px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.shop-detail-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 700;
+}
+.shop-detail-close {
+    background: none;
+    border: none;
+    color: white;
+    font-size: 22px;
+    cursor: pointer;
+    opacity: 0.8;
+    transition: all 0.2s;
+}
+.shop-detail-close:hover {
+    opacity: 1;
+    transform: scale(1.1);
+}
+.shop-detail-body {
+    padding: 20px;
+    overflow-y: auto;
+    max-height: calc(80vh - 130px);
+}
+.shop-detail-section {
+    margin-bottom: 20px;
+}
+.shop-detail-section:last-child {
+    margin-bottom: 0;
+}
+.shop-detail-section h4 {
+    font-size: 11px;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 10px;
+}
+.shop-detail-desc {
+    font-size: 14px;
+    color: #444;
+    line-height: 1.7;
+    white-space: pre-wrap;
+}
+.shop-detail-prices {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+.shop-detail-price-btn {
+    background: white;
+    border: 2px solid #f39c12;
+    color: #e67e22;
+    padding: 12px 16px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: all 0.2s;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.shop-detail-price-btn:hover {
+    background: #fff3cd;
+    transform: translateX(5px);
+}
+.shop-detail-price-btn.disabled {
+    border-color: #ccc;
+    color: #999;
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+.shop-detail-price-btn.disabled:hover {
+    background: white;
+    transform: none;
+}
+.shop-detail-price-info {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+}
+.shop-detail-price-name {
+    font-weight: bold;
+}
+.shop-detail-price-usage {
+    font-size: 10px;
+    color: #888;
+    margin-top: 2px;
+}
+.shop-detail-price-cost {
+    font-weight: bold;
+    font-size: 14px;
+}
+.shop-detail-footer {
+    padding: 15px 20px;
+    background: #f8f9fa;
+    border-top: 1px solid #eee;
+    text-align: center;
+}
+.shop-detail-footer button {
+    padding: 10px 30px;
+    background: #ecf0f1;
+    border: none;
+    border-radius: 6px;
+    color: #555;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+.shop-detail-footer button:hover {
+    background: #dfe6e9;
+}
+
+/* 使商店卡片可点击 */
+.shop-item-card {
+    cursor: pointer;
+    position: relative;
+}
+.shop-item-card::after {
+    content: '';
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    font-family: 'Font Awesome 6 Free';
+    font-weight: 900;
+    content: '\f06e';
+    font-size: 12px;
+    color: #bbb;
+    opacity: 0;
+    transition: opacity 0.2s;
+}
+.shop-item-card:hover::after {
+    opacity: 1;
+}
+.shop-item-card:hover {
+    border-color: #f39c12;
+}
 </style>
 </head>
 <body>
@@ -1603,8 +1996,8 @@
 <div class="perm-note">如果你在单次任务中完成全部 3 项，将获得 3 点额外嘉奖。</div>
 </div>
 </div>
-<div class="panel">
-<h2><i class="fas fa-chart-bar"></i> 进度追踪</h2>
+<div class="panel" id="track-panel">
+<h2><i class="fas fa-chart-bar"></i> 进度追踪 <button id="trackCustomEditBtn" class="btn-track-custom" onclick="toggleTrackCustomMode()" title="自定义编辑模式"><i class="fas fa-wrench"></i></button></h2>
 <div class="track-header">
 <div class="track-stat"><label>MVP</label><input type="text" id="pComm" placeholder="0" readonly></div>
 <div class="track-stat clickable-stat" onclick="showRecordHistory('reward')"><label>嘉奖</label><input type="text" id="mvpCount" placeholder="0" readonly></div>
@@ -1633,8 +2026,11 @@
     <div class="shop-view-header">
         <h2><i class="fas fa-store"></i> 申领物商店</h2>
         <div class="shop-currency-display">
+            <div id="siphonShopBtn" class="siphon-expandable-btn" onclick="toggleZephyrShop()" style="display:none;">
+                <span class="btn-icon"><i class="fas fa-wind"></i></span>
+                <span class="btn-content">Siphon商店</span>
+            </div>
             <div class="currency-badge commend"><i class="fas fa-award"></i> <span id="shopViewCommend">0</span> 嘉奖</div>
-            <div class="currency-badge reprimand"><i class="fas fa-exclamation-triangle"></i> <span id="shopViewReprimand">0</span> 申诫</div>
         </div>
     </div>
     <div id="shopItemsList" class="shop-items-list">
@@ -1752,6 +2148,47 @@
                 <div class="mail-empty">
                     <i class="fas fa-envelope-open"></i>
                     <p>加载中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Siphon商店全屏模态框 -->
+<div id="zephyr-shop-modal" class="full-page-modal zephyr-modal">
+    <div class="zephyr-modal-header">
+        <h2><i class="fas fa-wind"></i> Siphon商店</h2>
+        <div class="zephyr-currency-display">
+            <div class="currency-badge reprimand"><i class="fas fa-exclamation-triangle"></i> <span id="zephyrReprimandCount">0</span> 申诫</div>
+        </div>
+        <button class="btn-close-zephyr" onclick="closeZephyrShop()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="zephyr-modal-body">
+        <div id="zephyrItemsList" class="zephyr-items-list">
+            <div class="zephyr-empty">
+                <i class="fas fa-wind"></i>
+                <p>加载中...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Siphon商店物品详情弹窗 -->
+<div id="zephyrDetailModal" class="shop-detail-modal zephyr-detail" onclick="if(event.target===this)closeZephyrDetail()">
+    <div class="shop-detail-box">
+        <div class="shop-detail-header zephyr-header">
+            <h3 id="zephyrDetailTitle">物品详情</h3>
+            <button class="shop-detail-close" onclick="closeZephyrDetail()">&times;</button>
+        </div>
+        <div class="shop-detail-body">
+            <div class="shop-detail-section">
+                <h4>物品描述</h4>
+                <div class="shop-detail-desc" id="zephyrDetailDesc">暂无描述</div>
+            </div>
+            <div class="shop-detail-section">
+                <h4>购买选项</h4>
+                <div class="shop-detail-prices" id="zephyrDetailPrices">
+                    <!-- 动态填充 -->
                 </div>
             </div>
         </div>
@@ -2265,10 +2702,27 @@ let missionInfo = { inMission: false, missions: [], managers: [] };
 // 职能进度嘉奖跟踪（本地记录，保存时合并到rewards数组）
 let funcProgressRewards = [];
 
+// 进度追踪自定义编辑模式（不触发自动嘉奖和轨道变灰）
+let isTrackCustomMode = false;
+
+function toggleTrackCustomMode() {
+    isTrackCustomMode = !isTrackCustomMode;
+    const btn = document.getElementById('trackCustomEditBtn');
+    if (isTrackCustomMode) {
+        btn.classList.add('active');
+        btn.title = '退出自定义编辑模式';
+        showToast('自定义编辑模式：点击不会自动添加嘉奖或影响其他轨道', 'info');
+    } else {
+        btn.classList.remove('active');
+        btn.title = '自定义编辑模式';
+        showToast('已退出自定义编辑模式', 'info');
+    }
+}
+
 // 自动保存相关
 let autoSaveTimer = null;
 let isPopulating = false; // 数据加载中标志，防止加载时触发保存
-const AUTO_SAVE_DELAY = 800; // 800ms 延迟，避免频繁保存
+const AUTO_SAVE_DELAY = 500; // 500ms 延迟，更实时的保存体验
 
 function triggerAutoSave() {
     if (isReadOnly || isPopulating) return;
@@ -2768,6 +3222,14 @@ function renderCompose(container) {
                 <p>填写并提交任务报告</p>
             </div>` : '';
 
+    // 发信选项 - 只有允许发信时才显示
+    const mailOption = canSendMessages ? `
+            <div class="outbox-option opt-mail" onclick="selectOutboxOption('mail')">
+                <i class="fas fa-envelope"></i>
+                <h4>发信</h4>
+                <p>给经理或队友发送消息</p>
+            </div>` : '';
+
     container.innerHTML = `
         <div class="outbox-options">
             <div class="outbox-option opt-containment" onclick="selectOutboxOption('containment')">
@@ -2776,11 +3238,7 @@ function renderCompose(container) {
                 <p>向经理发送收容物品</p>
             </div>
             ${reportOption}
-            <div class="outbox-option opt-mail" onclick="selectOutboxOption('mail')">
-                <i class="fas fa-envelope"></i>
-                <h4>发信</h4>
-                <p>给经理或队友发送消息</p>
-            </div>
+            ${mailOption}
         </div>
 
         <!-- 寄送收容物表单 -->
@@ -2881,7 +3339,8 @@ function renderCompose(container) {
             </button>
         </div>
 
-        <!-- 发信表单 -->
+        <!-- 发信表单 - 只有允许发信时才渲染 -->
+        ${canSendMessages ? `
         <div id="form-mail" class="outbox-form">
             <h4><i class="fas fa-envelope" style="color:#8e44ad;"></i> 发送消息</h4>
             <label>收件人 *</label>
@@ -2896,12 +3355,15 @@ function renderCompose(container) {
                 <i class="fas fa-paper-plane"></i> 发送
             </button>
         </div>
+        ` : ''}
     `;
 
-    // 加载发送目标（经理和队友）
-    loadSendTargets().then(() => {
-        populateRecipients();
-    });
+    // 加载发送目标（经理和队友）- 只有允许发信时才加载
+    if (canSendMessages) {
+        loadSendTargets().then(() => {
+            populateRecipients();
+        });
+    }
 }
 
 function selectOutboxOption(type) {
@@ -4004,6 +4466,20 @@ document.querySelectorAll('.p-cell').forEach(c=>{
         const isACell = c.classList.contains('a-cell');
         const hasManager = missionInfo.managers && missionInfo.managers.length > 0;
 
+        // 自定义编辑模式：仅切换状态，不触发自动嘉奖和轨道变灰
+        if(isTrackCustomMode) {
+            if(c.classList.contains('active')){
+                c.classList.remove('active');
+                c.classList.add('ignored');
+            }else if(c.classList.contains('ignored')){
+                c.classList.remove('ignored');
+            }else{
+                c.classList.add('active');
+            }
+            triggerAutoSave();
+            return;
+        }
+
         if(c.classList.contains('active')){
             c.classList.remove('active');
             c.classList.add('ignored');
@@ -4034,6 +4510,15 @@ document.querySelectorAll('.p-cell').forEach(c=>{
     c.addEventListener('contextmenu',(e)=>{
         e.preventDefault();
         if(isReadOnly)return;
+
+        // 自定义编辑模式：仅设为灰色，不触发嘉奖扣减
+        if(isTrackCustomMode) {
+            c.classList.remove('active');
+            c.classList.add('ignored');
+            triggerAutoSave();
+            return;
+        }
+
         const isFCell = c.classList.contains('f-cell');
         const hasManager = missionInfo.managers && missionInfo.managers.length > 0;
         const wasActive = c.classList.contains('active');
@@ -4107,9 +4592,12 @@ function populateData(d){
     isPopulating = true; // 防止加载数据时触发自动保存
     SLOT_LIMITS.anomSlots = d.anomSlots || 3;
     SLOT_LIMITS.realSlots = d.realSlots || 3;
-    ['pName','pTrig1','pTrig2','pTrig3','perm1','perm2','perm3','pComm','pRep','mvpCount','watchCount','noteTitle','noteBody'].forEach(id=>{const e=document.getElementById(id);if(d[id]&&e){if(e.tagName==='DIV')e.innerHTML=d[id];else e.value=d[id];}});
-	    document.getElementById('mvpCount').value = d.mvpCount || (d.rewards || []).reduce((sum, r) => sum + (r.count || 1), 0);
-    document.getElementById('watchCount').value = d.watchCount || (d.reprimands || []).reduce((sum, r) => sum + (r.count || 1), 0);
+    ['pName','pTrig1','pTrig2','pTrig3','perm1','perm2','perm3','pComm','pRep','noteTitle','noteBody'].forEach(id=>{const e=document.getElementById(id);if(d[id]&&e){if(e.tagName==='DIV')e.innerHTML=d[id];else e.value=d[id];}});
+    // 嘉奖/申诫：优先从数组计算，确保数据准确
+    const rewardsTotal = (d.rewards || []).reduce((sum, r) => sum + (r.count || 1), 0);
+    const reprimandsTotal = (d.reprimands || []).reduce((sum, r) => sum + (r.count || 1), 0);
+    document.getElementById('mvpCount').value = rewardsTotal || d.mvpCount || 0;
+    document.getElementById('watchCount').value = reprimandsTotal || d.watchCount || 0;
 	setHybridInputState('pAnom',d.pAnom);setHybridInputState('pReal',d.pReal);setHybridInputState('pFunc',d.pFunc);if(d.qs)d.qs.forEach((h,i)=>{const q=document.getElementById(`q${i+1}`);if(q)q.innerHTML=h;});
     // 处理属性数据 - 兼容旧格式和新格式
     if(d.attrs){
@@ -4166,12 +4654,10 @@ function populateData(d){
 
     updateSlotButtons();
 
-    // 处理发信权限
-    canSendMessages = d.canSendMessages !== false; // 默认允许发信
-    const composeTab = document.getElementById('tab-compose');
-    if (composeTab) {
-        composeTab.style.display = canSendMessages ? '' : 'none';
-    }
+    // 处理发信权限（个人权限 AND 全局开关）
+    const globalMessagingEnabled = d.globalMessagingEnabled !== false; // 默认开启
+    const personalMessagingEnabled = d.canSendMessages !== false; // 默认允许发信
+    canSendMessages = globalMessagingEnabled && personalMessagingEnabled;
 
     isPopulating = false; // 数据加载完成，允许自动保存
 }
@@ -4230,7 +4716,36 @@ function showToast(msg, type='success') {
     m.style.display = 'block';
     setTimeout(() => m.style.display = 'none', 2500);
 }
-async function saveData(silent=false){if(isReadOnly)return;const d=gatherData();const res=await fetch(`/api/character/${charId}`,{method:'PUT',headers:getAuthHeaders(),body:JSON.stringify(d)});if(res.ok){cachedRecords=null;if(!silent){showToast('DATA_SAVED', 'success');}}else if(res.status===401||res.status===403){window.location.href='login.html';}else{showToast('保存失败', 'error');}}
+async function saveData(silent=false){
+    if(isReadOnly) return;
+    const d = gatherData();
+    const res = await fetch(`/api/character/${charId}`, {
+        method: 'PUT',
+        headers: getAuthHeaders(),
+        body: JSON.stringify(d)
+    });
+    if(res.ok) {
+        cachedRecords = null;
+        if(!silent) { showToast('DATA_SAVED', 'success'); }
+        // 保存后重新获取最新数据，同步经理设置的字段
+        try {
+            const refreshRes = await fetch(`/api/character/${charId}`, { headers: getAuthHeaders() });
+            if(refreshRes.ok) {
+                const latestData = await refreshRes.json();
+                // 只更新经理控制的字段，不重置用户正在编辑的内容
+                SLOT_LIMITS.anomSlots = latestData.anomSlots || 3;
+                SLOT_LIMITS.realSlots = latestData.realSlots || 3;
+                document.getElementById('mvpCount').value = (latestData.rewards || []).reduce((sum, r) => sum + (r.count || 1), 0);
+                document.getElementById('watchCount').value = (latestData.reprimands || []).reduce((sum, r) => sum + (r.count || 1), 0);
+                updateAnomAddButton();
+            }
+        } catch(e) { console.error('刷新数据失败:', e); }
+    } else if(res.status===401 || res.status===403) {
+        window.location.href = 'login.html';
+    } else {
+        showToast('保存失败', 'error');
+    }
+}
 function exportOffline(){const d=gatherData();let h=document.documentElement.outerHTML;h=h.replace(/<script id="__SAVED_DATA__" type="application\/json">.*?<\/script>/s,`<script id="__SAVED_DATA__" type="application/json">${JSON.stringify(d)}<\/script>`);const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([h],{type:'text/html'}));a.download=`${d.pName||'角色'}_离线备份.html`;a.click();}
 
 function exportJson() {
@@ -4390,19 +4905,28 @@ function renderShopView() {
 
     document.getElementById('shopViewCommend').textContent = availableCommend;
 
-    // 根据权限显示/隐藏申诫余额
+    // 隐藏申诫余额（Siphon商店独立显示）
     const reprimandBadge = document.querySelector('.shop-currency-display .currency-badge.reprimand');
     if (reprimandBadge) {
-        reprimandBadge.style.display = hasReprimandAccess ? '' : 'none';
+        reprimandBadge.style.display = 'none';
     }
-    if (hasReprimandAccess) {
-        document.getElementById('shopViewReprimand').textContent = availableReprimand;
+
+    // 根据权限显示/隐藏Siphon商店按钮
+    const siphonBtn = document.getElementById('siphonShopBtn');
+    if (siphonBtn) {
+        siphonBtn.style.display = hasReprimandAccess ? '' : 'none';
     }
 
     // 检查是否为只读或分享模式
     const canPurchase = !isReadOnly && !isShareMode;
 
-    if (!shopViewData.items || shopViewData.items.length === 0) {
+    // 只显示有嘉奖价格的物品（过滤掉只有申诫价格的物品）
+    const commendationItems = (shopViewData.items || []).filter(item => {
+        const prices = item.prices || [];
+        return prices.some(p => (p.currency_type || 'commendation') === 'commendation');
+    });
+
+    if (commendationItems.length === 0) {
         container.innerHTML = `
             <div class="shop-empty">
                 <i class="fas fa-store-slash"></i>
@@ -4411,12 +4935,11 @@ function renderShopView() {
         return;
     }
 
-    container.innerHTML = shopViewData.items.map(item => {
-        const pricesHtml = (item.prices || []).map(p => {
-            const currencyType = p.currency_type || 'commendation';
-            const currencyName = currencyType === 'reprimand' ? '申诫' : '嘉奖';
-            const available = currencyType === 'reprimand' ? availableReprimand : availableCommend;
-            const canAfford = available >= p.price_cost;
+    container.innerHTML = commendationItems.map(item => {
+        // 只显示嘉奖价格选项
+        const commendPrices = (item.prices || []).filter(p => (p.currency_type || 'commendation') === 'commendation');
+        const pricesHtml = commendPrices.map(p => {
+            const canAfford = availableCommend >= p.price_cost;
             const isDisabled = !canPurchase || !canAfford;
             let usageLabel = '';
             if (p.usage_type === 'consumable') {
@@ -4429,20 +4952,20 @@ function renderShopView() {
             if (!canPurchase) {
                 disabledReason = '只读模式';
             } else if (!canAfford) {
-                disabledReason = `${currencyName}不足`;
+                disabledReason = '嘉奖不足';
             }
 
             return `<button class="shop-price-btn ${isDisabled ? 'disabled' : ''}"
-                ${!isDisabled ? `onclick="purchaseItem(${item.id}, ${p.id})"` : 'disabled'}
+                ${!isDisabled ? `onclick="event.stopPropagation(); purchaseItem(${item.id}, ${p.id})"` : 'disabled'}
                 ${disabledReason ? `title="${disabledReason}"` : ''}>
                 <span class="price-name">${escapeHtml(p.price_name)}</span>
-                <span class="price-cost">${p.price_cost} ${currencyName}</span>
+                <span class="price-cost">${p.price_cost} 嘉奖</span>
                 ${usageLabel ? `<span class="price-usage">${usageLabel}</span>` : ''}
             </button>`;
         }).join('');
 
         return `
-            <div class="shop-item-card ${item.is_global ? 'global' : ''}">
+            <div class="shop-item-card ${item.is_global ? 'global' : ''}" onclick="openShopDetail(${item.id})">
                 <div class="shop-item-title">${escapeHtml(item.title)}</div>
                 <div class="shop-item-desc">${escapeHtml(item.description || '暂无描述')}</div>
                 <div class="shop-price-options">${pricesHtml || '<span style="color:#999;font-size:11px;">未设置标价</span>'}</div>
@@ -4469,7 +4992,15 @@ async function purchaseItem(itemId, priceId) {
             // 重新加载商店视图以更新余额
             loadShopView();
             // 重新加载角色数据以更新物品列表
-            loadData();
+            try {
+                const charRes = await fetch(`/api/character/${charId}`, { headers: getAuthHeaders() });
+                if (charRes.ok) {
+                    const charData = await charRes.json();
+                    populateData(charData);
+                }
+            } catch (reloadErr) {
+                console.error('重新加载角色数据失败:', reloadErr);
+            }
         } else {
             showToast(data.message || '购买失败');
         }
@@ -4477,6 +5008,286 @@ async function purchaseItem(itemId, priceId) {
         console.error('购买失败:', e);
         showToast('购买失败');
     }
+}
+
+// 申领物详情弹窗（只显示嘉奖价格）
+function openShopDetail(itemId) {
+    const item = shopViewData.items.find(i => i.id === itemId);
+    if (!item) return;
+
+    document.getElementById('shopDetailTitle').textContent = item.title;
+    document.getElementById('shopDetailDesc').textContent = item.description || '暂无描述';
+
+    const availableCommend = shopViewData.availableCommendations || 0;
+    const canPurchase = !isReadOnly && !isShareMode;
+
+    // 只显示嘉奖价格
+    const commendPrices = (item.prices || []).filter(p => (p.currency_type || 'commendation') === 'commendation');
+    const pricesHtml = commendPrices.map(p => {
+        const canAfford = availableCommend >= p.price_cost;
+        const isDisabled = !canPurchase || !canAfford;
+
+        let usageLabel = '';
+        if (p.usage_type === 'consumable') {
+            usageLabel = '一次性使用';
+        } else if (p.usage_type === 'per_mission') {
+            usageLabel = `每任务${p.usage_count || 1}次`;
+        } else {
+            usageLabel = '永久';
+        }
+
+        let disabledReason = '';
+        if (!canPurchase) {
+            disabledReason = '只读模式';
+        } else if (!canAfford) {
+            disabledReason = '嘉奖不足';
+        }
+
+        return `<button class="shop-detail-price-btn ${isDisabled ? 'disabled' : ''}"
+            ${!isDisabled ? `onclick="purchaseFromDetail(${item.id}, ${p.id})"` : 'disabled'}
+            ${disabledReason ? `title="${disabledReason}"` : ''}>
+            <div class="shop-detail-price-info">
+                <span class="shop-detail-price-name">${escapeHtml(p.price_name)}</span>
+                <span class="shop-detail-price-usage">${usageLabel}</span>
+            </div>
+            <span class="shop-detail-price-cost">${p.price_cost} 嘉奖</span>
+        </button>`;
+    }).join('');
+
+    document.getElementById('shopDetailPrices').innerHTML = pricesHtml || '<div style="color:#999;text-align:center;">未设置标价</div>';
+    document.getElementById('shopDetailModal').classList.add('show');
+}
+
+function closeShopDetail() {
+    document.getElementById('shopDetailModal').classList.remove('show');
+}
+
+async function purchaseFromDetail(itemId, priceId) {
+    closeShopDetail();
+    await purchaseItem(itemId, priceId);
+}
+
+// ==========================================
+// Siphon商店功能（申诫商店独立界面）
+// ==========================================
+let zephyrShopData = { items: [], availableReprimands: 0 };
+
+function toggleZephyrShop() {
+    const modal = document.getElementById('zephyr-shop-modal');
+    if (modal.classList.contains('active')) {
+        closeZephyrShop();
+    } else {
+        openZephyrShop();
+    }
+}
+
+function openZephyrShop() {
+    document.getElementById('zephyr-shop-modal').classList.add('active');
+    loadZephyrShop();
+}
+
+function closeZephyrShop() {
+    document.getElementById('zephyr-shop-modal').classList.remove('active');
+}
+
+async function loadZephyrShop() {
+    const container = document.getElementById('zephyrItemsList');
+
+    if (!charId) {
+        container.innerHTML = `
+            <div class="zephyr-empty">
+                <i class="fas fa-wind"></i>
+                <p>离线模式无法使用Siphon商店</p>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = `
+        <div class="zephyr-empty">
+            <i class="fas fa-circle-notch fa-spin"></i>
+            <p>加载中...</p>
+        </div>`;
+
+    try {
+        const res = await fetch(`/api/character/${charId}/shop`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (data.success) {
+            zephyrShopData = {
+                items: data.items || [],
+                availableReprimands: data.availableReprimands || 0
+            };
+            renderZephyrShop();
+        } else {
+            container.innerHTML = `
+                <div class="zephyr-empty">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>${data.message || '加载失败'}</p>
+                </div>`;
+        }
+    } catch (e) {
+        console.error('加载Siphon商店失败:', e);
+        container.innerHTML = `
+            <div class="zephyr-empty">
+                <i class="fas fa-exclamation-triangle"></i>
+                <p>加载失败</p>
+            </div>`;
+    }
+}
+
+function renderZephyrShop() {
+    const container = document.getElementById('zephyrItemsList');
+    const availableReprimand = zephyrShopData.availableReprimands || 0;
+
+    document.getElementById('zephyrReprimandCount').textContent = availableReprimand;
+
+    const canPurchase = !isReadOnly && !isShareMode;
+
+    // 只显示有申诫价格的物品
+    const reprimandItems = (zephyrShopData.items || []).filter(item => {
+        const prices = item.prices || [];
+        return prices.some(p => p.currency_type === 'reprimand');
+    });
+
+    if (reprimandItems.length === 0) {
+        container.innerHTML = `
+            <div class="zephyr-empty">
+                <i class="fas fa-wind"></i>
+                <p>暂无可购买的Siphon物品</p>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = reprimandItems.map(item => {
+        // 只显示申诫价格选项
+        const reprimandPrices = (item.prices || []).filter(p => p.currency_type === 'reprimand');
+        const pricesHtml = reprimandPrices.map(p => {
+            const canAfford = availableReprimand >= p.price_cost;
+            const isDisabled = !canPurchase || !canAfford;
+            let usageLabel = '';
+            if (p.usage_type === 'consumable') {
+                usageLabel = '[一次性]';
+            } else if (p.usage_type === 'per_mission') {
+                usageLabel = `[每任务${p.usage_count || 1}次]`;
+            }
+
+            let disabledReason = '';
+            if (!canPurchase) {
+                disabledReason = '只读模式';
+            } else if (!canAfford) {
+                disabledReason = '申诫不足';
+            }
+
+            return `<button class="zephyr-price-btn ${isDisabled ? 'disabled' : ''}"
+                ${!isDisabled ? `onclick="event.stopPropagation(); purchaseZephyrItem(${item.id}, ${p.id})"` : 'disabled'}
+                ${disabledReason ? `title="${disabledReason}"` : ''}>
+                <span class="price-name">${escapeHtml(p.price_name)}</span>
+                <span class="price-cost">${p.price_cost} 申诫</span>
+                ${usageLabel ? `<span class="price-usage">${usageLabel}</span>` : ''}
+            </button>`;
+        }).join('');
+
+        return `
+            <div class="zephyr-item-card" onclick="openZephyrDetail(${item.id})">
+                <div class="zephyr-item-title">${escapeHtml(item.title)}</div>
+                <div class="zephyr-item-desc">${escapeHtml(item.description || '暂无描述')}</div>
+                <div class="zephyr-price-options">${pricesHtml || '<span style="color:#999;font-size:11px;">未设置标价</span>'}</div>
+            </div>`;
+    }).join('');
+}
+
+function openZephyrDetail(itemId) {
+    const item = zephyrShopData.items.find(i => i.id === itemId);
+    if (!item) return;
+
+    document.getElementById('zephyrDetailTitle').textContent = item.title;
+    document.getElementById('zephyrDetailDesc').textContent = item.description || '暂无描述';
+
+    const availableReprimand = zephyrShopData.availableReprimands || 0;
+    const canPurchase = !isReadOnly && !isShareMode;
+
+    // 只显示申诫价格
+    const reprimandPrices = (item.prices || []).filter(p => p.currency_type === 'reprimand');
+    const pricesHtml = reprimandPrices.map(p => {
+        const canAfford = availableReprimand >= p.price_cost;
+        const isDisabled = !canPurchase || !canAfford;
+
+        let usageLabel = '';
+        if (p.usage_type === 'consumable') {
+            usageLabel = '一次性使用';
+        } else if (p.usage_type === 'per_mission') {
+            usageLabel = `每任务${p.usage_count || 1}次`;
+        } else {
+            usageLabel = '永久';
+        }
+
+        let disabledReason = '';
+        if (!canPurchase) {
+            disabledReason = '只读模式';
+        } else if (!canAfford) {
+            disabledReason = '申诫不足';
+        }
+
+        return `<button class="shop-detail-price-btn ${isDisabled ? 'disabled' : ''}"
+            ${!isDisabled ? `onclick="purchaseFromZephyr(${item.id}, ${p.id})"` : 'disabled'}
+            ${disabledReason ? `title="${disabledReason}"` : ''}>
+            <div class="shop-detail-price-info">
+                <span class="shop-detail-price-name">${escapeHtml(p.price_name)}</span>
+                <span class="shop-detail-price-usage">${usageLabel}</span>
+            </div>
+            <span class="shop-detail-price-cost">${p.price_cost} 申诫</span>
+        </button>`;
+    }).join('');
+
+    document.getElementById('zephyrDetailPrices').innerHTML = pricesHtml || '<div style="color:#999;text-align:center;">未设置标价</div>';
+    document.getElementById('zephyrDetailModal').classList.add('show');
+}
+
+function closeZephyrDetail() {
+    document.getElementById('zephyrDetailModal').classList.remove('show');
+}
+
+async function purchaseZephyrItem(itemId, priceId) {
+    if (!confirm('确定要购买这个物品吗？购买后将扣除相应申诫。')) return;
+
+    try {
+        const res = await fetch(`/api/character/${charId}/shop/purchase`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ itemId, priceId })
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            showToast('购买成功！物品已添加到你的物品列表', 'success');
+            // 重新加载Siphon商店以更新余额
+            loadZephyrShop();
+            // 重新加载角色数据以更新物品列表
+            try {
+                const charRes = await fetch(`/api/character/${charId}`, { headers: getAuthHeaders() });
+                if (charRes.ok) {
+                    const charData = await charRes.json();
+                    populateData(charData);
+                }
+            } catch (reloadErr) {
+                console.error('重新加载角色数据失败:', reloadErr);
+            }
+        } else {
+            showToast(data.message || '购买失败');
+        }
+    } catch (e) {
+        console.error('购买失败:', e);
+        showToast('购买失败');
+    }
+}
+
+async function purchaseFromZephyr(itemId, priceId) {
+    closeZephyrDetail();
+    await purchaseZephyrItem(itemId, priceId);
 }
 
 function openShareModal() {
@@ -4854,6 +5665,31 @@ function escapeHtmlText(text) {
             </svg>
         </div>
         <h3>任务报告已提交</h3>
+    </div>
+</div>
+
+<!-- 申领物详情弹窗 -->
+<div id="shopDetailModal" class="shop-detail-modal" onclick="if(event.target===this)closeShopDetail()">
+    <div class="shop-detail-box">
+        <div class="shop-detail-header">
+            <h3 id="shopDetailTitle">物品详情</h3>
+            <button class="shop-detail-close" onclick="closeShopDetail()">&times;</button>
+        </div>
+        <div class="shop-detail-body">
+            <div class="shop-detail-section">
+                <h4>物品描述</h4>
+                <div class="shop-detail-desc" id="shopDetailDesc">暂无描述</div>
+            </div>
+            <div class="shop-detail-section">
+                <h4>购买选项</h4>
+                <div class="shop-detail-prices" id="shopDetailPrices">
+                    <!-- 动态填充 -->
+                </div>
+            </div>
+        </div>
+        <div class="shop-detail-footer">
+            <button onclick="closeShopDetail()">关闭</button>
+        </div>
     </div>
 </div>
 </body>

@@ -400,6 +400,25 @@
             border-radius: 6px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
             border-left: 5px solid var(--manager-blue);
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        @media (max-width: 480px) {
+            .requisition-panel {
+                padding: 12px;
+            }
+            .requisition-header {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+            .requisition-header h3 {
+                text-align: center;
+            }
+            .btn-new-requisition {
+                width: 100%;
+                justify-content: center;
+            }
         }
         .requisition-header {
             display: flex;
@@ -435,10 +454,17 @@
         }
         .requisition-list {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 15px;
         }
+        @media (max-width: 600px) {
+            .requisition-list {
+                grid-template-columns: 1fr;
+            }
+        }
         .shop-item-card {
+            overflow: hidden;
+            word-break: break-word;
             background: #f8f9fa;
             border-radius: 8px;
             padding: 15px;
@@ -486,6 +512,8 @@
         .shop-price-tag {
             background: #fff3cd;
             color: #856404;
+            word-break: break-word;
+            max-width: 100%;
             font-size: 11px;
             padding: 4px 8px;
             border-radius: 4px;
@@ -504,15 +532,29 @@
         .shop-item-actions {
             display: flex;
             gap: 8px;
+            flex-wrap: wrap;
         }
         .shop-item-actions button {
-            flex: 1;
+            flex: 1 1 auto;
+            min-width: 0;
             padding: 6px 10px;
             font-size: 11px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             transition: 0.2s;
+            white-space: nowrap;
+        }
+        @media (max-width: 400px) {
+            .shop-item-actions {
+                flex-direction: column;
+            }
+            .shop-item-actions button {
+                flex: none;
+                width: 100%;
+                padding: 10px;
+                font-size: 12px;
+            }
         }
         .btn-edit-item {
             background: #e8f4fd;
@@ -656,6 +698,53 @@
             margin-top: 5px;
         }
         .btn-add-price:hover { background: #d0e8fa; }
+
+        /* 标价选项移动端适配 */
+        @media (max-width: 600px) {
+            .price-options-container {
+                padding: 10px;
+            }
+            .price-option-item {
+                padding: 12px;
+                position: relative;
+            }
+            .price-option-item .btn-remove-price {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                padding: 4px 8px;
+                font-size: 11px;
+            }
+            .price-option-row {
+                flex-direction: column;
+                gap: 8px;
+                align-items: stretch;
+            }
+            .price-option-row:first-child {
+                padding-right: 40px;
+            }
+            .price-option-row input,
+            .price-option-row select {
+                width: 100% !important;
+                flex: none !important;
+                font-size: 14px;
+                padding: 10px 12px;
+                box-sizing: border-box;
+            }
+            .price-option-row input.price-name {
+                font-weight: 500;
+            }
+            .price-option-row .count-wrapper {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                font-size: 13px;
+            }
+            .price-option-row .count-wrapper input {
+                width: 80px !important;
+                flex: 0 0 80px !important;
+            }
+        }
         .shop-modal-footer {
             padding: 15px 20px;
             border-top: 1px solid #eee;
@@ -767,7 +856,7 @@
 
         .char-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
             gap: 15px;
         }
 
@@ -891,21 +980,30 @@
         }
 
         .card-footer {
-            padding: 10px 15px;
+            padding: 10px;
             background: #f8f9fa;
             border-top: 1px solid #ecf0f1;
-            display: flex;
-            justify-content: flex-end;
-            gap: 8px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(28px, 1fr));
+            gap: 6px;
         }
         .btn-card-action {
             border: none;
-            padding: 6px 12px;
-            border-radius: 3px;
-            font-size: 11px;
+            padding: 0;
+            height: 32px;
+            border-radius: 6px;
+            font-size: 12px;
             font-weight: bold;
             cursor: pointer;
             transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .btn-card-action.btn-view {
+            grid-column: 1 / -1;
+            padding: 0 12px;
+            gap: 5px;
         }
         .btn-view {
             background: var(--manager-blue);
@@ -3925,6 +4023,427 @@
                 display: flex;
             }
         }
+
+        /* ========== 公共申领物池样式 ========== */
+        .pool-quota-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .pool-filter-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .pool-filter-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .pool-search-box {
+            display: flex;
+            align-items: center;
+            background: white;
+            border: 1px solid #e0e0e0;
+            border-radius: 20px;
+            padding: 6px 12px;
+            gap: 8px;
+            min-width: 200px;
+            transition: all 0.2s;
+        }
+        .pool-search-box:focus-within {
+            border-color: var(--manager-blue);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+        .pool-search-box i.fa-search {
+            color: #95a5a6;
+            font-size: 12px;
+        }
+        .pool-search-box input {
+            border: none;
+            outline: none;
+            flex: 1;
+            font-size: 13px;
+            background: transparent;
+        }
+        .pool-search-box input::placeholder {
+            color: #bdc3c7;
+        }
+        .pool-search-clear {
+            background: none;
+            border: none;
+            color: #95a5a6;
+            cursor: pointer;
+            padding: 2px;
+            font-size: 12px;
+            transition: color 0.2s;
+        }
+        .pool-search-clear:hover {
+            color: #e74c3c;
+        }
+        .pool-filter-btn {
+            padding: 6px 14px;
+            border: 1px solid #e0e0e0;
+            border-radius: 15px;
+            background: white;
+            color: #666;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .pool-filter-btn:hover {
+            border-color: var(--manager-blue);
+            color: var(--manager-blue);
+        }
+        .pool-filter-btn.active {
+            background: var(--manager-blue);
+            border-color: var(--manager-blue);
+            color: white;
+        }
+
+        /* 公共池物品卡片扩展 */
+        .shop-item-card.pool-official { border-left: 3px solid var(--signal-red); }
+        .shop-item-card.pool-manager { border-left: 3px solid #3498db; }
+        .shop-item-card.pool-mine { border-left: 3px solid #27ae60; }
+
+        .pool-item-stats {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 12px;
+            font-size: 11px;
+            color: #95a5a6;
+            margin-bottom: 10px;
+        }
+        .pool-item-stats span {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .pool-item-stats .stat-like { color: #27ae60; }
+        .pool-item-stats .stat-dislike { color: #e74c3c; }
+
+        /* 投票按钮 */
+        .btn-vote {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            color: #6c757d;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-vote:hover { background: #e9ecef; }
+        .btn-vote.voted {
+            color: var(--manager-blue);
+            border-color: var(--manager-blue);
+            background: rgba(52, 152, 219, 0.1);
+        }
+
+        /* 上传到公共池按钮 */
+        .btn-upload-pool {
+            background: var(--manager-blue);
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+        }
+        .btn-upload-pool:hover { background: var(--manager-blue-dark); }
+
+        /* 公共物品详情弹窗样式 */
+        .pool-detail-modal .modal-box {
+            max-width: 650px;
+        }
+        .pool-detail-section {
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #ecf0f1;
+        }
+        .pool-detail-section:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+            padding-bottom: 0;
+        }
+        .pool-detail-section h4 {
+            font-size: 12px;
+            color: #95a5a6;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .pool-vote-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .pool-vote-btn {
+            flex: 1;
+            padding: 12px 20px;
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .pool-vote-btn.like:hover, .pool-vote-btn.like.active {
+            border-color: #27ae60;
+            color: #27ae60;
+            background: rgba(39,174,96,0.1);
+        }
+        .pool-vote-btn.dislike:hover, .pool-vote-btn.dislike.active {
+            border-color: #e74c3c;
+            color: #e74c3c;
+            background: rgba(231,76,60,0.1);
+        }
+
+        /* 评论区样式 */
+        .pool-comments-list {
+            max-height: 250px;
+            overflow-y: auto;
+        }
+        .pool-comment-item {
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+        .pool-comment-item.reply {
+            margin-left: 25px;
+            border-left: 3px solid #3498db;
+            background: #f0f7fc;
+        }
+        .pool-comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+        .pool-comment-user {
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--text-dark);
+        }
+        .pool-comment-time {
+            font-size: 10px;
+            color: #95a5a6;
+        }
+        .pool-comment-content {
+            font-size: 13px;
+            color: #555;
+            line-height: 1.5;
+        }
+        .pool-comment-actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 10px;
+        }
+        .pool-comment-actions button {
+            background: none;
+            border: none;
+            font-size: 11px;
+            color: #95a5a6;
+            cursor: pointer;
+            padding: 0;
+        }
+        .pool-comment-actions button:hover { color: var(--manager-blue); }
+
+        .pool-comment-form {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .pool-comment-form input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ecf0f1;
+            border-radius: 6px;
+            font-size: 13px;
+        }
+        .pool-comment-form input:focus {
+            outline: none;
+            border-color: var(--manager-blue);
+        }
+        .pool-comment-form button {
+            padding: 10px 20px;
+            background: var(--manager-blue);
+            border: none;
+            border-radius: 6px;
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .pool-comment-form button:hover { background: var(--manager-blue-dark); }
+
+        /* 公共池模态框头部样式 */
+        .upload-pool-modal .modal-header,
+        .pool-detail-modal .modal-header {
+            background: linear-gradient(135deg, var(--manager-blue), var(--manager-blue-dark));
+        }
+        .upload-pool-modal .modal-header h3,
+        .upload-pool-modal .modal-close,
+        .pool-detail-modal .modal-header h3,
+        .pool-detail-modal .modal-close {
+            color: white;
+        }
+        .upload-pool-modal .btn-modal-confirm,
+        .pool-detail-modal .btn-modal-confirm {
+            background: var(--manager-blue);
+        }
+        .upload-pool-modal .btn-modal-confirm:hover,
+        .pool-detail-modal .btn-modal-confirm:hover {
+            background: var(--manager-blue-dark);
+        }
+
+        /* 上传到公共池模态框 */
+        .upload-pool-modal .price-options-container {
+            border: 1px solid #ecf0f1;
+            border-radius: 6px;
+            padding: 10px;
+            max-height: 180px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+        .upload-pool-modal .price-option-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr auto;
+            gap: 8px;
+            margin-bottom: 8px;
+            align-items: center;
+        }
+        .upload-pool-modal .price-option-row input,
+        .upload-pool-modal .price-option-row select {
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .upload-pool-modal .btn-remove-price {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .upload-pool-modal .btn-add-price {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+        }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .quota-info-bar {
+                flex-direction: column;
+                text-align: center;
+            }
+            .pool-toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .pool-filters {
+                justify-content: center;
+            }
+            .btn-upload-to-pool {
+                justify-content: center;
+            }
+            .public-pool-grid {
+                grid-template-columns: 1fr;
+            }
+            .pool-vote-buttons {
+                flex-direction: column;
+            }
+            .upload-pool-modal .modal-box {
+                width: 95%;
+                max-width: none;
+                margin: 10px;
+            }
+            .upload-pool-modal .modal-body {
+                padding: 15px;
+                max-height: 70vh;
+                overflow-y: auto;
+            }
+            .upload-pool-modal .price-options-container {
+                max-height: none;
+                overflow: visible;
+            }
+            .upload-pool-modal .price-option-row {
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+                padding: 10px;
+                background: #f9f9f9;
+                border-radius: 6px;
+                margin-bottom: 10px;
+                position: relative;
+            }
+            .upload-pool-modal .price-option-row input,
+            .upload-pool-modal .price-option-row select {
+                width: 100%;
+                box-sizing: border-box;
+                padding: 10px;
+                font-size: 14px;
+            }
+            .upload-pool-modal .btn-remove-price {
+                position: absolute;
+                top: 8px;
+                right: 8px;
+                width: 24px;
+                height: 24px;
+            }
+            .upload-pool-modal .price-option-row input:first-child {
+                padding-right: 40px;
+            }
+            .pool-filter-bar {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 10px;
+                width: 100%;
+                box-sizing: border-box;
+            }
+            .pool-filter-buttons {
+                justify-content: center;
+                flex-wrap: wrap;
+            }
+            .pool-search-box {
+                min-width: unset;
+                width: auto;
+                max-width: 100%;
+                box-sizing: border-box;
+                margin: 0;
+            }
+            .pool-search-box input {
+                min-width: 0;
+                width: 100%;
+            }
+        }
 	</style>
 </head>
 <body>
@@ -4042,6 +4561,9 @@
         <button class="main-tab" onclick="switchMainTab('requisitions')" data-tab="requisitions">
             <i class="fas fa-box"></i> 申领物管理
         </button>
+        <button class="main-tab" onclick="switchMainTab('publicpool')" data-tab="publicpool">
+            <i class="fas fa-store"></i> 公共申领物池
+        </button>
     </div>
 
     <!-- ========== 页面1: 已授权角色档案 ========== -->
@@ -4096,6 +4618,45 @@
                     <i class="fas fa-box-open" style="font-size:48px;margin-bottom:15px;opacity:0.3;"></i>
                     <p>暂无申领物记录</p>
                     <p style="font-size:12px;color:#95a5a6;">功能开发中...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== 页面4: 公共申领物池 ========== -->
+    <div class="tab-content" id="tabPublicpool">
+        <div class="requisition-panel">
+            <div class="requisition-header">
+                <h3><i class="fas fa-store"></i> 公共申领物池</h3>
+                <div style="display:flex;gap:10px;align-items:center;">
+                    <span class="pool-quota-badge" id="poolQuotaBadge">
+                        <i class="fas fa-cloud-upload-alt"></i> 配额: <span id="quotaCurrent">0</span>/<span id="quotaMax">10</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- 筛选栏 -->
+            <div class="pool-filter-bar">
+                <div class="pool-filter-buttons">
+                    <button class="pool-filter-btn active" onclick="filterPublicPool('all')">全部</button>
+                    <button class="pool-filter-btn" onclick="filterPublicPool('official')">官方</button>
+                    <button class="pool-filter-btn" onclick="filterPublicPool('manager')">经理上传</button>
+                    <button class="pool-filter-btn" onclick="filterPublicPool('mine')">我的上传</button>
+                </div>
+                <div class="pool-search-box">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="poolSearchInput" placeholder="搜索名称或效果..." oninput="onPoolSearchInput()">
+                    <button class="pool-search-clear" id="poolSearchClear" onclick="clearPoolSearch()" style="display:none;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 物品网格 -->
+            <div id="publicPoolGrid" class="requisition-list">
+                <div class="requisition-empty">
+                    <i class="fas fa-circle-notch fa-spin" style="font-size:32px;margin-bottom:15px;"></i>
+                    <p>加载中...</p>
                 </div>
             </div>
         </div>
@@ -4684,6 +5245,56 @@
             <button class="btn-cancel-shop" onclick="closeShopAccessModal()">取消</button>
             <button class="btn-save-shop" onclick="saveShopAccess()">
                 <i class="fas fa-save"></i> 保存
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 上传到公共池模态框 -->
+<div class="modal-overlay upload-pool-modal" id="uploadPoolModal">
+    <div class="modal-box" style="max-width: 550px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-cloud-upload-alt"></i> <span id="uploadPoolModalTitle">上传到公共池</span></h3>
+            <button class="modal-close" onclick="closeUploadPoolModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div style="margin-bottom:15px;">
+                <label style="font-size:12px;color:#7f8c8d;display:block;margin-bottom:5px;">物品名称 *</label>
+                <input type="text" id="uploadPoolTitle" placeholder="输入物品名称" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:14px;box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom:15px;">
+                <label style="font-size:12px;color:#7f8c8d;display:block;margin-bottom:5px;">物品描述</label>
+                <textarea id="uploadPoolDesc" rows="3" placeholder="输入物品描述（支持详细说明）" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;font-size:14px;resize:vertical;box-sizing:border-box;"></textarea>
+            </div>
+            <div style="margin-bottom:15px;">
+                <label style="font-size:12px;color:#7f8c8d;display:block;margin-bottom:5px;">标价选项</label>
+                <div id="uploadPoolPricesContainer" class="price-options-container">
+                    <!-- 动态添加的标价行 -->
+                </div>
+                <button type="button" class="btn-add-price" onclick="addUploadPoolPriceOption()"><i class="fas fa-plus"></i> 添加标价</button>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal btn-modal-cancel" onclick="closeUploadPoolModal()">取消</button>
+            <button class="btn-modal btn-modal-confirm" onclick="submitUploadPool()"><i class="fas fa-upload"></i> 上传</button>
+        </div>
+    </div>
+</div>
+
+<!-- 公共池物品详情模态框 -->
+<div class="modal-overlay pool-detail-modal" id="poolDetailModal">
+    <div class="modal-box" style="max-width: 650px;">
+        <div class="modal-header">
+            <h3><i class="fas fa-info-circle"></i> 物品详情</h3>
+            <button class="modal-close" onclick="closePoolDetailModal()">&times;</button>
+        </div>
+        <div class="modal-body" id="poolDetailContent">
+            <!-- 动态内容 -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn-modal btn-modal-cancel" onclick="closePoolDetailModal()">关闭</button>
+            <button class="btn-modal btn-modal-confirm" id="btnAddToMyPool" onclick="addToMyPoolFromDetail()">
+                <i class="fas fa-plus"></i> 添加到我的池
             </button>
         </div>
     </div>
@@ -6197,7 +6808,8 @@
         const tabMap = {
             'characters': 'tabCharacters',
             'missions': 'tabMissions',
-            'requisitions': 'tabRequisitions'
+            'requisitions': 'tabRequisitions',
+            'publicpool': 'tabPublicpool'
         };
 
         const targetTab = document.getElementById(tabMap[tabName]);
@@ -6213,6 +6825,11 @@
         // 切换到申领物页时加载申领物列表
         if (tabName === 'requisitions') {
             loadShopItems();
+        }
+
+        // 切换到公共池页时加载公共池物品
+        if (tabName === 'publicpool') {
+            loadPublicPool();
         }
     }
 
@@ -7647,6 +8264,9 @@
                         <button class="btn-edit-item" onclick="editShopItem(${item.id})">
                             <i class="fas fa-edit"></i> 编辑
                         </button>
+                        <button class="btn-upload-pool" onclick="uploadShopItemToPool(${item.id})" title="上传到公共池">
+                            <i class="fas fa-cloud-upload-alt"></i> 上传公共池
+                        </button>
                         <button class="btn-delete-item" onclick="deleteShopItem(${item.id})">
                             <i class="fas fa-trash"></i> 删除
                         </button>
@@ -7828,6 +8448,55 @@
         }
     }
 
+    // 上传现有申领物到公共池
+    async function uploadShopItemToPool(itemId) {
+        const item = shopItems.find(i => i.id === itemId);
+        if (!item) {
+            showToast('未找到该申领物');
+            return;
+        }
+
+        if (!confirm(`确定要将"${item.title}"上传到公共申领物池吗？\n\n上传后其他经理可以将其添加到自己的申领物池。`)) {
+            return;
+        }
+
+        try {
+            // 准备价格数据 - 使用API期望的字段名
+            const prices = (item.prices || []).map((p) => ({
+                name: p.price_name,
+                cost: p.price_cost,
+                currencyType: p.currency_type || 'commendation',
+                usageType: p.usage_type || 'permanent',
+                usageCount: p.usage_count || 0
+            }));
+
+            const res = await fetch('/api/public-shop/items', {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    title: item.title,
+                    description: item.description || '',
+                    prices: prices
+                })
+            });
+
+            const data = await res.json();
+            if (data.success) {
+                showToast('已成功上传到公共池', true);
+                // 如果在公共池tab中，刷新列表
+                if (document.getElementById('tabPublicpool').style.display !== 'none') {
+                    loadPublicPool();
+                }
+                loadUploadQuota();
+            } else {
+                showToast(data.message || '上传失败');
+            }
+        } catch (e) {
+            console.error('上传到公共池失败:', e);
+            showToast('上传失败');
+        }
+    }
+
     // ==========================================
     // 分部信息
     // ==========================================
@@ -7878,6 +8547,600 @@
             }
         });
     });
+
+    // ==========================================
+    // 公共申领物池功能
+    // ==========================================
+    let publicPoolData = [];
+    let currentPoolFilter = 'all';
+    let currentPoolSearchText = '';
+    let poolSearchTimer = null;
+    let currentPoolDetailId = null;
+    let editingPoolItemId = null;
+    const currentUserId = parseInt(localStorage.getItem('ta_uid') || '0');
+
+    async function loadPublicPool() {
+        const container = document.getElementById('publicPoolGrid');
+        container.innerHTML = '<div class="pool-loading"><i class="fas fa-circle-notch fa-spin"></i><p>加载中...</p></div>';
+
+        try {
+            const res = await fetch('/api/public-shop/items', { headers: getAuthHeaders() });
+            const data = await res.json();
+            if (data.success) {
+                publicPoolData = data.items;
+                filterPublicPool(currentPoolFilter);
+                loadUploadQuota();
+            } else {
+                container.innerHTML = '<div class="pool-empty"><i class="fas fa-exclamation-circle"></i><p>加载失败</p></div>';
+            }
+        } catch (e) {
+            console.error(e);
+            container.innerHTML = '<div class="pool-empty"><i class="fas fa-exclamation-circle"></i><p>加载失败</p></div>';
+        }
+    }
+
+    function filterPublicPool(filter) {
+        currentPoolFilter = filter;
+
+        // 更新按钮状态
+        document.querySelectorAll('.pool-filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.textContent.includes(filter === 'all' ? '全部' : filter === 'official' ? '官方' : filter === 'manager' ? '经理' : '我的')) {
+                btn.classList.add('active');
+            }
+        });
+
+        applyPoolFilters();
+    }
+
+    function applyPoolFilters() {
+        let filtered = publicPoolData;
+
+        // 先按类型筛选
+        if (currentPoolFilter === 'official') {
+            filtered = filtered.filter(i => i.is_official === 1);
+        } else if (currentPoolFilter === 'manager') {
+            filtered = filtered.filter(i => i.is_official === 0);
+        } else if (currentPoolFilter === 'mine') {
+            filtered = filtered.filter(i => i.uploaded_by === currentUserId);
+        }
+
+        // 再按搜索文本筛选
+        if (currentPoolSearchText.trim()) {
+            const searchLower = currentPoolSearchText.trim().toLowerCase();
+            filtered = filtered.filter(item => {
+                const titleMatch = (item.title || '').toLowerCase().includes(searchLower);
+                const descMatch = (item.description || '').toLowerCase().includes(searchLower);
+                return titleMatch || descMatch;
+            });
+        }
+
+        renderPublicPoolItems(filtered);
+    }
+
+    function onPoolSearchInput() {
+        const input = document.getElementById('poolSearchInput');
+        const clearBtn = document.getElementById('poolSearchClear');
+        currentPoolSearchText = input.value;
+
+        // 显示/隐藏清除按钮
+        clearBtn.style.display = currentPoolSearchText ? 'block' : 'none';
+
+        // 防抖：延迟300ms再执行筛选
+        if (poolSearchTimer) clearTimeout(poolSearchTimer);
+        poolSearchTimer = setTimeout(() => {
+            applyPoolFilters();
+        }, 300);
+    }
+
+    function clearPoolSearch() {
+        const input = document.getElementById('poolSearchInput');
+        const clearBtn = document.getElementById('poolSearchClear');
+        input.value = '';
+        currentPoolSearchText = '';
+        clearBtn.style.display = 'none';
+        applyPoolFilters();
+        input.focus();
+    }
+
+    function renderPublicPoolItems(items) {
+        const container = document.getElementById('publicPoolGrid');
+
+        if (items.length === 0) {
+            const isSearching = currentPoolSearchText.trim() !== '';
+            container.innerHTML = `
+                <div class="requisition-empty">
+                    <i class="fas ${isSearching ? 'fa-search' : 'fa-box-open'}" style="font-size:48px;margin-bottom:15px;opacity:0.3;"></i>
+                    <p>${isSearching ? '未找到匹配的物品' : '暂无物品'}</p>
+                    <p style="font-size:12px;color:#95a5a6;">${isSearching ? '尝试其他关键词或清除搜索' : '公共申领物池为空'}</p>
+                </div>`;
+            return;
+        }
+
+        container.innerHTML = items.map(item => {
+            const isOfficial = item.is_official === 1;
+            const isMine = item.uploaded_by === currentUserId;
+            const poolClass = isMine ? 'pool-mine' : (isOfficial ? 'pool-official' : 'pool-manager');
+            const badgeText = isMine ? '我的' : (isOfficial ? '官方' : '经理上传');
+
+            const pricesHtml = (item.prices || []).map(p => {
+                let usageLabel = '';
+                if (p.usage_type === 'consumable') {
+                    usageLabel = ' <span class="usage">[一次性]</span>';
+                } else if (p.usage_type === 'per_mission') {
+                    usageLabel = ` <span class="usage">[每任务${p.usage_count || 1}次]</span>`;
+                }
+                const currencyName = p.currency_type === 'commendation' ? '嘉奖' : '申诫';
+                return `<div class="shop-price-tag">
+                    ${escapeHtml(p.price_name)}: <span class="cost">${p.price_cost}${currencyName}</span>${usageLabel}
+                </div>`;
+            }).join('');
+
+            const likeClass = item.user_vote === 1 ? 'voted' : '';
+            const dislikeClass = item.user_vote === -1 ? 'voted' : '';
+
+            return `
+                <div class="shop-item-card ${poolClass}">
+                    <div class="shop-item-header">
+                        <div class="shop-item-title">${escapeHtml(item.title)}</div>
+                        <span class="shop-item-badge">${badgeText}</span>
+                    </div>
+                    ${!isOfficial ? `<div style="font-size:11px;color:#666;margin-bottom:5px;"><i class="fas fa-user"></i> ${escapeHtml(item.uploader_name || '未知')}</div>` : ''}
+                    <div class="shop-item-desc">${escapeHtml(item.description || '暂无描述')}</div>
+                    <div class="pool-item-stats">
+                        <span class="stat-like"><i class="fas fa-thumbs-up"></i> ${item.like_count || 0}</span>
+                        <span class="stat-dislike"><i class="fas fa-thumbs-down"></i> ${item.dislike_count || 0}</span>
+                        <span class="stat-comments"><i class="fas fa-comments"></i> ${item.comment_count || 0}</span>
+                        <span class="stat-adds"><i class="fas fa-download"></i> ${item.add_count || 0}</span>
+                    </div>
+                    <div class="shop-item-prices">${pricesHtml || '<span style="color:#999;font-size:11px;">未设置标价</span>'}</div>
+                    <div class="shop-item-actions">
+                        <button class="btn-vote ${likeClass}" onclick="votePoolItem(${item.id}, 1)" title="点赞">
+                            <i class="fas fa-thumbs-up"></i>
+                        </button>
+                        <button class="btn-vote ${dislikeClass}" onclick="votePoolItem(${item.id}, -1)" title="点踩">
+                            <i class="fas fa-thumbs-down"></i>
+                        </button>
+                        <button class="btn-edit-item" onclick="openPoolDetail(${item.id})" title="详情">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        ${isMine ? `
+                        <button class="btn-edit-item" onclick="editPoolItem(${item.id})" title="编辑">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-delete-item" onclick="deletePoolItem(${item.id})" title="删除">
+                            <i class="fas fa-trash"></i>
+                        </button>` : `
+                        <button class="btn-upload-pool" onclick="addToMyPool(${item.id})" title="添加到我的池">
+                            <i class="fas fa-plus"></i>
+                        </button>`}
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    async function loadUploadQuota() {
+        try {
+            const res = await fetch('/api/manager/upload-quota', { headers: getAuthHeaders() });
+            const data = await res.json();
+            if (data.success) {
+                document.getElementById('quotaCurrent').textContent = data.currentCount || 0;
+                document.getElementById('quotaMax').textContent = data.finalQuota || 10;
+            }
+        } catch (e) {
+            console.error('加载配额失败', e);
+        }
+    }
+
+    // 上传到公共池
+    function openUploadToPoolModal(itemId = null) {
+        editingPoolItemId = itemId;
+        document.getElementById('uploadPoolModalTitle').textContent = itemId ? '编辑公共池物品' : '上传到公共池';
+        document.getElementById('uploadPoolTitle').value = '';
+        document.getElementById('uploadPoolDesc').value = '';
+        document.getElementById('uploadPoolPricesContainer').innerHTML = '';
+
+        if (itemId) {
+            const item = publicPoolData.find(i => i.id === itemId);
+            if (item) {
+                document.getElementById('uploadPoolTitle').value = item.title || '';
+                document.getElementById('uploadPoolDesc').value = item.description || '';
+                (item.prices || []).forEach(p => addUploadPoolPriceOption(p));
+            }
+        } else {
+            addUploadPoolPriceOption();
+        }
+
+        document.getElementById('uploadPoolModal').classList.add('show');
+    }
+
+    function closeUploadPoolModal() {
+        document.getElementById('uploadPoolModal').classList.remove('show');
+        editingPoolItemId = null;
+    }
+
+    function addUploadPoolPriceOption(priceData = null) {
+        const container = document.getElementById('uploadPoolPricesContainer');
+        const row = document.createElement('div');
+        row.className = 'price-option-row';
+        row.innerHTML = `
+            <input type="text" placeholder="标价名称" class="price-name" value="${priceData?.price_name || ''}">
+            <input type="number" placeholder="价格" class="price-cost" min="0" value="${priceData?.price_cost || ''}">
+            <select class="price-currency">
+                <option value="commendation" ${priceData?.currency_type !== 'censure' ? 'selected' : ''}>嘉奖</option>
+                <option value="censure" ${priceData?.currency_type === 'censure' ? 'selected' : ''}>申诫</option>
+            </select>
+            <select class="price-usage">
+                <option value="permanent" ${priceData?.usage_type !== 'consumable' ? 'selected' : ''}>永久</option>
+                <option value="consumable" ${priceData?.usage_type === 'consumable' ? 'selected' : ''}>消耗品</option>
+            </select>
+            <button type="button" class="btn-remove-price" onclick="this.parentElement.remove()"><i class="fas fa-times"></i></button>
+        `;
+        container.appendChild(row);
+    }
+
+    async function submitUploadPool() {
+        const title = document.getElementById('uploadPoolTitle').value.trim();
+        const description = document.getElementById('uploadPoolDesc').value.trim();
+
+        if (!title) {
+            showToast('请输入物品名称');
+            return;
+        }
+
+        const priceRows = document.querySelectorAll('#uploadPoolPricesContainer .price-option-row');
+        const prices = [];
+        priceRows.forEach((row, index) => {
+            const name = row.querySelector('.price-name').value.trim();
+            const cost = parseInt(row.querySelector('.price-cost').value) || 0;
+            const currency = row.querySelector('.price-currency').value;
+            const usage = row.querySelector('.price-usage').value;
+
+            if (name && cost >= 0) {
+                prices.push({
+                    price_name: name,
+                    price_cost: cost,
+                    currency_type: currency,
+                    usage_type: usage,
+                    usage_count: usage === 'consumable' ? 1 : 0,
+                    sort_order: index
+                });
+            }
+        });
+
+        try {
+            const url = editingPoolItemId
+                ? `/api/public-shop/items/${editingPoolItemId}`
+                : '/api/public-shop/items';
+            const method = editingPoolItemId ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method,
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ title, description, prices, is_official: 0 })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showToast(editingPoolItemId ? '已更新' : '已上传到公共池', true);
+                closeUploadPoolModal();
+                loadPublicPool();
+            } else {
+                showToast(data.message || '操作失败');
+            }
+        } catch (e) {
+            showToast('操作失败');
+        }
+    }
+
+    function editPoolItem(itemId) {
+        openUploadToPoolModal(itemId);
+    }
+
+    async function deletePoolItem(itemId) {
+        if (!confirm('确定删除此物品？')) return;
+
+        try {
+            const res = await fetch(`/api/public-shop/items/${itemId}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showToast('已删除', true);
+                loadPublicPool();
+            } else {
+                showToast(data.message || '删除失败');
+            }
+        } catch (e) {
+            showToast('删除失败');
+        }
+    }
+
+    // 投票
+    async function votePoolItem(itemId, voteType) {
+        try {
+            const item = publicPoolData.find(i => i.id === itemId);
+            const newVoteType = item && item.user_vote === voteType ? 0 : voteType;
+
+            const res = await fetch(`/api/public-shop/items/${itemId}/vote`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ voteType: newVoteType })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                loadPublicPool();
+            } else {
+                showToast(data.message || '投票失败');
+            }
+        } catch (e) {
+            showToast('投票失败');
+        }
+    }
+
+    // 添加到我的池
+    async function addToMyPool(itemId) {
+        try {
+            const res = await fetch(`/api/public-shop/items/${itemId}/add-to-pool`, {
+                method: 'POST',
+                headers: getAuthHeaders()
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showToast('已添加到你的申领物池', true);
+                loadPublicPool();
+            } else {
+                showToast(data.message || '添加失败');
+            }
+        } catch (e) {
+            showToast('添加失败');
+        }
+    }
+
+    // 物品详情
+    async function openPoolDetail(itemId) {
+        currentPoolDetailId = itemId;
+
+        try {
+            const res = await fetch(`/api/public-shop/items/${itemId}`, { headers: getAuthHeaders() });
+            const data = await res.json();
+
+            if (data.success) {
+                const item = data.item;
+                const isOfficial = item.is_official === 1;
+                const isMine = item.uploaded_by === currentUserId;
+
+                // 标价选项
+                const pricesHtml = (item.prices || []).map(p => {
+                    const currencyName = p.currency_type === 'commendation' ? '嘉奖' : '申诫';
+                    const usageText = p.usage_type === 'permanent' ? '永久' : `${p.usage_count}次`;
+                    return `<div style="padding:8px 12px;background:#f8f9fa;border-radius:6px;margin-bottom:5px;display:flex;justify-content:space-between;">
+                        <span>${p.price_name}</span>
+                        <span style="font-weight:bold;">${p.price_cost} ${currencyName} (${usageText})</span>
+                    </div>`;
+                }).join('') || '<div style="color:#7f8c8d;text-align:center;">暂无标价</div>';
+
+                // 评论
+                const commentsHtml = renderPoolComments(item.comments || []);
+
+                // 投票按钮状态 (普通用户显示高亮，管理员不显示高亮因为可以多次投票)
+                const isAdmin = role >= 2;
+                const likeActive = !isAdmin && item.user_vote === 1 ? 'active' : '';
+                const dislikeActive = !isAdmin && item.user_vote === -1 ? 'active' : '';
+
+                // 管理员投票提示
+                const adminVoteHint = isAdmin ? '<div style="font-size:11px;color:#9b59b6;text-align:center;margin-top:8px;"><i class="fas fa-crown"></i> 管理员模式: 每次点击都会新增一票</div>' : '';
+
+                document.getElementById('poolDetailContent').innerHTML = `
+                    <div class="pool-detail-section">
+                        <h4>基本信息</h4>
+                        <div style="font-size:18px;font-weight:bold;margin-bottom:10px;">${item.title}</div>
+                        ${!isOfficial ? `<div style="font-size:12px;color:#95a5a6;margin-bottom:10px;"><i class="fas fa-user"></i> 上传者: ${item.uploader_name || '未知'}</div>` : ''}
+                        <div style="font-size:13px;color:#555;line-height:1.6;">${item.description || '暂无描述'}</div>
+                    </div>
+                    <div class="pool-detail-section">
+                        <h4>标价选项</h4>
+                        ${pricesHtml}
+                    </div>
+                    <div class="pool-detail-section">
+                        <h4>互动</h4>
+                        <div class="pool-vote-buttons">
+                            <button class="pool-vote-btn like ${likeActive}" onclick="voteFromDetail(1)">
+                                <i class="fas fa-thumbs-up"></i> 点赞 (${item.like_count || 0})
+                            </button>
+                            <button class="pool-vote-btn dislike ${dislikeActive}" onclick="voteFromDetail(-1)">
+                                <i class="fas fa-thumbs-down"></i> 点踩 (${item.dislike_count || 0})
+                            </button>
+                        </div>
+                        ${adminVoteHint}
+                        <div style="font-size:12px;color:#95a5a6;text-align:center;margin-top:8px;">
+                            <i class="fas fa-download"></i> 已被添加 ${item.add_count || 0} 次
+                        </div>
+                        ${isAdmin ? '<div id="adminVotesSection" style="margin-top:15px;"></div>' : ''}
+                    </div>
+                    <div class="pool-detail-section">
+                        <h4>评论 (${(item.comments || []).length})</h4>
+                        <div class="pool-comments-list" id="poolCommentsList">
+                            ${commentsHtml}
+                        </div>
+                        <div class="pool-comment-form">
+                            <input type="text" id="poolCommentInput" placeholder="发表评论...">
+                            <button onclick="postPoolComment()">发送</button>
+                            <button onclick="document.getElementById('poolCommentInput').value=''" style="background:#95a5a6;" title="清空">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                // 如果是自己的物品，隐藏添加按钮
+                document.getElementById('btnAddToMyPool').style.display = isMine ? 'none' : 'inline-flex';
+
+                document.getElementById('poolDetailModal').classList.add('show');
+
+                // 管理员加载自己的投票记录
+                if (isAdmin) {
+                    loadAdminVotes(itemId);
+                }
+            } else {
+                showToast('加载详情失败');
+            }
+        } catch (e) {
+            showToast('加载详情失败');
+        }
+    }
+
+    function renderPoolComments(comments) {
+        if (comments.length === 0) {
+            return '<div style="color:#7f8c8d;text-align:center;padding:20px;">暂无评论</div>';
+        }
+
+        const isAdmin = role >= 2;
+
+        // 简单列表，不支持回复
+        return comments.map(c => {
+            const canDelete = isAdmin || c.user_id === currentUserId;
+            const deleteBtn = canDelete
+                ? `<button onclick="deletePoolComment(${c.id})"><i class="fas fa-trash"></i> 删除</button>`
+                : '';
+
+            return `
+                <div class="pool-comment-item">
+                    <div class="pool-comment-header">
+                        <span class="pool-comment-user">${c.user_name || '匿名'}</span>
+                        <span class="pool-comment-time">${new Date(c.created_at).toLocaleString()}</span>
+                    </div>
+                    <div class="pool-comment-content">${c.content}</div>
+                    ${canDelete ? `<div class="pool-comment-actions">${deleteBtn}</div>` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+
+    function closePoolDetailModal() {
+        document.getElementById('poolDetailModal').classList.remove('show');
+        currentPoolDetailId = null;
+    }
+
+    async function voteFromDetail(voteType) {
+        if (!currentPoolDetailId) return;
+        await votePoolItem(currentPoolDetailId, voteType);
+        openPoolDetail(currentPoolDetailId);
+    }
+
+    // 加载管理员的投票记录
+    async function loadAdminVotes(itemId) {
+        try {
+            const res = await fetch(`/api/public-shop/items/${itemId}/my-votes`, { headers: getAuthHeaders() });
+            const data = await res.json();
+
+            if (data.success && data.votes && data.votes.length > 0) {
+                const votesHtml = data.votes.map(v => {
+                    const voteIcon = v.vote_type === 1 ? 'fa-thumbs-up' : 'fa-thumbs-down';
+                    const voteColor = v.vote_type === 1 ? '#27ae60' : '#e74c3c';
+                    const voteText = v.vote_type === 1 ? '赞' : '踩';
+                    return `<span class="admin-vote-tag" style="display:inline-flex;align-items:center;gap:4px;padding:4px 8px;background:#f8f9fa;border-radius:4px;margin:2px;font-size:11px;">
+                        <i class="fas ${voteIcon}" style="color:${voteColor};"></i> ${voteText}
+                        <button onclick="deleteAdminVote(${v.id})" style="background:none;border:none;color:#e74c3c;cursor:pointer;padding:0 2px;" title="删除此票">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </span>`;
+                }).join('');
+
+                document.getElementById('adminVotesSection').innerHTML = `
+                    <div style="font-size:11px;color:#9b59b6;margin-bottom:8px;"><i class="fas fa-crown"></i> 我的投票记录 (${data.votes.length}票):</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:4px;">${votesHtml}</div>
+                `;
+            } else {
+                document.getElementById('adminVotesSection').innerHTML = `
+                    <div style="font-size:11px;color:#95a5a6;"><i class="fas fa-crown"></i> 暂无投票记录</div>
+                `;
+            }
+        } catch (e) {
+            console.error('加载投票记录失败', e);
+        }
+    }
+
+    // 删除管理员投票
+    async function deleteAdminVote(voteId) {
+        try {
+            const res = await fetch(`/api/public-shop/votes/${voteId}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showToast('投票已删除', true);
+                openPoolDetail(currentPoolDetailId);
+            } else {
+                showToast(data.message || '删除失败');
+            }
+        } catch (e) {
+            showToast('删除失败');
+        }
+    }
+
+    function addToMyPoolFromDetail() {
+        if (!currentPoolDetailId) return;
+        addToMyPool(currentPoolDetailId);
+        closePoolDetailModal();
+    }
+
+    async function postPoolComment() {
+        if (!currentPoolDetailId) return;
+
+        const input = document.getElementById('poolCommentInput');
+        const content = input.value.trim();
+        if (!content) {
+            showToast('请输入评论内容');
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/public-shop/items/${currentPoolDetailId}/comments`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ content })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                input.value = '';
+                openPoolDetail(currentPoolDetailId);
+            } else {
+                showToast(data.message || '评论失败');
+            }
+        } catch (e) {
+            showToast('评论失败');
+        }
+    }
+
+    // 删除评论
+    async function deletePoolComment(commentId) {
+        if (!confirm('确定要删除这条评论吗？')) return;
+
+        try {
+            const res = await fetch(`/api/public-shop/comments/${commentId}`, {
+                method: 'DELETE',
+                headers: getAuthHeaders()
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showToast('评论已删除', true);
+                openPoolDetail(currentPoolDetailId);
+            } else {
+                showToast(data.message || '删除失败');
+            }
+        } catch (e) {
+            showToast('删除失败');
+        }
+    }
 </script>
 </body>
 </html>

@@ -381,6 +381,71 @@ db.serialize(() => {
         }
     });
 
+    // ==========================================
+    // 公共申领物池系统表
+    // ==========================================
+
+    // 公共申领物池表
+    db.run(`CREATE TABLE IF NOT EXISTS public_shop_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        description TEXT,
+        uploaded_by INTEGER NOT NULL,
+        is_official INTEGER DEFAULT 0,
+        is_active INTEGER DEFAULT 1,
+        add_count INTEGER DEFAULT 0,
+        created_at INTEGER,
+        updated_at INTEGER,
+        FOREIGN KEY(uploaded_by) REFERENCES users(id)
+    )`);
+
+    // 公共申领物标价选项表
+    db.run(`CREATE TABLE IF NOT EXISTS public_shop_item_prices (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_id INTEGER NOT NULL,
+        price_name TEXT NOT NULL,
+        price_cost INTEGER NOT NULL,
+        currency_type TEXT DEFAULT 'commendation',
+        usage_type TEXT DEFAULT 'permanent',
+        usage_count INTEGER DEFAULT 0,
+        sort_order INTEGER DEFAULT 0,
+        FOREIGN KEY(item_id) REFERENCES public_shop_items(id) ON DELETE CASCADE
+    )`);
+
+    // 点赞/点踩记录表 (管理员可多次投票，普通用户每人一票)
+    db.run(`CREATE TABLE IF NOT EXISTS public_item_votes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        vote_type INTEGER NOT NULL,
+        is_admin_vote INTEGER DEFAULT 0,
+        created_at INTEGER,
+        FOREIGN KEY(item_id) REFERENCES public_shop_items(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+    )`);
+
+    // 评论表（支持回复）
+    db.run(`CREATE TABLE IF NOT EXISTS public_item_comments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        item_id INTEGER NOT NULL,
+        user_id INTEGER NOT NULL,
+        parent_id INTEGER DEFAULT NULL,
+        content TEXT NOT NULL,
+        created_at INTEGER,
+        FOREIGN KEY(item_id) REFERENCES public_shop_items(id) ON DELETE CASCADE,
+        FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(parent_id) REFERENCES public_item_comments(id) ON DELETE CASCADE
+    )`);
+
+    // 迁移: 为shop_items添加source_public_id字段
+    db.all("PRAGMA table_info(shop_items)", [], (err, columns) => {
+        if (err) return;
+        const columnNames = columns.map(c => c.name);
+        if (!columnNames.includes('source_public_id')) {
+            db.run("ALTER TABLE shop_items ADD COLUMN source_public_id INTEGER DEFAULT NULL");
+        }
+    });
+
     // 为 field_missions 添加新字段的迁移
     db.all("PRAGMA table_info(field_missions)", [], (err, columns) => {
         if (err) return;
@@ -533,6 +598,39 @@ db.serialize(() => {
                 }
             }
         });
+    });
+
+    // 迁移: public_item_votes 表结构变更 (添加is_admin_vote列，移除唯一约束)
+    db.all("PRAGMA table_info(public_item_votes)", [], (err, columns) => {
+        if (err || !columns || columns.length === 0) return;
+        const columnNames = columns.map(c => c.name);
+
+        // 如果没有 is_admin_vote 列，需要重建表
+        if (!columnNames.includes('is_admin_vote')) {
+            console.log('迁移: 重建 public_item_votes 表以支持管理员多次投票...');
+            db.serialize(() => {
+                // 1. 创建新表（不含唯一约束）
+                db.run(`CREATE TABLE IF NOT EXISTS public_item_votes_new (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    item_id INTEGER NOT NULL,
+                    user_id INTEGER NOT NULL,
+                    vote_type INTEGER NOT NULL,
+                    is_admin_vote INTEGER DEFAULT 0,
+                    created_at INTEGER,
+                    FOREIGN KEY(item_id) REFERENCES public_shop_items(id) ON DELETE CASCADE,
+                    FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+                )`);
+                // 2. 复制数据
+                db.run(`INSERT INTO public_item_votes_new (id, item_id, user_id, vote_type, is_admin_vote, created_at)
+                        SELECT id, item_id, user_id, vote_type, 0, created_at FROM public_item_votes`);
+                // 3. 删除旧表
+                db.run(`DROP TABLE public_item_votes`);
+                // 4. 重命名新表
+                db.run(`ALTER TABLE public_item_votes_new RENAME TO public_item_votes`, (err) => {
+                    if (!err) console.log('迁移完成: public_item_votes 表已重建');
+                });
+            });
+        }
     });
 
 // 初始化默认用户，修改admin在此处。
@@ -1361,7 +1459,14 @@ app.get('/api/character/:id', optionalAuth, (req, res) => {
                     data.realSlots = data.realSlots || 3;
                     data.canSendMessages = row.can_send_messages !== 0; // 默认允许发信
 
-                    res.json(data);
+                    // 获取全局私信开关状态
+                    getAllConfig().then(config => {
+                        data.globalMessagingEnabled = config.messaging_enabled !== 'false';
+                        res.json(data);
+                    }).catch(() => {
+                        data.globalMessagingEnabled = true; // 获取失败时默认开启
+                        res.json(data);
+                    });
                 } catch (e) {
                     console.error('处理角色数据失败:', e);
                     res.status(500).json({ error: e.message });
@@ -1466,6 +1571,27 @@ app.put('/api/character/:id', optionalAuth, (req, res) => {
 
                 // 删除funcProgressRewards，不需要保存到数据
                 delete newData.funcProgressRewards;
+
+                // 保护经理设置的字段，不允许玩家覆盖
+                // 槽位限制：保留原有值（如果存在）
+                if (existingData.anomSlots !== undefined) {
+                    newData.anomSlots = existingData.anomSlots;
+                }
+                if (existingData.realSlots !== undefined) {
+                    newData.realSlots = existingData.realSlots;
+                }
+                // 申诫商店权限：保留原有值
+                if (existingData.reprimandShopAccess !== undefined) {
+                    newData.reprimandShopAccess = existingData.reprimandShopAccess;
+                }
+                // 商店权限配置：保留原有值
+                if (existingData.shopAccess !== undefined) {
+                    newData.shopAccess = existingData.shopAccess;
+                }
+
+                // 重新计算嘉奖/申诫总数（从数组计算，确保准确）
+                newData.mvpCount = rewards.reduce((sum, r) => sum + (r.count || 1), 0);
+                newData.watchCount = reprimands.reduce((sum, r) => sum + (r.count || 1), 0);
 
                 db.run('UPDATE characters SET data = ? WHERE id = ?',
                     [JSON.stringify(newData), req.params.id],
@@ -2901,6 +3027,732 @@ app.put('/api/manager/character/:charId/shop-access', authenticateToken, require
         res.json({ success: true, message: '商店权限配置已保存' });
     } catch (e) {
         console.error('保存商店权限配置失败:', e);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+// ==========================================
+// 公共申领物池 API
+// ==========================================
+
+// 计算经理上传配额
+function calculateUploadQuota(managerId) {
+    return new Promise((resolve, reject) => {
+        db.all(`SELECT psi.id,
+                (SELECT COUNT(*) FROM public_item_votes WHERE item_id = psi.id AND vote_type = 1) as like_count,
+                (SELECT COUNT(*) FROM public_item_votes WHERE item_id = psi.id AND vote_type = -1) as dislike_count
+                FROM public_shop_items psi
+                WHERE psi.uploaded_by = ? AND psi.is_active = 1 AND psi.is_official = 0`,
+            [managerId], (err, items) => {
+                if (err) return reject(err);
+
+                const BASE_QUOTA = 10;
+                let totalLikes = 0;
+                let totalDislikes = 0;
+
+                (items || []).forEach(item => {
+                    totalLikes += item.like_count || 0;
+                    totalDislikes += item.dislike_count || 0;
+                });
+
+                const bonusSlots = Math.floor(totalLikes / 50);
+                const penaltySlots = Math.floor(totalDislikes / 50);
+                const finalQuota = Math.max(0, BASE_QUOTA + bonusSlots - penaltySlots);
+
+                resolve({
+                    baseQuota: BASE_QUOTA,
+                    bonusSlots,
+                    penaltySlots,
+                    finalQuota,
+                    currentCount: items.length,
+                    totalLikes,
+                    totalDislikes
+                });
+            });
+    });
+}
+
+// 获取经理上传配额
+app.get('/api/manager/upload-quota', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
+    try {
+        const quota = await calculateUploadQuota(req.user.userId);
+        res.json({ success: true, ...quota });
+    } catch (e) {
+        console.error('获取上传配额失败:', e);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+// 获取公共池列表
+app.get('/api/public-shop/items', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
+    try {
+        const { filter } = req.query; // all, official, uploaded, mine
+        const userId = req.user.userId;
+
+        let whereClause = 'psi.is_active = 1';
+        const params = [];
+
+        if (filter === 'official') {
+            whereClause += ' AND psi.is_official = 1';
+        } else if (filter === 'uploaded') {
+            whereClause += ' AND psi.is_official = 0';
+        } else if (filter === 'mine') {
+            whereClause += ' AND psi.uploaded_by = ?';
+            params.push(userId);
+        }
+
+        const items = await new Promise((resolve, reject) => {
+            db.all(`SELECT psi.*,
+                    u.name as uploader_name,
+                    u.username as uploader_username,
+                    (SELECT COUNT(*) FROM public_item_votes WHERE item_id = psi.id AND vote_type = 1) as like_count,
+                    (SELECT COUNT(*) FROM public_item_votes WHERE item_id = psi.id AND vote_type = -1) as dislike_count,
+                    (SELECT COUNT(*) FROM public_item_comments WHERE item_id = psi.id) as comment_count,
+                    (SELECT vote_type FROM public_item_votes WHERE item_id = psi.id AND user_id = ?) as my_vote
+                    FROM public_shop_items psi
+                    LEFT JOIN users u ON psi.uploaded_by = u.id
+                    WHERE ${whereClause}
+                    ORDER BY psi.is_official DESC, psi.created_at DESC`,
+                [userId, ...params], (err, rows) => {
+                    if (err) reject(err);
+                    else resolve(rows || []);
+                });
+        });
+
+        // 获取每个物品的标价选项
+        for (const item of items) {
+            const prices = await new Promise((resolve, reject) => {
+                db.all('SELECT * FROM public_shop_item_prices WHERE item_id = ? ORDER BY sort_order',
+                    [item.id], (err, rows) => {
+                        if (err) reject(err);
+                        else resolve(rows || []);
+                    });
+            });
+            item.prices = prices;
+            item.canEdit = item.uploaded_by === userId || req.user.role >= ROLE.SUPER_ADMIN;
+        }
+
+        res.json({ success: true, items });
+    } catch (e) {
+        console.error('获取公共池列表失败:', e);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+// 获取单个公共物品详情（含评论）
+app.get('/api/public-shop/items/:id', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
+    try {
+        const itemId = req.params.id;
+        const userId = req.user.userId;
+
+        const item = await new Promise((resolve, reject) => {
+            db.get(`SELECT psi.*,
+                    u.name as uploader_name,
+                    u.username as uploader_username,
+                    (SELECT COUNT(*) FROM public_item_votes WHERE item_id = psi.id AND vote_type = 1) as like_count,
+                    (SELECT COUNT(*) FROM public_item_votes WHERE item_id = psi.id AND vote_type = -1) as dislike_count,
+                    (SELECT vote_type FROM public_item_votes WHERE item_id = psi.id AND user_id = ?) as my_vote
+                    FROM public_shop_items psi
+                    LEFT JOIN users u ON psi.uploaded_by = u.id
+                    WHERE psi.id = ? AND psi.is_active = 1`,
+                [userId, itemId], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+        });
+
+        if (!item) {
+            return res.status(404).json({ success: false, message: '物品不存在' });
+        }
+
+        // 获取标价选项
+        const prices = await new Promise((resolve, reject) => {
+            db.all('SELECT * FROM public_shop_item_prices WHERE item_id = ? ORDER BY sort_order',
+                [itemId], (err, rows) => {
+                    if (err) reject(err);
+                    else resolve(rows || []);
+                });
+        });
+        item.prices = prices;
+
+        // 获取评论（含回复）
+        const comments = await new Promise((resolve, reject) => {
+            db.all(`SELECT c.*, u.name as user_name, u.username
+                    FROM public_item_comments c
+                    LEFT JOIN users u ON c.user_id = u.id
+                    WHERE c.item_id = ?
+                    ORDER BY c.created_at ASC`,
+                [itemId], (err, rows) => {
+                    if (err) reject(err);
+                    else resolve(rows || []);
+                });
+        });
+
+        // 构建评论树
+        const commentTree = [];
+        const commentMap = {};
+        comments.forEach(c => {
+            c.replies = [];
+            c.canDelete = c.user_id === userId || req.user.role >= ROLE.SUPER_ADMIN;
+            commentMap[c.id] = c;
+        });
+        comments.forEach(c => {
+            if (c.parent_id && commentMap[c.parent_id]) {
+                commentMap[c.parent_id].replies.push(c);
+            } else if (!c.parent_id) {
+                commentTree.push(c);
+            }
+        });
+
+        item.comments = commentTree;
+        item.canEdit = item.uploaded_by === userId || req.user.role >= ROLE.SUPER_ADMIN;
+
+        res.json({ success: true, item });
+    } catch (e) {
+        console.error('获取公共物品详情失败:', e);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+// 上传物品到公共池
+app.post('/api/public-shop/items', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
+    try {
+        const { title, description, prices, isOfficial } = req.body;
+        const userId = req.user.userId;
+
+        if (!title || !title.trim()) {
+            return res.status(400).json({ success: false, message: '请填写物品标题' });
+        }
+
+        if (!prices || !Array.isArray(prices) || prices.length === 0) {
+            return res.status(400).json({ success: false, message: '请至少添加一个标价选项' });
+        }
+
+        // 只有超管可以创建官方物品
+        const official = (isOfficial && req.user.role >= ROLE.SUPER_ADMIN) ? 1 : 0;
+
+        // 如果不是官方物品，检查配额
+        if (!official) {
+            const quota = await calculateUploadQuota(userId);
+            if (quota.currentCount >= quota.finalQuota) {
+                return res.status(400).json({
+                    success: false,
+                    message: `上传配额已满（${quota.currentCount}/${quota.finalQuota}），获得更多点赞可增加配额`
+                });
+            }
+        }
+
+        const now = Date.now();
+
+        const itemId = await new Promise((resolve, reject) => {
+            db.run(`INSERT INTO public_shop_items (title, description, uploaded_by, is_official, created_at, updated_at)
+                    VALUES (?, ?, ?, ?, ?, ?)`,
+                [title.trim(), description || '', userId, official, now, now],
+                function(err) {
+                    if (err) reject(err);
+                    else resolve(this.lastID);
+                });
+        });
+
+        // 插入标价选项
+        const stmt = db.prepare('INSERT INTO public_shop_item_prices (item_id, price_name, price_cost, currency_type, usage_type, usage_count, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        prices.forEach((p, idx) => {
+            if (p.name && p.cost >= 0) {
+                const currencyType = p.currencyType || 'commendation';
+                const usageType = p.usageType || 'permanent';
+                const usageCount = parseInt(p.usageCount) || 0;
+                stmt.run(itemId, p.name.trim(), parseInt(p.cost) || 0, currencyType, usageType, usageCount, idx);
+            }
+        });
+        stmt.finalize();
+
+        res.json({ success: true, itemId, message: '上传成功' });
+    } catch (e) {
+        console.error('上传公共物品失败:', e);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+// 编辑公共池物品
+app.put('/api/public-shop/items/:id', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
+    try {
+        const itemId = req.params.id;
+        const { title, description, prices } = req.body;
+        const userId = req.user.userId;
+
+        const item = await new Promise((resolve, reject) => {
+            db.get('SELECT * FROM public_shop_items WHERE id = ? AND is_active = 1', [itemId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!item) {
+            return res.status(404).json({ success: false, message: '物品不存在' });
+        }
+
+        // 只有上传者或超管可以编辑
+        if (item.uploaded_by !== userId && req.user.role < ROLE.SUPER_ADMIN) {
+            return res.status(403).json({ success: false, message: '无权编辑此物品' });
+        }
+
+        const now = Date.now();
+
+        await new Promise((resolve, reject) => {
+            db.run('UPDATE public_shop_items SET title = ?, description = ?, updated_at = ? WHERE id = ?',
+                [title.trim(), description || '', now, itemId], (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                });
+        });
+
+        // 删除旧标价，插入新标价
+        await new Promise((resolve, reject) => {
+            db.run('DELETE FROM public_shop_item_prices WHERE item_id = ?', [itemId], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        if (prices && Array.isArray(prices)) {
+            const stmt = db.prepare('INSERT INTO public_shop_item_prices (item_id, price_name, price_cost, currency_type, usage_type, usage_count, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)');
+            prices.forEach((p, idx) => {
+                if (p.name && p.cost >= 0) {
+                    const currencyType = p.currencyType || 'commendation';
+                    const usageType = p.usageType || 'permanent';
+                    const usageCount = parseInt(p.usageCount) || 0;
+                    stmt.run(itemId, p.name.trim(), parseInt(p.cost) || 0, currencyType, usageType, usageCount, idx);
+                }
+            });
+            stmt.finalize();
+        }
+
+        res.json({ success: true, message: '更新成功' });
+    } catch (e) {
+        console.error('编辑公共物品失败:', e);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+// 删除公共池物品
+app.delete('/api/public-shop/items/:id', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
+    try {
+        const itemId = req.params.id;
+        const userId = req.user.userId;
+
+        const item = await new Promise((resolve, reject) => {
+            db.get('SELECT * FROM public_shop_items WHERE id = ?', [itemId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!item) {
+            return res.status(404).json({ success: false, message: '物品不存在' });
+        }
+
+        // 只有上传者或超管可以删除
+        if (item.uploaded_by !== userId && req.user.role < ROLE.SUPER_ADMIN) {
+            return res.status(403).json({ success: false, message: '无权删除此物品' });
+        }
+
+        // 软删除
+        await new Promise((resolve, reject) => {
+            db.run('UPDATE public_shop_items SET is_active = 0 WHERE id = ?', [itemId], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        res.json({ success: true, message: '删除成功' });
+    } catch (e) {
+        console.error('删除公共物品失败:', e);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+// 添加公共物品到自己的申领物池（复制副本）
+app.post('/api/public-shop/items/:id/add-to-pool', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
+    try {
+        const publicItemId = req.params.id;
+        const userId = req.user.userId;
+
+        // 获取公共物品
+        const publicItem = await new Promise((resolve, reject) => {
+            db.get('SELECT * FROM public_shop_items WHERE id = ? AND is_active = 1', [publicItemId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!publicItem) {
+            return res.status(404).json({ success: false, message: '物品不存在' });
+        }
+
+        // 获取标价选项
+        const publicPrices = await new Promise((resolve, reject) => {
+            db.all('SELECT * FROM public_shop_item_prices WHERE item_id = ? ORDER BY sort_order',
+                [publicItemId], (err, rows) => {
+                    if (err) reject(err);
+                    else resolve(rows || []);
+                });
+        });
+
+        const now = Date.now();
+
+        // 创建副本到shop_items
+        const newItemId = await new Promise((resolve, reject) => {
+            db.run(`INSERT INTO shop_items (title, description, created_by, is_global, show_to_agents, source_public_id, created_at, updated_at)
+                    VALUES (?, ?, ?, 0, 1, ?, ?, ?)`,
+                [publicItem.title, publicItem.description, userId, publicItemId, now, now],
+                function(err) {
+                    if (err) reject(err);
+                    else resolve(this.lastID);
+                });
+        });
+
+        // 复制标价选项
+        const stmt = db.prepare('INSERT INTO shop_item_prices (item_id, price_name, price_cost, currency_type, usage_type, usage_count, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)');
+        publicPrices.forEach(p => {
+            stmt.run(newItemId, p.price_name, p.price_cost, p.currency_type, p.usage_type, p.usage_count, p.sort_order);
+        });
+        stmt.finalize();
+
+        // 增加添加次数
+        await new Promise((resolve, reject) => {
+            db.run('UPDATE public_shop_items SET add_count = add_count + 1 WHERE id = ?', [publicItemId], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        res.json({ success: true, newItemId, message: '已添加到我的申领物池' });
+    } catch (e) {
+        console.error('添加到自己池失败:', e);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+// 点赞/点踩
+app.post('/api/public-shop/items/:id/vote', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
+    try {
+        const itemId = req.params.id;
+        const userId = req.user.userId;
+        const userRole = req.user.role;
+        const { voteType } = req.body; // 1=赞, -1=踩, 0=取消
+        const isAdmin = userRole >= ROLE.SUPER_ADMIN;
+
+        // 检查物品是否存在
+        const item = await new Promise((resolve, reject) => {
+            db.get('SELECT * FROM public_shop_items WHERE id = ? AND is_active = 1', [itemId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!item) {
+            return res.status(404).json({ success: false, message: '物品不存在' });
+        }
+
+        if (voteType === 0) {
+            // 取消投票 - 只对普通用户有效，管理员需要通过删除投票API
+            if (!isAdmin) {
+                await new Promise((resolve, reject) => {
+                    db.run('DELETE FROM public_item_votes WHERE item_id = ? AND user_id = ? AND is_admin_vote = 0',
+                        [itemId, userId], (err) => {
+                            if (err) reject(err);
+                            else resolve();
+                        });
+                });
+            }
+        } else if (voteType === 1 || voteType === -1) {
+            if (isAdmin) {
+                // 管理员: 直接插入新投票，可以多次投票
+                await new Promise((resolve, reject) => {
+                    db.run(`INSERT INTO public_item_votes (item_id, user_id, vote_type, is_admin_vote, created_at)
+                            VALUES (?, ?, ?, 1, ?)`,
+                        [itemId, userId, voteType, Date.now()], (err) => {
+                            if (err) reject(err);
+                            else resolve();
+                        });
+                });
+            } else {
+                // 普通用户: 先删除旧投票，再插入新投票（保持每人一票）
+                await new Promise((resolve, reject) => {
+                    db.run('DELETE FROM public_item_votes WHERE item_id = ? AND user_id = ? AND is_admin_vote = 0',
+                        [itemId, userId], (err) => {
+                            if (err) reject(err);
+                            else resolve();
+                        });
+                });
+                await new Promise((resolve, reject) => {
+                    db.run(`INSERT INTO public_item_votes (item_id, user_id, vote_type, is_admin_vote, created_at)
+                            VALUES (?, ?, ?, 0, ?)`,
+                        [itemId, userId, voteType, Date.now()], (err) => {
+                            if (err) reject(err);
+                            else resolve();
+                        });
+                });
+            }
+        }
+
+        // 检查是否需要处理超额（当有新的踩时）
+        if (voteType === -1) {
+            // 获取被踩物品的上传者
+            const uploaderId = item.uploaded_by;
+            if (uploaderId !== userId) { // 不处理自己的物品
+                const quota = await calculateUploadQuota(uploaderId);
+                if (quota.currentCount > quota.finalQuota) {
+                    // 需要移除踩最多的物品
+                    const uploaderItems = await new Promise((resolve, reject) => {
+                        db.all(`SELECT psi.id,
+                                (SELECT COUNT(*) FROM public_item_votes WHERE item_id = psi.id AND vote_type = -1) as dislike_count
+                                FROM public_shop_items psi
+                                WHERE psi.uploaded_by = ? AND psi.is_active = 1 AND psi.is_official = 0
+                                ORDER BY dislike_count DESC`,
+                            [uploaderId], (err, rows) => {
+                                if (err) reject(err);
+                                else resolve(rows || []);
+                            });
+                    });
+
+                    const removeCount = quota.currentCount - quota.finalQuota;
+                    for (let i = 0; i < removeCount && i < uploaderItems.length; i++) {
+                        await new Promise((resolve, reject) => {
+                            db.run('UPDATE public_shop_items SET is_active = 0 WHERE id = ?',
+                                [uploaderItems[i].id], (err) => {
+                                    if (err) reject(err);
+                                    else resolve();
+                                });
+                        });
+                    }
+                }
+            }
+        }
+
+        // 返回最新投票数
+        const votes = await new Promise((resolve, reject) => {
+            db.get(`SELECT
+                    (SELECT COUNT(*) FROM public_item_votes WHERE item_id = ? AND vote_type = 1) as like_count,
+                    (SELECT COUNT(*) FROM public_item_votes WHERE item_id = ? AND vote_type = -1) as dislike_count`,
+                [itemId, itemId], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+        });
+
+        res.json({
+            success: true,
+            like_count: votes.like_count,
+            dislike_count: votes.dislike_count,
+            my_vote: voteType === 0 ? null : voteType
+        });
+    } catch (e) {
+        console.error('投票失败:', e);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+// 获取管理员自己的投票记录（用于显示和删除）
+app.get('/api/public-shop/items/:id/my-votes', authenticateToken, requireRole(ROLE.SUPER_ADMIN), async (req, res) => {
+    try {
+        const itemId = req.params.id;
+        const userId = req.user.userId;
+
+        const votes = await new Promise((resolve, reject) => {
+            db.all(`SELECT id, vote_type, created_at FROM public_item_votes
+                    WHERE item_id = ? AND user_id = ? AND is_admin_vote = 1
+                    ORDER BY created_at DESC`,
+                [itemId, userId], (err, rows) => {
+                    if (err) reject(err);
+                    else resolve(rows || []);
+                });
+        });
+
+        res.json({ success: true, votes });
+    } catch (e) {
+        console.error('获取投票记录失败:', e);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+// 删除投票（管理员删除自己的投票）
+app.delete('/api/public-shop/votes/:voteId', authenticateToken, requireRole(ROLE.SUPER_ADMIN), async (req, res) => {
+    try {
+        const voteId = req.params.voteId;
+        const userId = req.user.userId;
+
+        // 只能删除自己的管理员投票
+        const vote = await new Promise((resolve, reject) => {
+            db.get('SELECT * FROM public_item_votes WHERE id = ? AND user_id = ? AND is_admin_vote = 1',
+                [voteId, userId], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+        });
+
+        if (!vote) {
+            return res.status(404).json({ success: false, message: '投票不存在或无权删除' });
+        }
+
+        await new Promise((resolve, reject) => {
+            db.run('DELETE FROM public_item_votes WHERE id = ?', [voteId], (err) => {
+                if (err) reject(err);
+                else resolve();
+            });
+        });
+
+        res.json({ success: true, message: '删除成功' });
+    } catch (e) {
+        console.error('删除投票失败:', e);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+// 获取评论列表
+app.get('/api/public-shop/items/:id/comments', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
+    try {
+        const itemId = req.params.id;
+        const userId = req.user.userId;
+
+        const comments = await new Promise((resolve, reject) => {
+            db.all(`SELECT c.*, u.name as user_name, u.username
+                    FROM public_item_comments c
+                    LEFT JOIN users u ON c.user_id = u.id
+                    WHERE c.item_id = ?
+                    ORDER BY c.created_at ASC`,
+                [itemId], (err, rows) => {
+                    if (err) reject(err);
+                    else resolve(rows || []);
+                });
+        });
+
+        // 构建评论树
+        const commentTree = [];
+        const commentMap = {};
+        comments.forEach(c => {
+            c.replies = [];
+            c.canDelete = c.user_id === userId || req.user.role >= ROLE.SUPER_ADMIN;
+            commentMap[c.id] = c;
+        });
+        comments.forEach(c => {
+            if (c.parent_id && commentMap[c.parent_id]) {
+                commentMap[c.parent_id].replies.push(c);
+            } else if (!c.parent_id) {
+                commentTree.push(c);
+            }
+        });
+
+        res.json({ success: true, comments: commentTree });
+    } catch (e) {
+        console.error('获取评论失败:', e);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+// 发表评论
+app.post('/api/public-shop/items/:id/comments', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
+    try {
+        const itemId = req.params.id;
+        const userId = req.user.userId;
+        const { content, parentId } = req.body;
+
+        if (!content || !content.trim()) {
+            return res.status(400).json({ success: false, message: '评论内容不能为空' });
+        }
+
+        // 检查物品是否存在
+        const item = await new Promise((resolve, reject) => {
+            db.get('SELECT id FROM public_shop_items WHERE id = ? AND is_active = 1', [itemId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!item) {
+            return res.status(404).json({ success: false, message: '物品不存在' });
+        }
+
+        // 如果是回复，检查父评论是否存在
+        if (parentId) {
+            const parentComment = await new Promise((resolve, reject) => {
+                db.get('SELECT id FROM public_item_comments WHERE id = ? AND item_id = ?',
+                    [parentId, itemId], (err, row) => {
+                        if (err) reject(err);
+                        else resolve(row);
+                    });
+            });
+            if (!parentComment) {
+                return res.status(404).json({ success: false, message: '回复的评论不存在' });
+            }
+        }
+
+        const commentId = await new Promise((resolve, reject) => {
+            db.run(`INSERT INTO public_item_comments (item_id, user_id, parent_id, content, created_at)
+                    VALUES (?, ?, ?, ?, ?)`,
+                [itemId, userId, parentId || null, content.trim(), Date.now()],
+                function(err) {
+                    if (err) reject(err);
+                    else resolve(this.lastID);
+                });
+        });
+
+        // 获取完整评论信息
+        const comment = await new Promise((resolve, reject) => {
+            db.get(`SELECT c.*, u.name as user_name, u.username
+                    FROM public_item_comments c
+                    LEFT JOIN users u ON c.user_id = u.id
+                    WHERE c.id = ?`,
+                [commentId], (err, row) => {
+                    if (err) reject(err);
+                    else resolve(row);
+                });
+        });
+
+        comment.replies = [];
+        comment.canDelete = true;
+
+        res.json({ success: true, comment });
+    } catch (e) {
+        console.error('发表评论失败:', e);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
+// 删除评论
+app.delete('/api/public-shop/comments/:id', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
+    try {
+        const commentId = req.params.id;
+        const userId = req.user.userId;
+
+        const comment = await new Promise((resolve, reject) => {
+            db.get('SELECT * FROM public_item_comments WHERE id = ?', [commentId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!comment) {
+            return res.status(404).json({ success: false, message: '评论不存在' });
+        }
+
+        // 只有评论者或超管可以删除
+        if (comment.user_id !== userId && req.user.role < ROLE.SUPER_ADMIN) {
+            return res.status(403).json({ success: false, message: '无权删除此评论' });
+        }
+
+        // 删除评论及其所有回复
+        await new Promise((resolve, reject) => {
+            db.run('DELETE FROM public_item_comments WHERE id = ? OR parent_id = ?',
+                [commentId, commentId], (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                });
+        });
+
+        res.json({ success: true, message: '删除成功' });
+    } catch (e) {
+        console.error('删除评论失败:', e);
         res.status(500).json({ success: false, message: '服务器错误' });
     }
 });
