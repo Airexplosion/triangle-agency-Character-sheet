@@ -412,8 +412,40 @@
     .btn-reset-list:hover { background: var(--signal-red); }
     
     @media(min-width: 768px) { .char-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; margin-bottom: 20px; } .char-layout .panel { height: 100%; margin-bottom: 0; } }
-    .attr-row { display: flex; align-items: center; margin-bottom: 12px; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px; gap: 8px; }
+    .attr-row { display: flex; align-items: center; margin-bottom: 12px; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px; gap: 8px; transition: z-index 0s 0.2s; }
+    .attr-row:has(.attr-help:hover), .attr-row:has(.attr-tooltip.show) { z-index: 9999 !important; transition: z-index 0s 0s; }
     .attr-label { flex: 0 0 50px; background: #333; color: white; text-align: center; border-radius: 3px; font-size: 10px; padding: 4px 0; font-weight: bold; }
+    .attr-help {
+        width: 16px; height: 16px; border-radius: 50%; background: #95a5a6; color: white;
+        font-size: 10px; display: flex; align-items: center; justify-content: center;
+        cursor: pointer; flex-shrink: 0; position: relative; font-weight: bold;
+        transition: background 0.2s; z-index: 1;
+    }
+    .attr-help:hover, .attr-help:focus { background: var(--accent); z-index: 9999; }
+    .attr-tooltip {
+        position: absolute; left: 24px; top: 50%; transform: translateY(-50%);
+        background: #2c3e50; color: white; padding: 10px 12px; border-radius: 6px;
+        font-size: 11px; line-height: 1.5; white-space: nowrap; z-index: 9999;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.3); opacity: 0; visibility: hidden;
+        transition: opacity 0.2s, visibility 0.2s; pointer-events: none;
+    }
+    .attr-tooltip::before {
+        content: ''; position: absolute; left: -6px; top: 50%; transform: translateY(-50%);
+        border: 6px solid transparent; border-right-color: #2c3e50; border-left: none;
+    }
+    .attr-help:hover .attr-tooltip, .attr-tooltip.show { opacity: 1; visibility: visible; }
+    .attr-tooltip .tooltip-title { font-weight: bold; margin-bottom: 6px; font-size: 12px; color: #f39c12; }
+    .attr-tooltip .tooltip-en { font-size: 10px; color: #95a5a6; margin-bottom: 8px; }
+    .attr-tooltip ul { margin: 0; padding-left: 14px; }
+    .attr-tooltip li { margin-bottom: 3px; }
+    @media (max-width: 600px) {
+        .attr-tooltip {
+            position: fixed; left: 50% !important; top: 50% !important;
+            transform: translate(-50%, -50%); white-space: normal;
+            max-width: 280px; text-align: left;
+        }
+        .attr-tooltip::before { display: none; }
+    }
     .attr-input { flex: 0 0 50px; text-align: center; font-weight: bold; padding: 4px; background: white; border: 1px solid #ccc; color: var(--signal-red); font-size: 12px; }
     .attr-btn { width: 18px; height: 18px; border: 1px solid #bdc3c7; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; background: #f8f9fa; color: #555; }
     .attr-btn:hover { background: #e9ecef; border-color: #adb5bd; color: #333; }
@@ -4144,6 +4176,49 @@ async function submitAppeal(reportId) {
 }
 
 const ATTRS=['专注','欺瞒','活力','共情','主动','坚毅','气场','专业','诡秘'];
+// 资质详情描述
+const ATTR_DETAILS = {
+    '专注': { en: 'Attentiveness', desc: ['关注细节', '理解复杂信息', '发现他人试图隐藏的真相'] },
+    '欺瞒': { en: 'Duplicity', desc: ['说谎而不被察觉', '在自己不信服的情况下仍能说服他人', '表面支持，实则另有考量'] },
+    '活力': { en: 'Dynamism', desc: ['采取进攻性行动', '施加主导压力', '通过武力或强硬手段达成目的'] },
+    '共情': { en: 'Empathy', desc: ['与他人建立联系', '表达关切', '发现对方的弱点'] },
+    '主动': { en: 'Initiative', desc: ['前瞻性思考', '迅速行动', '在问题发生前就加以处理'] },
+    '坚毅': { en: 'Persistence', desc: ['拒绝让步', '施加持续压力', '通过不懈纠缠迫使对方作出回应'] },
+    '气场': { en: 'Presence', desc: ['在人群中吸引注意', '控制局势并指挥团队', '以激励或威慑的方式影响他人'] },
+    '专业': { en: 'Professionalism', desc: ['在高压环境下保持冷静', '抵御干扰和分心因素', '免受精神影响或操控'] },
+    '诡秘': { en: 'Subtlety', desc: ['行动低调，避免不必要的关注', '以精准、谨慎的方式执行任务', '在不被察觉的情况下完成目标'] }
+};
+
+// 点击切换资质tooltip（移动端支持）
+function toggleAttrTooltip(e) {
+    e.stopPropagation();
+    const tooltip = e.currentTarget.querySelector('.attr-tooltip');
+    const attrRow = e.currentTarget.closest('.attr-row');
+    if (!tooltip) return;
+
+    // 关闭其他已打开的tooltip，并重置其父级z-index
+    document.querySelectorAll('.attr-tooltip.show').forEach(t => {
+        if (t !== tooltip) {
+            t.classList.remove('show');
+            const row = t.closest('.attr-row');
+            if (row) row.style.zIndex = '';
+        }
+    });
+
+    const isShowing = tooltip.classList.toggle('show');
+    // 提升/重置父级z-index
+    if (attrRow) attrRow.style.zIndex = isShowing ? '9999' : '';
+}
+
+// 点击其他地方关闭tooltip
+document.addEventListener('click', () => {
+    document.querySelectorAll('.attr-tooltip.show').forEach(t => {
+        t.classList.remove('show');
+        const row = t.closest('.attr-row');
+        if (row) row.style.zIndex = '';
+    });
+});
+
 // 存储每个属性的marked点位置
 let attrMarkedDots = {};
 
@@ -4152,9 +4227,16 @@ function initAttrs(){
     c.innerHTML='';
     ATTRS.forEach(a=>{
         attrMarkedDots[a] = new Set(); // 初始化marked点集合
+        const detail = ATTR_DETAILS[a] || { en: '', desc: [] };
+        const tooltipHtml = `
+            <div class="attr-tooltip">
+                <div class="tooltip-title">${a}</div>
+                <div class="tooltip-en">${detail.en}</div>
+                <ul>${detail.desc.map(d => `<li>${d}</li>`).join('')}</ul>
+            </div>`;
         const d=document.createElement('div');
         d.className='attr-row';
-        d.innerHTML=`<div class="attr-label">${a}</div><button class="attr-btn attr-btn-minus" data-attr="${a}" title="减少上限">−</button><input type="text" class="attr-input" data-attr="${a}" value="0/0" placeholder="当前/最大"><button class="attr-btn attr-btn-plus" data-attr="${a}" title="增加上限">+</button><div class="attr-dots-container"><div class="attr-dots" data-attr="${a}">${Array(9).fill(0).map((_,i)=>`<div class="dot" data-i="${i+1}"></div>`).join('')}</div></div>`;
+        d.innerHTML=`<div class="attr-label">${a}</div><div class="attr-help" onclick="toggleAttrTooltip(event)">?${tooltipHtml}</div><button class="attr-btn attr-btn-minus" data-attr="${a}" title="减少上限">−</button><input type="text" class="attr-input" data-attr="${a}" value="0/0" placeholder="当前/最大"><button class="attr-btn attr-btn-plus" data-attr="${a}" title="增加上限">+</button><div class="attr-dots-container"><div class="attr-dots" data-attr="${a}">${Array(9).fill(0).map((_,i)=>`<div class="dot" data-i="${i+1}"></div>`).join('')}</div></div>`;
         c.appendChild(d);
         const i=d.querySelector('input');
 
