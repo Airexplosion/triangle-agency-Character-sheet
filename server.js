@@ -1589,16 +1589,30 @@ app.put('/api/character/:id', optionalAuth, (req, res) => {
                     newData.shopAccess = existingData.shopAccess;
                 }
 
-                // 重新计算嘉奖/申诫总数（从数组计算，确保准确）
-                newData.mvpCount = rewards.reduce((sum, r) => sum + (r.count || 1), 0);
-                newData.watchCount = reprimands.reduce((sum, r) => sum + (r.count || 1), 0);
+                // 检查是否有绑定的经理
+                db.get('SELECT id FROM character_authorizations WHERE character_id = ? AND manager_id IS NOT NULL',
+                    [req.params.id], (err, hasManager) => {
 
-                db.run('UPDATE characters SET data = ? WHERE id = ?',
-                    [JSON.stringify(newData), req.params.id],
-                    function(err) {
-                        if (err) res.status(500).json({ success: false });
-                        else res.json({ success: true });
-                    });
+                    if (hasManager) {
+                        // 有经理：从数组计算嘉奖/申诫总数
+                        newData.mvpCount = rewards.reduce((sum, r) => sum + (r.count || 1), 0);
+                        newData.watchCount = reprimands.reduce((sum, r) => sum + (r.count || 1), 0);
+                    } else {
+                        // 无经理：保留玩家输入的值（如果有记录则用记录，否则用玩家输入）
+                        const rewardsTotal = rewards.reduce((sum, r) => sum + (r.count || 1), 0);
+                        const reprimandsTotal = reprimands.reduce((sum, r) => sum + (r.count || 1), 0);
+                        // 如果有记录则用记录计算，否则用玩家直接输入的值
+                        newData.mvpCount = rewardsTotal > 0 ? rewardsTotal : (parseInt(req.body.mvpCount) || 0);
+                        newData.watchCount = reprimandsTotal > 0 ? reprimandsTotal : (parseInt(req.body.watchCount) || 0);
+                    }
+
+                    db.run('UPDATE characters SET data = ? WHERE id = ?',
+                        [JSON.stringify(newData), req.params.id],
+                        function(err) {
+                            if (err) res.status(500).json({ success: false });
+                            else res.json({ success: true });
+                        });
+                });
             });
         });
     });
@@ -1678,13 +1692,52 @@ app.post('/api/auth/claim', authenticateToken, requireRole(ROLE.MANAGER), (req, 
                     return res.status(400).json({ success: false, message: '您已拥有该角色的授权' });
                 }
 
-                // 绑定经理
-                db.run('UPDATE character_authorizations SET manager_id = ? WHERE id = ?',
-                    [req.user.userId, auth.id],
-                    function(err) {
-                        if (err) return res.status(500).json({ success: false });
-                        res.json({ success: true, message: '授权成功' });
-                    });
+                // 绑定经理前，保留角色现有的嘉奖/申诫记录
+                db.get('SELECT data FROM characters WHERE id = ?', [auth.character_id], (err, char) => {
+                    if (err) return res.status(500).json({ success: false });
+
+                    let charData = {};
+                    try { charData = JSON.parse(char?.data || '{}'); } catch(e) {}
+
+                    const currentMvp = parseInt(charData.mvpCount) || 0;
+                    const currentWatch = parseInt(charData.watchCount) || 0;
+
+                    // 如果有现有的嘉奖/申诫数量，转换为历史记录
+                    if (currentMvp > 0 || currentWatch > 0) {
+                        if (!Array.isArray(charData.rewards)) charData.rewards = [];
+                        if (!Array.isArray(charData.reprimands)) charData.reprimands = [];
+
+                        const now = new Date().toISOString().slice(0, 10);
+
+                        if (currentMvp > 0) {
+                            charData.rewards.push({
+                                date: now,
+                                count: currentMvp,
+                                note: `绑定前剩余${currentMvp}嘉奖`
+                            });
+                        }
+
+                        if (currentWatch > 0) {
+                            charData.reprimands.push({
+                                date: now,
+                                count: currentWatch,
+                                note: `绑定前剩余${currentWatch}申诫`
+                            });
+                        }
+
+                        // 更新角色数据
+                        db.run('UPDATE characters SET data = ? WHERE id = ?',
+                            [JSON.stringify(charData), auth.character_id]);
+                    }
+
+                    // 绑定经理
+                    db.run('UPDATE character_authorizations SET manager_id = ? WHERE id = ?',
+                        [req.user.userId, auth.id],
+                        function(err) {
+                            if (err) return res.status(500).json({ success: false });
+                            res.json({ success: true, message: '授权成功' });
+                        });
+                });
             });
     });
 });
@@ -1756,9 +1809,8 @@ app.delete('/api/auth/:authId', authenticateToken, (req, res) => {
             WHERE ca.id = ?`, [req.params.authId], (err, auth) => {
         if (!auth) return res.status(404).json({ success: false });
 
-        // 角色所有者、超管、或被授权的经理本人可以撤销
-        const canRevoke = auth.user_id === req.user.userId ||
-                          req.user.role >= ROLE.SUPER_ADMIN ||
+        // 只有超管或被授权的经理本人可以撤销（特工不能移除经理）
+        const canRevoke = req.user.role >= ROLE.SUPER_ADMIN ||
                           auth.manager_id === req.user.userId;
         if (!canRevoke) {
             return res.status(403).json({ success: false, message: '无权撤销此授权' });
@@ -1888,24 +1940,26 @@ app.get('/api/character/:id/records', authenticateToken, (req, res) => {
     const charId = req.params.id;
 
     db.get('SELECT data, user_id FROM characters WHERE id = ?', [charId], (err, row) => {
+        if (err) return res.status(500).json({ error: '数据库错误' });
         if (!row) return res.status(404).json({ error: '角色不存在' });
 
-        // 检查权限：经理需要有授权或任务成员关系，或者是超管，或者是角色所有者
+        // 检查权限：超管优先，然后是角色所有者，最后检查经理授权
         const checkAccess = () => {
+            // 超管直接通过
             if (req.user.role >= ROLE.SUPER_ADMIN) return Promise.resolve(true);
+            // 角色所有者直接通过
             if (req.user.userId === row.user_id) return Promise.resolve(true);
+            // 非经理直接拒绝
+            if (req.user.role < ROLE.MANAGER) return Promise.resolve(false);
 
             return new Promise((resolve) => {
-                if (req.user.role < ROLE.MANAGER) {
-                    resolve(false);
-                    return;
-                }
-                // 首先检查授权表
+                // 检查授权表
                 db.get('SELECT id FROM character_authorizations WHERE character_id = ? AND manager_id = ?',
                     [charId, req.user.userId], (err, auth) => {
+                        if (err) return resolve(false);
                         if (auth) return resolve(true);
 
-                        // 然后检查任务成员关系 - 角色是否在该经理创建的任务中
+                        // 检查任务成员关系
                         db.get(`SELECT 1 FROM field_mission_members fmm
                             JOIN field_missions fm ON fmm.mission_id = fm.id
                             WHERE fmm.character_id = ? AND fm.created_by = ? AND fm.status = 'active'`,
@@ -1948,16 +2002,25 @@ app.post('/api/character/:id/reward', authenticateToken, requireRole(ROLE.MANAGE
     }
 
     db.get('SELECT data, user_id FROM characters WHERE id = ?', [charId], (err, row) => {
+        if (err) return res.status(500).json({ success: false, message: '数据库错误' });
         if (!row) return res.status(404).json({ success: false, message: '角色不存在' });
 
-        // ... (权限检查代码保持不变) ...
+        // 权限检查：超管优先，然后检查授权或任务关系
         const checkAccess = () => {
+            // 超管直接通过
             if (req.user.role >= ROLE.SUPER_ADMIN) return Promise.resolve(true);
+            // 非经理直接拒绝
+            if (req.user.role < ROLE.MANAGER) return Promise.resolve(false);
+
             return new Promise((resolve) => {
-                if (req.user.role < ROLE.MANAGER) return resolve(false);
+                // 检查是否有授权关系
                 db.get('SELECT id FROM character_authorizations WHERE character_id = ? AND manager_id = ?', [charId, req.user.userId], (err, auth) => {
+                    if (err) return resolve(false);
                     if (auth) return resolve(true);
-                    db.get(`SELECT 1 FROM field_mission_members fmm JOIN field_missions fm ON fmm.mission_id = fm.id WHERE fmm.character_id = ? AND fm.created_by = ? AND fm.status = 'active'`, [charId, req.user.userId], (err, member) => resolve(!!member));
+                    // 检查任务成员关系
+                    db.get(`SELECT 1 FROM field_mission_members fmm JOIN field_missions fm ON fmm.mission_id = fm.id WHERE fmm.character_id = ? AND fm.created_by = ? AND fm.status = 'active'`, [charId, req.user.userId], (err, member) => {
+                        resolve(!!member);
+                    });
                 });
             });
         };
@@ -2006,16 +2069,25 @@ app.post('/api/character/:id/reprimand', authenticateToken, requireRole(ROLE.MAN
     }
 
     db.get('SELECT data, user_id FROM characters WHERE id = ?', [charId], (err, row) => {
+        if (err) return res.status(500).json({ success: false, message: '数据库错误' });
         if (!row) return res.status(404).json({ success: false, message: '角色不存在' });
 
-        // ... (权限检查代码保持不变) ...
+        // 权限检查：超管优先，然后检查授权或任务关系
         const checkAccess = () => {
+            // 超管直接通过
             if (req.user.role >= ROLE.SUPER_ADMIN) return Promise.resolve(true);
+            // 非经理直接拒绝
+            if (req.user.role < ROLE.MANAGER) return Promise.resolve(false);
+
             return new Promise((resolve) => {
-                if (req.user.role < ROLE.MANAGER) return resolve(false);
+                // 检查是否有授权关系
                 db.get('SELECT id FROM character_authorizations WHERE character_id = ? AND manager_id = ?', [charId, req.user.userId], (err, auth) => {
+                    if (err) return resolve(false);
                     if (auth) return resolve(true);
-                    db.get(`SELECT 1 FROM field_mission_members fmm JOIN field_missions fm ON fmm.mission_id = fm.id WHERE fmm.character_id = ? AND fm.created_by = ? AND fm.status = 'active'`, [charId, req.user.userId], (err, member) => resolve(!!member));
+                    // 检查任务成员关系
+                    db.get(`SELECT 1 FROM field_mission_members fmm JOIN field_missions fm ON fmm.mission_id = fm.id WHERE fmm.character_id = ? AND fm.created_by = ? AND fm.status = 'active'`, [charId, req.user.userId], (err, member) => {
+                        resolve(!!member);
+                    });
                 });
             });
         };
@@ -5277,9 +5349,35 @@ app.get('/api/character/:charId/mission', authenticateToken, (req, res) => {
     db.get('SELECT user_id FROM characters WHERE id = ?', [charId], (err, char) => {
         if (!char) return res.status(404).json({ error: '角色不存在' });
 
-        if (char.user_id !== req.user.userId && req.user.role < ROLE.SUPER_ADMIN) {
-            return res.status(403).json({ error: '无权访问' });
-        }
+        // 检查权限：所有者、超管、或有授权的经理
+        const checkAccess = () => {
+            // 角色所有者
+            if (char.user_id === req.user.userId) return Promise.resolve(true);
+            // 超管
+            if (req.user.role >= ROLE.SUPER_ADMIN) return Promise.resolve(true);
+            // 经理检查授权
+            if (req.user.role >= ROLE.MANAGER) {
+                return new Promise((resolve) => {
+                    db.get('SELECT id FROM character_authorizations WHERE character_id = ? AND manager_id = ?',
+                        [charId, req.user.userId], (err, auth) => {
+                            if (auth) return resolve(true);
+                            // 也检查任务成员关系
+                            db.get(`SELECT 1 FROM field_mission_members fmm
+                                JOIN field_missions fm ON fmm.mission_id = fm.id
+                                WHERE fmm.character_id = ? AND fm.created_by = ? AND fm.status = 'active'`,
+                                [charId, req.user.userId], (err, member) => {
+                                    resolve(!!member);
+                                });
+                        });
+                });
+            }
+            return Promise.resolve(false);
+        };
+
+        checkAccess().then(hasAccess => {
+            if (!hasAccess) {
+                return res.status(403).json({ error: '无权访问' });
+            }
 
         // 先获取该角色卡的负责经理
         db.all(`
@@ -5361,6 +5459,7 @@ app.get('/api/character/:charId/mission', authenticateToken, (req, res) => {
                 });
             });
         });
+        }); // 关闭checkAccess().then
     });
 });
 

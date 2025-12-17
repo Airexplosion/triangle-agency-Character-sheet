@@ -412,8 +412,10 @@
     .btn-reset-list:hover { background: var(--signal-red); }
     
     @media(min-width: 768px) { .char-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; margin-bottom: 20px; } .char-layout .panel { height: 100%; margin-bottom: 0; } }
-    .attr-row { display: flex; align-items: center; margin-bottom: 12px; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px; gap: 8px; transition: z-index 0s 0.2s; }
-    .attr-row:has(.attr-help:hover), .attr-row:has(.attr-tooltip.show) { z-index: 9999 !important; transition: z-index 0s 0s; }
+    .attr-row { display: flex; align-items: center; margin-bottom: 12px; border-bottom: 1px dashed var(--border-color); padding-bottom: 8px; gap: 8px; }
+    .attr-row.tooltip-active { z-index: 9999 !important; }
+    .attr-row.tooltip-active .attr-help { z-index: 10 !important; }
+    .panel.tooltip-panel-active { overflow: visible !important; z-index: 100 !important; }
     .attr-label { flex: 0 0 50px; background: #333; color: white; text-align: center; border-radius: 3px; font-size: 10px; padding: 4px 0; font-weight: bold; }
     .attr-help {
         width: 16px; height: 16px; border-radius: 50%; background: #95a5a6; color: white;
@@ -440,11 +442,12 @@
     .attr-tooltip li { margin-bottom: 3px; }
     @media (max-width: 600px) {
         .attr-tooltip {
-            position: fixed; left: 50% !important; top: 50% !important;
-            transform: translate(-50%, -50%); white-space: normal;
-            max-width: 280px; text-align: left;
+            position: absolute; left: 0 !important; right: auto !important; top: 100% !important;
+            transform: none; white-space: normal; margin-top: 4px;
+            width: calc(100vw - 60px); max-width: 320px; min-width: 200px; text-align: left;
         }
         .attr-tooltip::before { display: none; }
+        .attr-row { position: relative; }
     }
     .attr-input { flex: 0 0 50px; text-align: center; font-weight: bold; padding: 4px; background: white; border: 1px solid #ccc; color: var(--signal-red); font-size: 12px; }
     .attr-btn { width: 18px; height: 18px; border: 1px solid #bdc3c7; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: bold; display: flex; align-items: center; justify-content: center; transition: all 0.2s; flex-shrink: 0; background: #f8f9fa; color: #555; }
@@ -4196,18 +4199,56 @@ function toggleAttrTooltip(e) {
     const attrRow = e.currentTarget.closest('.attr-row');
     if (!tooltip) return;
 
-    // 关闭其他已打开的tooltip，并重置其父级z-index
+    // 关闭其他已打开的tooltip
     document.querySelectorAll('.attr-tooltip.show').forEach(t => {
         if (t !== tooltip) {
             t.classList.remove('show');
             const row = t.closest('.attr-row');
-            if (row) row.style.zIndex = '';
+            if (row) deactivateTooltipRow(row);
         }
     });
 
     const isShowing = tooltip.classList.toggle('show');
-    // 提升/重置父级z-index
-    if (attrRow) attrRow.style.zIndex = isShowing ? '9999' : '';
+    if (attrRow) {
+        if (isShowing) {
+            activateTooltipRow(attrRow);
+        } else {
+            deactivateTooltipRow(attrRow);
+        }
+    }
+}
+
+// 激活tooltip行
+function activateTooltipRow(row) {
+    row.classList.add('tooltip-active');
+    row.style.zIndex = '9999';
+    const helpEl = row.querySelector('.attr-help');
+    if (helpEl) helpEl.style.zIndex = '10';
+    const panel = row.closest('.panel');
+    if (panel) {
+        panel.classList.add('tooltip-panel-active');
+        panel.style.overflow = 'visible';
+        panel.style.zIndex = '100';
+    }
+}
+
+// 延迟移除tooltip-active类
+function deactivateTooltipRow(row) {
+    setTimeout(() => {
+        if (!row.querySelector('.attr-tooltip.show') && !row.querySelector('.attr-help:hover')) {
+            row.classList.remove('tooltip-active');
+            row.style.zIndex = '';
+            const helpEl = row.querySelector('.attr-help');
+            if (helpEl) helpEl.style.zIndex = '';
+            // 恢复panel状态
+            const panel = row.closest('.panel');
+            if (panel && !panel.querySelector('.tooltip-active') && !panel.querySelector('.attr-help:hover')) {
+                panel.classList.remove('tooltip-panel-active');
+                panel.style.overflow = '';
+                panel.style.zIndex = '';
+            }
+        }
+    }, 250);
 }
 
 // 点击其他地方关闭tooltip
@@ -4215,9 +4256,39 @@ document.addEventListener('click', () => {
     document.querySelectorAll('.attr-tooltip.show').forEach(t => {
         t.classList.remove('show');
         const row = t.closest('.attr-row');
-        if (row) row.style.zIndex = '';
+        if (row) deactivateTooltipRow(row);
     });
 });
+
+// 为问号添加hover事件（桌面端）
+function setupAttrHelpHover(helpEl) {
+    const row = helpEl.closest('.attr-row');
+    const panel = row?.closest('.panel');
+    if (!row) return;
+
+    // 用mouseover确保和CSS :hover同步
+    helpEl.addEventListener('mouseover', () => {
+        row.style.zIndex = '9999';
+        helpEl.style.zIndex = '10';
+        if (panel) {
+            panel.style.overflow = 'visible';
+            panel.style.zIndex = '100';
+        }
+    });
+
+    helpEl.addEventListener('mouseout', () => {
+        setTimeout(() => {
+            if (!helpEl.matches(':hover') && !row.querySelector('.attr-tooltip.show')) {
+                row.style.zIndex = '';
+                helpEl.style.zIndex = '';
+                if (panel && !panel.querySelector('.attr-help:hover') && !panel.querySelector('.tooltip-active')) {
+                    panel.style.overflow = '';
+                    panel.style.zIndex = '';
+                }
+            }
+        }, 250);
+    });
+}
 
 // 存储每个属性的marked点位置
 let attrMarkedDots = {};
@@ -4239,6 +4310,10 @@ function initAttrs(){
         d.innerHTML=`<div class="attr-label">${a}</div><div class="attr-help" onclick="toggleAttrTooltip(event)">?${tooltipHtml}</div><button class="attr-btn attr-btn-minus" data-attr="${a}" title="减少上限">−</button><input type="text" class="attr-input" data-attr="${a}" value="0/0" placeholder="当前/最大"><button class="attr-btn attr-btn-plus" data-attr="${a}" title="增加上限">+</button><div class="attr-dots-container"><div class="attr-dots" data-attr="${a}">${Array(9).fill(0).map((_,i)=>`<div class="dot" data-i="${i+1}"></div>`).join('')}</div></div>`;
         c.appendChild(d);
         const i=d.querySelector('input');
+
+        // 绑定问号hover事件
+        const helpEl = d.querySelector('.attr-help');
+        if (helpEl) setupAttrHelpHover(helpEl);
 
         // +/- 按钮逻辑
         d.querySelector('.attr-btn-minus').onclick = () => {
@@ -4817,8 +4892,16 @@ async function saveData(silent=false){
                 // 只更新经理控制的字段，不重置用户正在编辑的内容
                 SLOT_LIMITS.anomSlots = latestData.anomSlots || 3;
                 SLOT_LIMITS.realSlots = latestData.realSlots || 3;
-                document.getElementById('mvpCount').value = (latestData.rewards || []).reduce((sum, r) => sum + (r.count || 1), 0);
-                document.getElementById('watchCount').value = (latestData.reprimands || []).reduce((sum, r) => sum + (r.count || 1), 0);
+                // 有经理时从数组计算，无经理时保留服务器返回的值
+                const hasManager = missionInfo.managers && missionInfo.managers.length > 0;
+                if (hasManager) {
+                    document.getElementById('mvpCount').value = (latestData.rewards || []).reduce((sum, r) => sum + (r.count || 1), 0);
+                    document.getElementById('watchCount').value = (latestData.reprimands || []).reduce((sum, r) => sum + (r.count || 1), 0);
+                } else {
+                    // 无经理：使用服务器返回的mvpCount/watchCount（玩家输入的值）
+                    document.getElementById('mvpCount').value = latestData.mvpCount || 0;
+                    document.getElementById('watchCount').value = latestData.watchCount || 0;
+                }
                 updateAnomAddButton();
             }
         } catch(e) { console.error('刷新数据失败:', e); }
