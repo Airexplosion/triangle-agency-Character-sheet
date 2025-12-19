@@ -1520,9 +1520,11 @@ app.put('/api/character/:id', optionalAuth, (req, res) => {
                     }
                 } catch (e) {}
 
-                // 合并数据，保留嘉奖/申诫记录
+                // 合并数据，保留嘉奖/申诫/MVP/观察期记录
                 let rewards = existingData.rewards || [];
                 const reprimands = existingData.reprimands || [];
+                const mvpRecords = existingData.mvpRecords || [];
+                const probationRecords = existingData.probationRecords || [];
 
                 // 处理职能进度嘉奖：合并新的记录到rewards数组
                 // 重要：只有实际在pf（职能进度红格子）中的才算有效
@@ -1566,6 +1568,8 @@ app.put('/api/character/:id', optionalAuth, (req, res) => {
                     ...req.body,
                     rewards: rewards,
                     reprimands: reprimands,
+                    mvpRecords: mvpRecords,
+                    probationRecords: probationRecords,
                     funcProgressRewardIds: currentFuncRewardIds
                 };
 
@@ -1777,7 +1781,8 @@ app.get('/api/manager/characters', authenticateToken, requireRole(ROLE.MANAGER),
             ownerId: row.user_id,
             authId: authId,
             canSendMessages: row.can_send_messages !== 0, // 默认允许发信
-            reprimandShopAccess: d.reprimandShopAccess === true // 申诫商店权限，默认关闭
+            reprimandShopAccess: d.reprimandShopAccess === true, // 申诫商店权限，默认关闭
+            canUseWrenchMode: d.canUseWrenchMode !== false // 扳手权限，默认允许
         };
     };
 
@@ -1979,23 +1984,22 @@ app.get('/api/character/:id/records', authenticateToken, (req, res) => {
                 const data = JSON.parse(row.data);
                 res.json({
                     rewards: data.rewards || [],
-                    reprimands: data.reprimands || []
+                    reprimands: data.reprimands || [],
+                    mvpRecords: data.mvpRecords || [],
+                    probationRecords: data.probationRecords || []
                 });
             } catch (e) {
-                res.json({ rewards: [], reprimands: [] });
+                res.json({ rewards: [], reprimands: [], mvpRecords: [], probationRecords: [] });
             }
         });
     });
 });
 
 // 添加嘉奖记录
-
-// 添加嘉奖记录
-app.post('/api/character/:id/reward', authenticateToken, requireRole(ROLE.MANAGER), (req, res) => {
+app.post('/api/character/:id/reward', authenticateToken, (req, res) => {
     const charId = req.params.id;
-    const { reason, count } = req.body;
-    const parsedCount = parseInt(count) || 1;
-    const recordCount = parsedCount === 0 ? 1 : Math.max(-99, Math.min(99, parsedCount));
+    const { reason, count, newValue, isSelfEdit } = req.body;
+    const useNewValue = typeof newValue === 'number';
 
     if (!reason || !reason.trim()) {
         return res.status(400).json({ success: false, message: '请填写嘉奖原因' });
@@ -2005,10 +2009,15 @@ app.post('/api/character/:id/reward', authenticateToken, requireRole(ROLE.MANAGE
         if (err) return res.status(500).json({ success: false, message: '数据库错误' });
         if (!row) return res.status(404).json({ success: false, message: '角色不存在' });
 
-        // 权限检查：超管优先，然后检查授权或任务关系
+        // 权限检查：超管优先，玩家扳手模式，然后检查授权或任务关系
         const checkAccess = () => {
             // 超管直接通过
             if (req.user.role >= ROLE.SUPER_ADMIN) return Promise.resolve(true);
+            // 玩家本人在扳手模式下可编辑
+            if (isSelfEdit && row.user_id === req.user.userId) {
+                const data = JSON.parse(row.data || '{}');
+                if (data.canUseWrenchMode !== false) return Promise.resolve(true);
+            }
             // 非经理直接拒绝
             if (req.user.role < ROLE.MANAGER) return Promise.resolve(false);
 
@@ -2034,12 +2043,27 @@ app.post('/api/character/:id/reward', authenticateToken, requireRole(ROLE.MANAGE
                 const data = JSON.parse(row.data);
                 if (!data.rewards) data.rewards = [];
 
+                // 计算当前 records 总和
+                const currentTotal = data.rewards.reduce((sum, r) => sum + (r.count || 1), 0);
+
+                // 如果提供了 newValue，计算差值；否则使用 count
+                let recordCount;
+                if (useNewValue) {
+                    recordCount = newValue - currentTotal;
+                    if (recordCount === 0) {
+                        return res.json({ success: true, message: '数值未变化' });
+                    }
+                } else {
+                    const parsedCount = parseInt(count) || 1;
+                    recordCount = parsedCount === 0 ? 1 : Math.max(-99, Math.min(99, parsedCount));
+                }
+
                 data.rewards.push({
                     id: Date.now().toString(),
                     reason: reason.trim(),
                     count: recordCount,
                     date: Date.now(),
-                    addedByName: req.user.username // 记录操作者
+                    addedByName: isSelfEdit ? '玩家自行调整' : req.user.username
                 });
 
                 // 核心修正：重新计算总数
@@ -2058,11 +2082,10 @@ app.post('/api/character/:id/reward', authenticateToken, requireRole(ROLE.MANAGE
 });
 
 // 添加申诫记录
-app.post('/api/character/:id/reprimand', authenticateToken, requireRole(ROLE.MANAGER), (req, res) => {
+app.post('/api/character/:id/reprimand', authenticateToken, (req, res) => {
     const charId = req.params.id;
-    const { reason, count } = req.body;
-    const parsedCount = parseInt(count) || 1;
-    const recordCount = parsedCount === 0 ? 1 : Math.max(-99, Math.min(99, parsedCount));
+    const { reason, count, newValue, isSelfEdit } = req.body;
+    const useNewValue = typeof newValue === 'number';
 
     if (!reason || !reason.trim()) {
         return res.status(400).json({ success: false, message: '请填写申诫原因' });
@@ -2072,10 +2095,15 @@ app.post('/api/character/:id/reprimand', authenticateToken, requireRole(ROLE.MAN
         if (err) return res.status(500).json({ success: false, message: '数据库错误' });
         if (!row) return res.status(404).json({ success: false, message: '角色不存在' });
 
-        // 权限检查：超管优先，然后检查授权或任务关系
+        // 权限检查：超管优先，玩家扳手模式，然后检查授权或任务关系
         const checkAccess = () => {
             // 超管直接通过
             if (req.user.role >= ROLE.SUPER_ADMIN) return Promise.resolve(true);
+            // 玩家本人在扳手模式下可编辑
+            if (isSelfEdit && row.user_id === req.user.userId) {
+                const data = JSON.parse(row.data || '{}');
+                if (data.canUseWrenchMode !== false) return Promise.resolve(true);
+            }
             // 非经理直接拒绝
             if (req.user.role < ROLE.MANAGER) return Promise.resolve(false);
 
@@ -2091,7 +2119,7 @@ app.post('/api/character/:id/reprimand', authenticateToken, requireRole(ROLE.MAN
                 });
             });
         };
-        
+
         Promise.resolve(checkAccess()).then(hasAccess => {
             if (!hasAccess) {
                 return res.status(403).json({ success: false, message: '无权修改此角色' });
@@ -2101,12 +2129,27 @@ app.post('/api/character/:id/reprimand', authenticateToken, requireRole(ROLE.MAN
                 const data = JSON.parse(row.data);
                 if (!data.reprimands) data.reprimands = [];
 
+                // 计算当前 records 总和
+                const currentTotal = data.reprimands.reduce((sum, r) => sum + (r.count || 1), 0);
+
+                // 如果提供了 newValue，计算差值；否则使用 count
+                let recordCount;
+                if (useNewValue) {
+                    recordCount = newValue - currentTotal;
+                    if (recordCount === 0) {
+                        return res.json({ success: true, message: '数值未变化' });
+                    }
+                } else {
+                    const parsedCount = parseInt(count) || 1;
+                    recordCount = parsedCount === 0 ? 1 : Math.max(-99, Math.min(99, parsedCount));
+                }
+
                 data.reprimands.push({
                     id: Date.now().toString(),
                     reason: reason.trim(),
                     count: recordCount,
                     date: Date.now(),
-                    addedByName: req.user.username
+                    addedByName: isSelfEdit ? '玩家自行调整' : req.user.username
                 });
 
                 // 核心修正：重新计算总数
@@ -2124,20 +2167,175 @@ app.post('/api/character/:id/reprimand', authenticateToken, requireRole(ROLE.MAN
     });
 });
 
-// 删除嘉奖/申诫记录
+// 添加MVP记录
+app.post('/api/character/:id/mvp', authenticateToken, (req, res) => {
+    const charId = req.params.id;
+    const { reason, count, newValue, isSelfEdit } = req.body;
+    // 如果提供了 newValue，则由服务器计算差值；否则使用传入的 count
+    const useNewValue = typeof newValue === 'number';
+
+    if (!reason || !reason.trim()) {
+        return res.status(400).json({ success: false, message: '请填写原因' });
+    }
+
+    db.get('SELECT data, user_id FROM characters WHERE id = ?', [charId], (err, row) => {
+        if (err) return res.status(500).json({ success: false, message: '数据库错误' });
+        if (!row) return res.status(404).json({ success: false, message: '角色不存在' });
+
+        const checkAccess = () => {
+            // 超管直接通过
+            if (req.user.role >= ROLE.SUPER_ADMIN) return Promise.resolve(true);
+            // 玩家本人在扳手模式下可编辑
+            if (isSelfEdit && row.user_id === req.user.userId) {
+                const data = JSON.parse(row.data || '{}');
+                if (data.canUseWrenchMode !== false) return Promise.resolve(true);
+            }
+            // 经理检查授权
+            if (req.user.role < ROLE.MANAGER) return Promise.resolve(false);
+            return new Promise((resolve) => {
+                db.get('SELECT id FROM character_authorizations WHERE character_id = ? AND manager_id = ?', [charId, req.user.userId], (err, auth) => {
+                    if (auth) return resolve(true);
+                    db.get(`SELECT 1 FROM field_mission_members fmm JOIN field_missions fm ON fmm.mission_id = fm.id WHERE fmm.character_id = ? AND fm.created_by = ? AND fm.status = 'active'`, [charId, req.user.userId], (err, member) => resolve(!!member));
+                });
+            });
+        };
+
+        Promise.resolve(checkAccess()).then(hasAccess => {
+            if (!hasAccess) {
+                return res.status(403).json({ success: false, message: '无权修改此角色' });
+            }
+
+            try {
+                const data = JSON.parse(row.data);
+                if (!data.mvpRecords) data.mvpRecords = [];
+
+                // 计算当前 records 总和
+                const currentTotal = data.mvpRecords.reduce((sum, r) => sum + (r.count || 1), 0);
+
+                // 如果提供了 newValue，计算差值；否则使用 count
+                let recordCount;
+                if (useNewValue) {
+                    recordCount = newValue - currentTotal;
+                    if (recordCount === 0) {
+                        return res.json({ success: true, message: '数值未变化' });
+                    }
+                } else {
+                    const parsedCount = parseInt(count) || 1;
+                    recordCount = parsedCount === 0 ? 1 : Math.max(-99, Math.min(99, parsedCount));
+                }
+
+                data.mvpRecords.push({
+                    id: Date.now().toString(),
+                    reason: reason.trim(),
+                    count: recordCount,
+                    date: Date.now(),
+                    addedByName: isSelfEdit ? '玩家自行调整' : req.user.username
+                });
+
+                // 重新计算总数
+                const totalMvp = data.mvpRecords.reduce((sum, r) => sum + (r.count || 1), 0);
+                data.pComm = totalMvp;
+
+                db.run('UPDATE characters SET data = ? WHERE id = ?', [JSON.stringify(data), charId], function(err) {
+                    if (err) return res.status(500).json({ success: false });
+                    res.json({ success: true, message: `已添加 ${recordCount} 个MVP` });
+                });
+            } catch (e) {
+                res.status(500).json({ success: false, message: '数据解析失败' });
+            }
+        });
+    });
+});
+
+// 添加观察期记录
+app.post('/api/character/:id/probation', authenticateToken, (req, res) => {
+    const charId = req.params.id;
+    const { reason, count, newValue, isSelfEdit } = req.body;
+    const useNewValue = typeof newValue === 'number';
+
+    if (!reason || !reason.trim()) {
+        return res.status(400).json({ success: false, message: '请填写原因' });
+    }
+
+    db.get('SELECT data, user_id FROM characters WHERE id = ?', [charId], (err, row) => {
+        if (err) return res.status(500).json({ success: false, message: '数据库错误' });
+        if (!row) return res.status(404).json({ success: false, message: '角色不存在' });
+
+        const checkAccess = () => {
+            if (req.user.role >= ROLE.SUPER_ADMIN) return Promise.resolve(true);
+            if (isSelfEdit && row.user_id === req.user.userId) {
+                const data = JSON.parse(row.data || '{}');
+                if (data.canUseWrenchMode !== false) return Promise.resolve(true);
+            }
+            if (req.user.role < ROLE.MANAGER) return Promise.resolve(false);
+            return new Promise((resolve) => {
+                db.get('SELECT id FROM character_authorizations WHERE character_id = ? AND manager_id = ?', [charId, req.user.userId], (err, auth) => {
+                    if (auth) return resolve(true);
+                    db.get(`SELECT 1 FROM field_mission_members fmm JOIN field_missions fm ON fmm.mission_id = fm.id WHERE fmm.character_id = ? AND fm.created_by = ? AND fm.status = 'active'`, [charId, req.user.userId], (err, member) => resolve(!!member));
+                });
+            });
+        };
+
+        Promise.resolve(checkAccess()).then(hasAccess => {
+            if (!hasAccess) {
+                return res.status(403).json({ success: false, message: '无权修改此角色' });
+            }
+
+            try {
+                const data = JSON.parse(row.data);
+                if (!data.probationRecords) data.probationRecords = [];
+
+                // 计算当前 records 总和
+                const currentTotal = data.probationRecords.reduce((sum, r) => sum + (r.count || 1), 0);
+
+                // 如果提供了 newValue，计算差值；否则使用 count
+                let recordCount;
+                if (useNewValue) {
+                    recordCount = newValue - currentTotal;
+                    if (recordCount === 0) {
+                        return res.json({ success: true, message: '数值未变化' });
+                    }
+                } else {
+                    const parsedCount = parseInt(count) || 1;
+                    recordCount = parsedCount === 0 ? 1 : Math.max(-99, Math.min(99, parsedCount));
+                }
+
+                data.probationRecords.push({
+                    id: Date.now().toString(),
+                    reason: reason.trim(),
+                    count: recordCount,
+                    date: Date.now(),
+                    addedByName: isSelfEdit ? '玩家自行调整' : req.user.username
+                });
+
+                // 重新计算总数
+                const totalProbation = data.probationRecords.reduce((sum, r) => sum + (r.count || 1), 0);
+                data.pRep = totalProbation;
+
+                db.run('UPDATE characters SET data = ? WHERE id = ?', [JSON.stringify(data), charId], function(err) {
+                    if (err) return res.status(500).json({ success: false });
+                    res.json({ success: true, message: `已添加 ${recordCount} 个观察期` });
+                });
+            } catch (e) {
+                res.status(500).json({ success: false, message: '数据解析失败' });
+            }
+        });
+    });
+});
+
+// 删除嘉奖/申诫/MVP/观察期记录
 app.delete('/api/character/:id/record/:recordId', authenticateToken, requireRole(ROLE.MANAGER), (req, res) => {
     const charId = req.params.id;
     const recordId = req.params.recordId;
     const { type } = req.query;
 
-    if (!type || !['reward', 'reprimand'].includes(type)) {
+    if (!type || !['reward', 'reprimand', 'mvp', 'probation'].includes(type)) {
         return res.status(400).json({ success: false, message: '无效的记录类型' });
     }
 
     db.get('SELECT data, user_id FROM characters WHERE id = ?', [charId], (err, row) => {
         if (!row) return res.status(404).json({ success: false, message: '角色不存在' });
 
-        // ... (权限检查代码保持不变) ...
         const checkAccess = () => {
             if (req.user.role >= ROLE.SUPER_ADMIN) return Promise.resolve(true);
             return new Promise((resolve) => {
@@ -2156,12 +2354,19 @@ app.delete('/api/character/:id/record/:recordId', authenticateToken, requireRole
 
             try {
                 const data = JSON.parse(row.data);
-                const arrayKey = type === 'reward' ? 'rewards' : 'reprimands';
-                const countKey = type === 'reward' ? 'mvpCount' : 'watchCount';
+
+                // 根据类型确定数组键和计数键
+                const typeMap = {
+                    reward: { arrayKey: 'rewards', countKey: 'mvpCount' },
+                    reprimand: { arrayKey: 'reprimands', countKey: 'watchCount' },
+                    mvp: { arrayKey: 'mvpRecords', countKey: 'pComm' },
+                    probation: { arrayKey: 'probationRecords', countKey: 'pRep' }
+                };
+                const { arrayKey, countKey } = typeMap[type];
 
                 if (!data[arrayKey]) return res.status(404).json({ success: false, message: '记录不存在' });
 
-                // 核心修正：删除后重新计算总数
+                // 删除后重新计算总数
                 data[arrayKey] = data[arrayKey].filter(r => r.id !== recordId);
                 const newTotal = data[arrayKey].reduce((sum, r) => sum + (r.count || 1), 0);
                 data[countKey] = newTotal;
@@ -2981,6 +3186,46 @@ app.put('/api/manager/character/:charId/reprimand-shop-access', authenticateToke
     }
 });
 
+// 经理控制扳手权限
+app.put('/api/manager/character/:charId/wrench-mode', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
+    try {
+        const managerId = req.user.userId;
+        const charId = req.params.charId;
+        const { enabled } = req.body;
+
+        // 检查经理是否有该角色卡的授权
+        const isAuthorized = await checkManagerCharacterAuth(managerId, charId);
+        if (!isAuthorized && req.user.role < ROLE.SUPER_ADMIN) {
+            return res.status(403).json({ success: false, message: '无权操作该角色卡' });
+        }
+
+        // 获取角色当前数据
+        const char = await new Promise((resolve, reject) => {
+            db.get('SELECT data FROM characters WHERE id = ?', [charId], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+
+        if (!char) {
+            return res.status(404).json({ success: false, message: '角色不存在' });
+        }
+
+        // 更新charData中的canUseWrenchMode字段
+        let charData = {};
+        try { charData = JSON.parse(char.data); } catch(e) {}
+        charData.canUseWrenchMode = enabled !== false;
+
+        db.run('UPDATE characters SET data = ? WHERE id = ?', [JSON.stringify(charData), charId], function(err) {
+            if (err) return res.status(500).json({ success: false, message: err.message });
+            res.json({ success: true, canUseWrenchMode: charData.canUseWrenchMode });
+        });
+    } catch (e) {
+        console.error('切换扳手权限失败:', e);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
+});
+
 // 获取角色商店权限配置（申诫商店权限 + 可见申领物）
 app.get('/api/manager/character/:charId/shop-access', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
     try {
@@ -3289,7 +3534,7 @@ app.get('/api/public-shop/items/:id', authenticateToken, requireRole(ROLE.MANAGE
 // 上传物品到公共池
 app.post('/api/public-shop/items', authenticateToken, requireRole(ROLE.MANAGER), async (req, res) => {
     try {
-        const { title, description, prices, isOfficial } = req.body;
+        const { title, description, prices, isOfficial, is_official } = req.body;
         const userId = req.user.userId;
 
         if (!title || !title.trim()) {
@@ -3300,8 +3545,9 @@ app.post('/api/public-shop/items', authenticateToken, requireRole(ROLE.MANAGER),
             return res.status(400).json({ success: false, message: '请至少添加一个标价选项' });
         }
 
-        // 只有超管可以创建官方物品
-        const official = (isOfficial && req.user.role >= ROLE.SUPER_ADMIN) ? 1 : 0;
+        // 只有超管可以创建官方物品（兼容 isOfficial 和 is_official 两种格式）
+        const wantsOfficial = isOfficial || is_official;
+        const official = (wantsOfficial && req.user.role >= ROLE.SUPER_ADMIN) ? 1 : 0;
 
         // 如果不是官方物品，检查配额
         if (!official) {
@@ -3329,11 +3575,13 @@ app.post('/api/public-shop/items', authenticateToken, requireRole(ROLE.MANAGER),
         // 插入标价选项
         const stmt = db.prepare('INSERT INTO public_shop_item_prices (item_id, price_name, price_cost, currency_type, usage_type, usage_count, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)');
         prices.forEach((p, idx) => {
-            if (p.name && p.cost >= 0) {
-                const currencyType = p.currencyType || 'commendation';
-                const usageType = p.usageType || 'permanent';
-                const usageCount = parseInt(p.usageCount) || 0;
-                stmt.run(itemId, p.name.trim(), parseInt(p.cost) || 0, currencyType, usageType, usageCount, idx);
+            const priceName = p.price_name || p.name;
+            const priceCost = p.price_cost ?? p.cost;
+            if (priceName && priceCost >= 0) {
+                const currencyType = p.currency_type || p.currencyType || 'commendation';
+                const usageType = p.usage_type || p.usageType || 'permanent';
+                const usageCount = parseInt(p.usage_count ?? p.usageCount) || 0;
+                stmt.run(itemId, priceName.trim(), parseInt(priceCost) || 0, currencyType, usageType, usageCount, idx);
             }
         });
         stmt.finalize();
@@ -3389,11 +3637,13 @@ app.put('/api/public-shop/items/:id', authenticateToken, requireRole(ROLE.MANAGE
         if (prices && Array.isArray(prices)) {
             const stmt = db.prepare('INSERT INTO public_shop_item_prices (item_id, price_name, price_cost, currency_type, usage_type, usage_count, sort_order) VALUES (?, ?, ?, ?, ?, ?, ?)');
             prices.forEach((p, idx) => {
-                if (p.name && p.cost >= 0) {
-                    const currencyType = p.currencyType || 'commendation';
-                    const usageType = p.usageType || 'permanent';
-                    const usageCount = parseInt(p.usageCount) || 0;
-                    stmt.run(itemId, p.name.trim(), parseInt(p.cost) || 0, currencyType, usageType, usageCount, idx);
+                const priceName = p.price_name || p.name;
+                const priceCost = p.price_cost ?? p.cost;
+                if (priceName && priceCost >= 0) {
+                    const currencyType = p.currency_type || p.currencyType || 'commendation';
+                    const usageType = p.usage_type || p.usageType || 'permanent';
+                    const usageCount = parseInt(p.usage_count ?? p.usageCount) || 0;
+                    stmt.run(itemId, priceName.trim(), parseInt(priceCost) || 0, currencyType, usageType, usageCount, idx);
                 }
             });
             stmt.finalize();
@@ -4966,6 +5216,15 @@ app.post('/api/character/:charId/accept-rating/:reportId', authenticateToken, as
                     targetCharData.watchCount = (parseInt(targetCharData.watchCount) || 0) + (rewards.reprimand || 0);
                     if (rewards.probation) {
                         targetCharData.pRep = (parseInt(targetCharData.pRep) || 0) + 1;
+                        // 添加观察期记录
+                        if (!Array.isArray(targetCharData.probationRecords)) targetCharData.probationRecords = [];
+                        targetCharData.probationRecords.push({
+                            id: Date.now().toString(),
+                            reason: `来自「${missionName}」任务结算`,
+                            count: 1,
+                            date: now,
+                            addedByName: '任务系统'
+                        });
                         // 察看期自动在异常轨道点1格（不需要从其他轨道移除）
                         if (!Array.isArray(targetCharData.pa)) targetCharData.pa = [];
                         const nextACell = findNextEmptyCell(targetCharData.pa, targetCharData.pa_ign || []);
@@ -4975,6 +5234,15 @@ app.post('/api/character/:charId/accept-rating/:reportId', authenticateToken, as
                     }
                     if (rewards.mvp) {
                         targetCharData.pComm = (parseInt(targetCharData.pComm) || 0) + 1;
+                        // 添加MVP记录
+                        if (!Array.isArray(targetCharData.mvpRecords)) targetCharData.mvpRecords = [];
+                        targetCharData.mvpRecords.push({
+                            id: Date.now().toString(),
+                            reason: `来自「${missionName}」任务结算`,
+                            count: 1,
+                            date: now,
+                            addedByName: '任务系统'
+                        });
                         // MVP自动在职能轨道点1格（不需要从其他轨道移除）+ 自动3嘉奖
                         if (!Array.isArray(targetCharData.pf)) targetCharData.pf = [];
                         const nextFCell = findNextEmptyCell(targetCharData.pf, targetCharData.pf_ign || []);
@@ -5149,6 +5417,15 @@ app.post('/api/manager/mission/:id/report/:reportId/finalize', authenticateToken
                     charData.watchCount = (parseInt(charData.watchCount) || 0) + (rewards.reprimand || 0);
                     if (rewards.probation) {
                         charData.pRep = (parseInt(charData.pRep) || 0) + 1;
+                        // 添加观察期记录
+                        if (!Array.isArray(charData.probationRecords)) charData.probationRecords = [];
+                        charData.probationRecords.push({
+                            id: Date.now().toString(),
+                            reason: `来自「${missionName}」任务结算`,
+                            count: 1,
+                            date: now,
+                            addedByName: '任务系统'
+                        });
                         // 察看期自动在异常轨道点1格（不需要从其他轨道移除）
                         if (!Array.isArray(charData.pa)) charData.pa = [];
                         const nextACell = findNextEmptyCell(charData.pa, charData.pa_ign || []);
@@ -5158,6 +5435,15 @@ app.post('/api/manager/mission/:id/report/:reportId/finalize', authenticateToken
                     }
                     if (rewards.mvp) {
                         charData.pComm = (parseInt(charData.pComm) || 0) + 1;
+                        // 添加MVP记录
+                        if (!Array.isArray(charData.mvpRecords)) charData.mvpRecords = [];
+                        charData.mvpRecords.push({
+                            id: Date.now().toString(),
+                            reason: `来自「${missionName}」任务结算`,
+                            count: 1,
+                            date: now,
+                            addedByName: '任务系统'
+                        });
                         // MVP自动在职能轨道点1格（不需要从其他轨道移除）+ 自动3嘉奖
                         if (!Array.isArray(charData.pf)) charData.pf = [];
                         const nextFCell = findNextEmptyCell(charData.pf, charData.pf_ign || []);

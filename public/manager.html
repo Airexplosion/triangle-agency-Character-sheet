@@ -1069,6 +1069,25 @@
             background: #e74c3c;
             color: white;
         }
+        /* 扳手模式权限按钮样式 */
+        .btn-wrench-perm {
+            background: rgba(230, 126, 34, 0.1);
+            border: 1px solid #e67e22;
+            color: #e67e22;
+        }
+        .btn-wrench-perm:hover {
+            background: #e67e22;
+            color: white;
+        }
+        .btn-wrench-perm.disabled {
+            background: rgba(149, 165, 166, 0.1);
+            border: 1px solid #95a5a6;
+            color: #95a5a6;
+        }
+        .btn-wrench-perm.disabled:hover {
+            background: #95a5a6;
+            color: white;
+        }
         /* 申诫商店权限按钮样式 */
         .btn-shop-access {
             background: rgba(155, 89, 182, 0.1);
@@ -5422,6 +5441,10 @@
             const msgPermIcon = c.canSendMessages ? 'fa-envelope' : 'fa-envelope-circle-xmark';
             const msgPermTitle = c.canSendMessages ? '禁止发信' : '允许发信';
 
+            const wrenchPermClass = c.canUseWrenchMode ? '' : 'disabled';
+            const wrenchPermIcon = c.canUseWrenchMode ? 'fa-wrench' : 'fa-ban';
+            const wrenchPermTitle = c.canUseWrenchMode ? '禁止扳手模式' : '允许扳手模式';
+
             return `
             <div class="char-card" data-char-id="${c.id}">
                 <div class="card-header" onclick="openSheet('${c.id}')">
@@ -5462,6 +5485,9 @@
                     </button>
                     <button class="btn-card-action btn-msg-perm ${msgPermClass}" onclick="event.stopPropagation(); toggleMessagePermission('${c.id}', '${safeCharName}', ${c.canSendMessages})" title="${msgPermTitle}">
                         <i class="fas ${msgPermIcon}"></i>
+                    </button>
+                    <button class="btn-card-action btn-wrench-perm ${wrenchPermClass}" onclick="event.stopPropagation(); toggleWrenchPermission('${c.id}', '${safeCharName}', ${c.canUseWrenchMode})" title="${wrenchPermTitle}">
+                        <i class="fas ${wrenchPermIcon}"></i>
                     </button>
                     <button class="btn-card-action btn-shop-access" onclick="event.stopPropagation(); openShopAccessModal('${c.id}', '${safeCharName}')" title="商店权限配置">
                         <i class="fas fa-shopping-bag"></i>
@@ -5638,6 +5664,48 @@
                         btn.title = '允许发信';
                         btn.onclick = function(e) { e.stopPropagation(); toggleMessagePermission(charId, charName, false); };
                         icon.className = 'fas fa-envelope-circle-xmark';
+                    }
+                }
+            } else {
+                showToast(data.message || '操作失败');
+            }
+        } catch (e) {
+            showToast('操作失败');
+        }
+    }
+
+    // 切换扳手模式权限
+    async function toggleWrenchPermission(charId, charName, currentStatus) {
+        const action = currentStatus ? '禁止' : '恢复';
+        if (!confirm(`确定要${action} "${charName}" 的扳手模式权限吗？\n\n${currentStatus ? '禁止后该角色将无法使用扳手模式编辑数值。' : '恢复后该角色可以使用扳手模式自行调整数值。'}`)) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/manager/character/${charId}/wrench-mode`, {
+                method: 'PUT',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ enabled: !currentStatus })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                showToast(`已${action}该角色的扳手模式权限`, true);
+                // 更新按钮状态
+                const card = document.querySelector(`.char-card[data-char-id="${charId}"]`);
+                if (card) {
+                    const btn = card.querySelector('.btn-wrench-perm');
+                    const icon = btn.querySelector('i');
+                    if (data.canUseWrenchMode) {
+                        btn.classList.remove('disabled');
+                        btn.title = '禁止扳手模式';
+                        btn.onclick = function(e) { e.stopPropagation(); toggleWrenchPermission(charId, charName, true); };
+                        icon.className = 'fas fa-wrench';
+                    } else {
+                        btn.classList.add('disabled');
+                        btn.title = '允许扳手模式';
+                        btn.onclick = function(e) { e.stopPropagation(); toggleWrenchPermission(charId, charName, false); };
+                        icon.className = 'fas fa-ban';
                     }
                 }
             } else {

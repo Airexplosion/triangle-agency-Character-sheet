@@ -2034,10 +2034,10 @@
 <div class="panel" id="track-panel">
 <h2><i class="fas fa-chart-bar"></i> 进度追踪 <button id="trackCustomEditBtn" class="btn-track-custom" onclick="toggleTrackCustomMode()" title="自定义编辑模式"><i class="fas fa-wrench"></i></button></h2>
 <div class="track-header">
-<div class="track-stat"><label>MVP</label><input type="text" id="pComm" placeholder="0" readonly></div>
+<div class="track-stat clickable-stat" onclick="showRecordHistory('mvp')"><label>MVP</label><input type="text" id="pComm" placeholder="0" readonly></div>
 <div class="track-stat clickable-stat" onclick="showRecordHistory('reward')"><label>嘉奖</label><input type="text" id="mvpCount" placeholder="0" readonly></div>
 <div class="track-stat clickable-stat" onclick="showRecordHistory('reprimand')"><label>申诫</label><input type="text" id="watchCount" placeholder="0" readonly></div>
-<div class="track-stat"><label>察看期</label><input type="text" id="pRep" placeholder="0" readonly></div>
+<div class="track-stat clickable-stat" onclick="showRecordHistory('probation')"><label>察看期</label><input type="text" id="pRep" placeholder="0" readonly></div>
 </div>
 <div class="track-sec"><h3 class="c-func" style="font-size:12px; margin:5px 0;">职能</h3><div class="track-row"><div class="p-grid"><div class="p-cell f-cell" data-idx="1"></div><div class="p-cell f-cell" data-idx="2"></div><div class="p-cell f-cell" data-idx="3"><span>A3</span></div><div class="p-cell f-cell" data-idx="4"></div><div class="p-cell f-cell" data-idx="5"></div><div class="p-cell f-cell" data-idx="6"><span>D4</span></div><div class="p-cell f-cell" data-idx="7"></div><div class="p-cell f-cell" data-idx="8"></div><div class="p-cell f-cell" data-idx="9"><span>G3</span></div><div class="p-cell f-cell" data-idx="10"></div></div><div class="p-grid"><div class="p-cell f-cell" data-idx="11"></div><div class="p-cell f-cell" data-idx="12"><span>J3</span></div><div class="p-cell f-cell" data-idx="13"></div><div class="p-cell f-cell" data-idx="14"></div><div class="p-cell f-cell" data-idx="15"><span>N3</span></div><div class="p-cell f-cell" data-idx="16"></div><div class="p-cell f-cell" data-idx="17"></div><div class="p-cell f-cell" data-idx="18"><span>Q3</span></div><div class="p-cell f-cell" data-idx="19"></div><div class="p-cell f-cell" data-idx="20"></div></div><div class="p-grid"><div class="p-cell f-cell" data-idx="21"><span>T3</span></div><div class="p-cell f-cell" data-idx="22"></div><div class="p-cell f-cell" data-idx="23"></div><div class="p-cell f-cell" data-idx="24"><span>W8</span></div><div class="p-cell f-cell" data-idx="25"></div><div class="p-cell f-cell" data-idx="26"></div><div class="p-cell f-cell" data-idx="27"><span>Y2</span></div><div class="p-cell f-cell" data-idx="28"></div><div class="p-cell f-cell" data-idx="29"></div><div class="p-cell f-cell" data-idx="30"></div></div></div><div class="track-rule">当你获得任务MVP时，在你的职能记录条上标记1格，且无需从其他记录条上移除一格。</div><div class="track-rule">每当你在职能记录条上标记一格时，将任意一项资质的"资质保证上限"提升1点，最高不超过9点。</div></div>
 <div class="track-sec"><h3 class="c-real" style="font-size:12px; margin:5px 0;">现实</h3><div class="track-row"><div class="p-grid"><div class="p-cell r-cell" data-idx="1"><span>C4</span></div><div class="p-cell r-cell" data-idx="2"></div><div class="p-cell r-cell" data-idx="3"></div><div class="p-cell r-cell" data-idx="4"><span>L11</span></div><div class="p-cell r-cell" data-idx="5"></div><div class="p-cell r-cell" data-idx="6"></div><div class="p-cell r-cell" data-idx="7"></div><div class="p-cell r-cell" data-idx="8"><span>E2</span></div><div class="p-cell r-cell" data-idx="9"></div><div class="p-cell r-cell" data-idx="10"><span>O4</span></div></div><div class="p-grid"><div class="p-cell r-cell" data-idx="11"></div><div class="p-cell r-cell" data-idx="12"><span>J3</span></div><div class="p-cell r-cell" data-idx="13"></div><div class="p-cell r-cell" data-idx="14"><span>T6</span></div><div class="p-cell r-cell" data-idx="15"></div><div class="p-cell r-cell" data-idx="16"><span>V2</span></div><div class="p-cell r-cell" data-idx="17"></div><div class="p-cell r-cell" data-idx="18"></div><div class="p-cell r-cell" data-idx="19"></div><div class="p-cell r-cell" data-idx="20"><span>X3</span></div></div><div class="p-grid"><div class="p-cell r-cell" data-idx="21"></div><div class="p-cell r-cell" data-idx="22"><span>H5</span></div><div class="p-cell r-cell" data-idx="23"></div><div class="p-cell r-cell" data-idx="24"></div><div class="p-cell r-cell" data-idx="25"></div><div class="p-cell r-cell" data-idx="26"></div><div class="p-cell r-cell" data-idx="27"><span>E3</span></div><div class="p-cell r-cell" data-idx="28"></div><div class="p-cell r-cell" data-idx="29"></div><div class="p-cell r-cell" data-idx="30"></div></div></div><div class="track-rule">当你既未获得任务MVP也未进入察看期时，你可以将你与任意一段关系的连结提升1点。</div><div class="track-rule">每当你在现实记录条上标记一格时，将你与任意一段"关系"的"连结"提升1点，然后对关系网内的每段关系重复此操作。</div></div>
@@ -2739,19 +2739,93 @@ let funcProgressRewards = [];
 
 // 进度追踪自定义编辑模式（不触发自动嘉奖和轨道变灰）
 let isTrackCustomMode = false;
+let wrenchModeBeforeValues = {}; // 记录进入扳手模式前的值
 
-function toggleTrackCustomMode() {
-    isTrackCustomMode = !isTrackCustomMode;
+async function toggleTrackCustomMode() {
     const btn = document.getElementById('trackCustomEditBtn');
-    if (isTrackCustomMode) {
+    const fields = ['pComm', 'mvpCount', 'watchCount', 'pRep'];
+
+    if (!isTrackCustomMode) {
+        // 进入扳手模式：记录当前值并启用编辑
+        isTrackCustomMode = true;
         btn.classList.add('active');
         btn.title = '退出自定义编辑模式';
-        showToast('自定义编辑模式：点击不会自动添加嘉奖或影响其他轨道', 'info');
+
+        // 记录修改前的值
+        wrenchModeBeforeValues = {};
+        fields.forEach(id => {
+            const input = document.getElementById(id);
+            wrenchModeBeforeValues[id] = parseInt(input.value) || 0;
+            input.removeAttribute('readonly');
+            input.style.background = '#fff3cd';
+        });
+
+        showToast('自定义编辑模式：可直接编辑数值，退出时自动记录变更', 'info');
     } else {
+        // 退出扳手模式：比对并记录变更
         btn.classList.remove('active');
         btn.title = '自定义编辑模式';
+
+        // 检查每个字段的变化并记录
+        const changes = [];
+        fields.forEach(id => {
+            const input = document.getElementById(id);
+            const newValue = parseInt(input.value) || 0;
+            const oldValue = wrenchModeBeforeValues[id] || 0;
+            const diff = newValue - oldValue;
+
+            input.setAttribute('readonly', true);
+            input.style.background = '';
+
+            if (diff !== 0) {
+                changes.push({ field: id, diff, oldValue, newValue });
+            }
+        });
+
+        // 等待记录变更完成
+        if (changes.length > 0 && charId) {
+            await recordWrenchModeChanges(changes);
+        }
+
+        // 记录完成后才退出扳手模式，并触发保存
+        isTrackCustomMode = false;
+        triggerAutoSave();
+
         showToast('已退出自定义编辑模式', 'info');
     }
+}
+
+// 记录扳手模式的变更
+async function recordWrenchModeChanges(changes) {
+    const fieldMap = {
+        pComm: { endpoint: 'mvp', name: 'MVP' },
+        mvpCount: { endpoint: 'reward', name: '嘉奖' },
+        watchCount: { endpoint: 'reprimand', name: '申诫' },
+        pRep: { endpoint: 'probation', name: '观察期' }
+    };
+
+    for (const change of changes) {
+        const config = fieldMap[change.field];
+        if (!config) continue;
+
+        try {
+            await fetch(`/api/character/${charId}/${config.endpoint}`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({
+                    reason: `玩家自行调整 (${change.oldValue}→${change.newValue})`,
+                    newValue: change.newValue,
+                    isSelfEdit: true
+                })
+            });
+        } catch (e) {
+            console.error(`记录${config.name}变更失败:`, e);
+        }
+    }
+
+    // 清除缓存使记录实时更新
+    cachedRecords = null;
+    showToast('变更已记录', 'success');
 }
 
 // 自动保存相关
@@ -2760,7 +2834,7 @@ let isPopulating = false; // 数据加载中标志，防止加载时触发保存
 const AUTO_SAVE_DELAY = 500; // 500ms 延迟，更实时的保存体验
 
 function triggerAutoSave() {
-    if (isReadOnly || isPopulating) return;
+    if (isReadOnly || isPopulating || isTrackCustomMode) return; // 扳手模式下不自动保存
     if (autoSaveTimer) clearTimeout(autoSaveTimer);
     autoSaveTimer = setTimeout(() => {
         saveData(true); // silent save
@@ -2769,7 +2843,7 @@ function triggerAutoSave() {
 
 // 立即保存（不延迟）
 function saveImmediately() {
-    if (isReadOnly || isPopulating) return;
+    if (isReadOnly || isPopulating || isTrackCustomMode) return; // 扳手模式下不立即保存
     if (autoSaveTimer) clearTimeout(autoSaveTimer);
     saveData(true);
 }
@@ -4816,6 +4890,14 @@ function populateData(d){
     const personalMessagingEnabled = d.canSendMessages !== false; // 默认允许发信
     canSendMessages = globalMessagingEnabled && personalMessagingEnabled;
 
+    // 处理扳手权限（经理可关闭）
+    const wrenchBtn = document.getElementById('trackCustomEditBtn');
+    if (wrenchBtn) {
+        // 默认允许，除非明确设置为false
+        const canUseWrench = d.canUseWrenchMode !== false;
+        wrenchBtn.style.display = canUseWrench ? '' : 'none';
+    }
+
     isPopulating = false; // 数据加载完成，允许自动保存
 }
 function gatherData(){
@@ -4902,7 +4984,7 @@ async function saveData(silent=false){
                     document.getElementById('mvpCount').value = latestData.mvpCount || 0;
                     document.getElementById('watchCount').value = latestData.watchCount || 0;
                 }
-                updateAnomAddButton();
+                updateAnomalyGroupButtons();
             }
         } catch(e) { console.error('刷新数据失败:', e); }
     } else if(res.status===401 || res.status===403) {
@@ -5557,11 +5639,24 @@ function copyShareUrl() {
 let cachedRecords = null;
 
 async function showRecordHistory(type) {
+    // 扳手模式下不弹出记录历史，允许直接编辑
+    if (isTrackCustomMode) {
+        return;
+    }
+
     const modal = document.getElementById('recordHistoryModal');
     const titleEl = document.getElementById('recordHistoryTitle');
     const contentEl = document.getElementById('recordHistoryContent');
 
-    titleEl.textContent = type === 'reward' ? '嘉奖记录' : '申诫记录';
+    const typeConfig = {
+        reward: { title: '嘉奖记录', key: 'rewards', emptyText: '嘉奖', styleClass: '' },
+        reprimand: { title: '申诫记录', key: 'reprimands', emptyText: '申诫', styleClass: 'reprimand' },
+        mvp: { title: 'MVP记录', key: 'mvpRecords', emptyText: 'MVP', styleClass: 'mvp' },
+        probation: { title: '观察期记录', key: 'probationRecords', emptyText: '观察期', styleClass: 'probation' }
+    };
+    const config = typeConfig[type] || typeConfig.reward;
+
+    titleEl.textContent = config.title;
     contentEl.innerHTML = '<div class="record-empty"><i class="fas fa-circle-notch fa-spin"></i> 加载中...</div>';
     modal.style.display = 'flex';
 
@@ -5576,9 +5671,7 @@ async function showRecordHistory(type) {
             }
         }
 
-        let records = type === 'reward'
-            ? (cachedRecords?.rewards || [])
-            : (cachedRecords?.reprimands || []);
+        let records = cachedRecords?.[config.key] || [];
 
         // 确保 records 是数组（可能因为旧数据是数字）
         if (!Array.isArray(records)) {
@@ -5586,7 +5679,7 @@ async function showRecordHistory(type) {
         }
 
         if (records.length === 0) {
-            contentEl.innerHTML = `<div class="record-empty">暂无${type === 'reward' ? '嘉奖' : '申诫'}记录</div>`;
+            contentEl.innerHTML = `<div class="record-empty">暂无${config.emptyText}记录</div>`;
             return;
         }
 
@@ -5599,10 +5692,10 @@ async function showRecordHistory(type) {
                 hour: '2-digit', minute: '2-digit'
             }) : '未知时间';
             const countBadge = (r.count && (r.count > 1 || r.count < 0))
-                ? `<span class="record-count-badge ${type === 'reprimand' ? 'reprimand' : ''}">x${r.count}</span>`
+                ? `<span class="record-count-badge ${config.styleClass}">x${r.count}</span>`
                 : '';
             return `
-                <div class="record-entry ${type === 'reprimand' ? 'reprimand' : ''}">
+                <div class="record-entry ${config.styleClass}">
                     <div class="record-reason">${escapeHtmlText(r.reason || '无原因')}${countBadge}</div>
                     <div class="record-meta">
                         <i class="fas fa-clock"></i> ${date}
