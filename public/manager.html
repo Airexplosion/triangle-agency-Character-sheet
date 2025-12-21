@@ -7382,11 +7382,11 @@
                         </div>
                         <div class="reward-group special">
                             <label class="reward-radio-item">
-                                <input type="radio" name="mission_mvp" value="${charId}" onchange="selectMVP('${charId}')" ${disabled ? 'disabled' : ''} ${rewards.mvp ? 'checked' : ''}>
+                                <input type="checkbox" name="mission_mvp_${charId}" onchange="toggleMVP('${charId}', this.checked)" ${disabled ? 'disabled' : ''} ${rewards.mvp ? 'checked' : ''}>
                                 <span class="radio-label mvp"><i class="fas fa-trophy"></i> MVP</span>
                             </label>
                             <label class="reward-radio-item">
-                                <input type="radio" name="mission_probation" value="${charId}" onchange="selectProbation('${charId}')" ${disabled ? 'disabled' : ''} ${rewards.probation ? 'checked' : ''}>
+                                <input type="checkbox" name="mission_probation_${charId}" onchange="toggleProbation('${charId}', this.checked)" ${disabled ? 'disabled' : ''} ${rewards.probation ? 'checked' : ''}>
                                 <span class="radio-label probation"><i class="fas fa-eye"></i> 查看期</span>
                             </label>
                         </div>
@@ -7408,25 +7408,17 @@
         document.getElementById(`${type}_${charId}`).textContent = newValue;
     }
 
-    function selectMVP(charId) {
-        // 清除所有人的MVP
-        Object.keys(agentRewards).forEach(id => {
-            agentRewards[id].mvp = false;
-        });
-        // 设置选中的人为MVP
+    function toggleMVP(charId, checked) {
+        // 允许多人获得MVP
         if (agentRewards[charId]) {
-            agentRewards[charId].mvp = true;
+            agentRewards[charId].mvp = checked;
         }
     }
 
-    function selectProbation(charId) {
-        // 清除所有人的查看期
-        Object.keys(agentRewards).forEach(id => {
-            agentRewards[id].probation = false;
-        });
-        // 设置选中的人为查看期
+    function toggleProbation(charId, checked) {
+        // 允许多人获得查看期
         if (agentRewards[charId]) {
-            agentRewards[charId].probation = true;
+            agentRewards[charId].probation = checked;
         }
     }
 

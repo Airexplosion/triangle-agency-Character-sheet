@@ -394,8 +394,19 @@
     .rich-editor:empty:before { content: attr(placeholder); color: #bdc3c7; font-style: italic; }
     .small-input { width: 45px !important; padding: 5px !important; text-align: center; flex-shrink: 0; margin: 0 5px; }
     .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-    .perm-group input { margin-bottom: 8px; }
+    .perm-group input { margin-bottom: 8px; flex: 1; }
+    .perm-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .perm-check { width: 28px; height: 28px; border: 2px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #ccc; transition: all 0.2s; flex-shrink: 0; }
+    .perm-check:hover { border-color: #27ae60; color: #27ae60; }
+    .perm-check.checked { background: #27ae60; border-color: #27ae60; color: #fff; }
     .perm-note { background: #f0f2f5; padding: 10px; border-radius: 4px; font-size: 12px; color: #666; margin-top: 10px; border-left: 3px solid #ccc; }
+    /* 崩溃进度槽位 */
+    .collapse-tracker { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
+    .collapse-tracker label { font-size: 12px; color: #666; margin: 0; min-width: 60px; }
+    .collapse-slots { display: flex; gap: 6px; }
+    .collapse-slot { width: 20px; height: 20px; border: 2px solid #999; border-radius: 3px; cursor: pointer; transition: all 0.2s; background: #fff; }
+    .collapse-slot:hover { border-color: #E06B56; }
+    .collapse-slot.filled { background: #E06B56; border-color: #E06B56; }
     
     /* 混合输入框（下拉/文本切换）样式修正 */
     .hybrid-input-wrapper { position: relative; display: flex; align-items: center; }
@@ -455,6 +466,9 @@
     .attr-btn:active { transform: scale(0.95); background: #dee2e6; }
     .attr-dots-container { flex: 1; display: flex; justify-content: center; }
     .attr-dots { display: flex; gap: 4px; }
+    .attr-dots.triangle-layout { flex-direction: column; align-items: center; gap: 2px; }
+    .attr-dots.triangle-layout .dots-row { display: flex; gap: 4px; }
+    .attr-dots.triangle-layout .bottom-row { margin-left: 10px; }
     .dot { width: 16px; height: 16px; border: 1px solid #bdc3c7; border-radius: 50%; cursor: pointer; flex-shrink: 0; transition: all 0.2s; background: #fff; }
     .dot.active { background: #333; border-color: #333; }
     .dot.marked { background: var(--signal-red); border-color: var(--signal-red); }
@@ -2026,8 +2040,21 @@
 <label>机构职能</label><div class="hybrid-input-wrapper" id="grp-pFunc"><select id="sel-pFunc" onchange="handlePresetChange('pFunc', this.value)"></select><input type="text" id="pFunc" placeholder="输入机构职能"><button class="btn-reset-list" onclick="resetToDropdown('pFunc')"><i class="fas fa-list"></i></button></div>
 <label>现实触发器</label><div class="rich-editor" id="pTrig1" contenteditable="true" placeholder="GM可随时触发此项"></div>
 <label>过载解除</label><div class="rich-editor" id="pTrig2" contenteditable="true" placeholder="如何解除过载"></div>
+<div class="collapse-tracker">
+    <label>崩溃进度</label>
+    <div class="collapse-slots">
+        <span class="collapse-slot" data-idx="1" onclick="toggleCollapseSlot(this)"></span>
+        <span class="collapse-slot" data-idx="2" onclick="toggleCollapseSlot(this)"></span>
+        <span class="collapse-slot" data-idx="3" onclick="toggleCollapseSlot(this)"></span>
+        <span class="collapse-slot" data-idx="4" onclick="toggleCollapseSlot(this)"></span>
+    </div>
+</div>
 <label>首要指令</label><div class="rich-editor" id="pTrig3" contenteditable="true" placeholder="如果你……，则获得1点申诫"></div>
-<label>许可行为</label><div class="perm-group"><input type="text" id="perm1" placeholder="许可行为 1"><input type="text" id="perm2" placeholder="许可行为 2"><input type="text" id="perm3" placeholder="许可行为 3"></div>
+<label>许可行为</label><div class="perm-group">
+    <div class="perm-item"><input type="text" id="perm1" placeholder="许可行为 1"><button class="perm-check" data-idx="1" onclick="togglePermCheck(this)"><i class="fas fa-check"></i></button></div>
+    <div class="perm-item"><input type="text" id="perm2" placeholder="许可行为 2"><button class="perm-check" data-idx="2" onclick="togglePermCheck(this)"><i class="fas fa-check"></i></button></div>
+    <div class="perm-item"><input type="text" id="perm3" placeholder="许可行为 3"><button class="perm-check" data-idx="3" onclick="togglePermCheck(this)"><i class="fas fa-check"></i></button></div>
+</div>
 <div class="perm-note">如果你在单次任务中完成全部 3 项，将获得 3 点额外嘉奖。</div>
 </div>
 </div>
@@ -2736,6 +2763,54 @@ let missionInfo = { inMission: false, missions: [], managers: [] };
 
 // 职能进度嘉奖跟踪（本地记录，保存时合并到rewards数组）
 let funcProgressRewards = [];
+
+// 许可行为勾选状态
+let permChecks = [false, false, false];
+
+function togglePermCheck(btn) {
+    const idx = parseInt(btn.dataset.idx) - 1;
+    permChecks[idx] = !permChecks[idx];
+    btn.classList.toggle('checked', permChecks[idx]);
+    triggerAutoSave();
+}
+
+function loadPermChecks(checks) {
+    permChecks = checks || [false, false, false];
+    document.querySelectorAll('.perm-check').forEach(btn => {
+        const idx = parseInt(btn.dataset.idx) - 1;
+        btn.classList.toggle('checked', permChecks[idx]);
+    });
+}
+
+// 崩溃进度槽位
+let collapseProgress = 0;
+
+function toggleCollapseSlot(slot) {
+    const idx = parseInt(slot.dataset.idx);
+    // 依次勾选逻辑：点击当前最高位取消，点击下一位填充
+    if (idx === collapseProgress + 1) {
+        // 填充下一个
+        collapseProgress = idx;
+        slot.classList.add('filled');
+    } else if (idx === collapseProgress) {
+        // 取消当前最高位
+        collapseProgress = idx - 1;
+        slot.classList.remove('filled');
+    }
+    triggerAutoSave();
+}
+
+function loadCollapseProgress(progress) {
+    collapseProgress = progress || 0;
+    document.querySelectorAll('.collapse-slot').forEach(slot => {
+        const idx = parseInt(slot.dataset.idx);
+        if (idx <= collapseProgress) {
+            slot.classList.add('filled');
+        } else {
+            slot.classList.remove('filled');
+        }
+    });
+}
 
 // 进度追踪自定义编辑模式（不触发自动嘉奖和轨道变灰）
 let isTrackCustomMode = false;
@@ -4381,7 +4456,7 @@ function initAttrs(){
             </div>`;
         const d=document.createElement('div');
         d.className='attr-row';
-        d.innerHTML=`<div class="attr-label">${a}</div><div class="attr-help" onclick="toggleAttrTooltip(event)">?${tooltipHtml}</div><button class="attr-btn attr-btn-minus" data-attr="${a}" title="减少上限">−</button><input type="text" class="attr-input" data-attr="${a}" value="0/0" placeholder="当前/最大"><button class="attr-btn attr-btn-plus" data-attr="${a}" title="增加上限">+</button><div class="attr-dots-container"><div class="attr-dots" data-attr="${a}">${Array(9).fill(0).map((_,i)=>`<div class="dot" data-i="${i+1}"></div>`).join('')}</div></div>`;
+        d.innerHTML=`<div class="attr-label">${a}</div><div class="attr-help" onclick="toggleAttrTooltip(event)">?${tooltipHtml}</div><button class="attr-btn attr-btn-minus" data-attr="${a}" title="减少上限">−</button><input type="text" class="attr-input" data-attr="${a}" value="0/0" placeholder="当前/最大"><button class="attr-btn attr-btn-plus" data-attr="${a}" title="增加上限">+</button><div class="attr-dots-container"><div class="attr-dots triangle-layout" data-attr="${a}"><div class="dots-row top-row">${Array(5).fill(0).map((_,i)=>`<div class="dot" data-i="${i+1}"></div>`).join('')}</div><div class="dots-row bottom-row">${Array(4).fill(0).map((_,i)=>`<div class="dot" data-i="${i+6}"></div>`).join('')}</div></div></div>`;
         c.appendChild(d);
         const i=d.querySelector('input');
 
@@ -4595,7 +4670,7 @@ function addAnom(d=null, prepend=false, skipCheck=false){
             return;
         }
     }
-    const div=document.createElement('div');div.className='card bd-anom';div.innerHTML=`${createDelBtn('anom')}<div class="row-2" style="margin-bottom:10px"><input type="text" class="f-name" placeholder="能力名称"><input type="text" class="f-trig" placeholder="触发器"></div><input type="text" class="f-qual" placeholder="资质" style="margin-bottom:10px"><label class="c-anom">成功时</label><div class="rich-editor f-succ" contenteditable="true"></div><label style="color:#c0392b;margin-top:8px">失败时</label><div class="rich-editor f-fail" contenteditable="true"></div><div style="background:#f9f9f9;padding:10px;border-radius:6px;margin-top:10px;border:1px solid #eee"><div style="display:flex;align-items:center;margin-bottom:6px;gap:10px"><input type="text" class="f-tdesc" placeholder="问题" style="flex:1;margin-bottom:0"><label class="chk-btn chk-trained"><input type="checkbox" class="f-chk"><span></span></label></div><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><input type="text" class="f-t1" placeholder="答案1" style="flex:1"><input type="text" class="small-input f-t1-val"><div class="sq-dots d1">${get3Sq()}</div></div><div style="display:flex;gap:8px;align-items:center"><input type="text" class="f-t2" placeholder="答案2" style="flex:1"><input type="text" class="small-input f-t2-val"><div class="sq-dots d2">${get3Sq()}</div></div></div>`; setupSq(div);if(d)fillAnom(div,d);setRandomVars(div); const container = document.getElementById('list-anom'); if(prepend) { container.prepend(div); } else { container.appendChild(div); } if(isReadOnly){div.querySelectorAll('[contenteditable]').forEach(e=>e.setAttribute('contenteditable','false'));}
+    const div=document.createElement('div');div.className='card bd-anom';div.innerHTML=`${createDelBtn('anom')}<div class="row-2" style="margin-bottom:10px"><input type="text" class="f-name" placeholder="能力名称"><input type="text" class="f-trig" placeholder="资质"></div><input type="text" class="f-qual" placeholder="触发器" style="margin-bottom:10px"><label class="c-anom">成功时</label><div class="rich-editor f-succ" contenteditable="true"></div><label style="color:#c0392b;margin-top:8px">失败时</label><div class="rich-editor f-fail" contenteditable="true"></div><div style="background:#f9f9f9;padding:10px;border-radius:6px;margin-top:10px;border:1px solid #eee"><div style="display:flex;align-items:center;margin-bottom:6px;gap:10px"><input type="text" class="f-tdesc" placeholder="问题" style="flex:1;margin-bottom:0"><label class="chk-btn chk-trained"><input type="checkbox" class="f-chk"><span></span></label></div><div style="display:flex;gap:8px;align-items:center;margin-bottom:6px"><input type="text" class="f-t1" placeholder="答案1" style="flex:1"><input type="text" class="small-input f-t1-val"><div class="sq-dots d1">${get3Sq()}</div></div><div style="display:flex;gap:8px;align-items:center"><input type="text" class="f-t2" placeholder="答案2" style="flex:1"><input type="text" class="small-input f-t2-val"><div class="sq-dots d2">${get3Sq()}</div></div></div>`; setupSq(div);if(d)fillAnom(div,d);setRandomVars(div); const container = document.getElementById('list-anom'); if(prepend) { container.prepend(div); } else { container.appendChild(div); } if(isReadOnly){div.querySelectorAll('[contenteditable]').forEach(e=>e.setAttribute('contenteditable','false'));}
     updateSlotButtons();
 }
 
@@ -4867,6 +4942,10 @@ function populateData(d){
             }
         }
     }
+    // 加载崩溃进度
+    loadCollapseProgress(d.collapseProgress || 0);
+    // 加载许可行为勾选状态
+    loadPermChecks(d.permChecks);
     document.getElementById('list-anom').innerHTML='';document.getElementById('list-real').innerHTML='';document.getElementById('list-item').innerHTML='';
     (d.anoms||[]).forEach(x=>addAnom(x, false, true));
     (d.reals||[]).forEach(x=>{const card = addReal(x, true); if(card) document.getElementById('list-real').appendChild(card);});
@@ -4923,7 +5002,11 @@ function gatherData(){
         anomSlots: SLOT_LIMITS.anomSlots >= 999 ? 3 : SLOT_LIMITS.anomSlots,
         realSlots: SLOT_LIMITS.realSlots >= 999 ? 3 : SLOT_LIMITS.realSlots,
         // 职能进度嘉奖（需要服务器合并到rewards数组）
-        funcProgressRewards: funcProgressRewards
+        funcProgressRewards: funcProgressRewards,
+        // 崩溃进度
+        collapseProgress: collapseProgress,
+        // 许可行为勾选状态
+        permChecks: permChecks
     };
     for(let i=1;i<=8;i++)d.qs.push(document.getElementById(`q${i}`).innerHTML);
     // 保存属性数据 - 新格式，同时兼容旧格式v字段
