@@ -2194,7 +2194,24 @@
         .mission-form input:focus, .mission-form textarea:focus { outline: none; border-color: #27ae60; }
         .mission-form textarea { min-height: 80px; resize: vertical; }
         #missionModal .btn-modal-confirm { background: #27ae60; }
+        #missionModal { z-index: 10001; }
+        #missionModal .modal-box { max-width: 500px; max-height: 85vh; display: flex; flex-direction: column; }
+        #missionModal .modal-body { flex: 1; overflow-y: auto; }
 
+        /* 可选任务样式 */
+        .btn-add-optional { background: none; border: none; color: var(--manager-blue); cursor: pointer; font-size: 12px; margin-left: 6px; padding: 2px 6px; transition: all 0.2s; }
+        .btn-add-optional:hover { transform: scale(1.2); color: var(--manager-blue-dark); }
+        #optionalTasksContainer { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+        .optional-task-item { display: flex; align-items: center; gap: 8px; }
+        .optional-task-item .task-num { font-size: 13px; font-weight: bold; color: #666; min-width: 20px; }
+        .optional-task-item .optional-task-input { flex: 1; padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
+        .optional-task-item .optional-task-input:focus { outline: none; border-color: var(--manager-blue); }
+        .btn-remove-optional { background: none; border: none; color: #bdc3c7; cursor: pointer; font-size: 14px; padding: 4px; transition: all 0.2s; }
+        .btn-remove-optional:hover { color: #e74c3c; }
+
+        /* 可选任务详情显示 */
+        .optional-tasks-display { margin: 0; padding-left: 20px; }
+        .optional-tasks-display li { margin-bottom: 8px; font-size: 14px; color: var(--text-dark); }
 
         /* === 邮件详情弹窗样式 === */
         #mailDetailModal .modal-box { max-width: 550px; }
@@ -4706,6 +4723,12 @@
                 <p id="missionDetailDesc" class="mission-desc-text">暂无描述</p>
             </div>
 
+            <!-- 可选任务 -->
+            <div class="mission-detail-section" id="optionalTasksSection" style="display:none;">
+                <h3><i class="fas fa-list-ol"></i> 可选任务</h3>
+                <ol id="missionDetailOptionalTasks" class="optional-tasks-display"></ol>
+            </div>
+
             <!-- 任务成员 -->
             <div class="mission-detail-section">
                 <div class="section-header">
@@ -5021,6 +5044,12 @@
             </select>
             <label>任务描述</label>
             <textarea id="missionDesc" placeholder="输入任务描述（可选）"></textarea>
+            <label>可选任务 <button type="button" class="btn-add-optional" onclick="addOptionalTask()" title="添加可选任务"><i class="fas fa-plus"></i></button></label>
+            <div id="optionalTasksContainer">
+                <div class="optional-task-item" data-idx="1"><span class="task-num">1.</span><input type="text" class="optional-task-input" placeholder="可选任务内容"><button type="button" class="btn-remove-optional" onclick="removeOptionalTask(this)"><i class="fas fa-times"></i></button></div>
+                <div class="optional-task-item" data-idx="2"><span class="task-num">2.</span><input type="text" class="optional-task-input" placeholder="可选任务内容"><button type="button" class="btn-remove-optional" onclick="removeOptionalTask(this)"><i class="fas fa-times"></i></button></div>
+                <div class="optional-task-item" data-idx="3"><span class="task-num">3.</span><input type="text" class="optional-task-input" placeholder="可选任务内容"><button type="button" class="btn-remove-optional" onclick="removeOptionalTask(this)"><i class="fas fa-times"></i></button></div>
+            </div>
         </div>
         <div class="modal-footer">
             <button class="btn-modal btn-modal-cancel" onclick="closeMissionModal()">取消</button>
@@ -6406,14 +6435,79 @@
                 document.getElementById('missionName').value = mission.name;
                 document.getElementById('missionType').value = mission.mission_type || 'containment';
                 document.getElementById('missionDesc').value = mission.description || '';
+                loadOptionalTasks(mission.optional_tasks || []);
             }
         } else {
             document.getElementById('missionName').value = '';
             document.getElementById('missionType').value = 'containment';
             document.getElementById('missionDesc').value = '';
+            loadOptionalTasks([]); // 重置为默认3条空白
         }
 
         document.getElementById('missionModal').classList.add('show');
+    }
+
+    // 可选任务功能
+    const MAX_OPTIONAL_TASKS = 10;
+    const DEFAULT_OPTIONAL_TASKS = 3;
+
+    function addOptionalTask() {
+        const container = document.getElementById('optionalTasksContainer');
+        const count = container.children.length;
+        if (count >= MAX_OPTIONAL_TASKS) {
+            showToast('最多只能添加10条可选任务');
+            return;
+        }
+        const idx = count + 1;
+        const item = document.createElement('div');
+        item.className = 'optional-task-item';
+        item.dataset.idx = idx;
+        item.innerHTML = `<span class="task-num">${idx}.</span><input type="text" class="optional-task-input" placeholder="可选任务内容"><button type="button" class="btn-remove-optional" onclick="removeOptionalTask(this)"><i class="fas fa-times"></i></button>`;
+        container.appendChild(item);
+        updateOptionalTaskNumbers();
+    }
+
+    function removeOptionalTask(btn) {
+        const container = document.getElementById('optionalTasksContainer');
+        if (container.children.length <= 1) {
+            showToast('至少保留1条可选任务');
+            return;
+        }
+        btn.closest('.optional-task-item').remove();
+        updateOptionalTaskNumbers();
+    }
+
+    function updateOptionalTaskNumbers() {
+        const items = document.querySelectorAll('#optionalTasksContainer .optional-task-item');
+        items.forEach((item, idx) => {
+            item.dataset.idx = idx + 1;
+            item.querySelector('.task-num').textContent = (idx + 1) + '.';
+        });
+    }
+
+    function getOptionalTasks() {
+        const tasks = [];
+        document.querySelectorAll('#optionalTasksContainer .optional-task-input').forEach(input => {
+            const val = input.value.trim();
+            if (val) tasks.push(val);
+        });
+        return tasks;
+    }
+
+    function loadOptionalTasks(tasks) {
+        const container = document.getElementById('optionalTasksContainer');
+        container.innerHTML = '';
+
+        // 如果没有任务，默认创建3条空白
+        const count = (tasks && tasks.length > 0) ? tasks.length : DEFAULT_OPTIONAL_TASKS;
+        for (let i = 0; i < count; i++) {
+            const item = document.createElement('div');
+            item.className = 'optional-task-item';
+            item.dataset.idx = i + 1;
+            const value = (tasks && tasks[i]) ? tasks[i].replace(/"/g, '&quot;') : '';
+            item.innerHTML = `<span class="task-num">${i + 1}.</span><input type="text" class="optional-task-input" placeholder="可选任务内容" value="${value}"><button type="button" class="btn-remove-optional" onclick="removeOptionalTask(this)"><i class="fas fa-times"></i></button>`;
+            container.appendChild(item);
+        }
     }
 
     function closeMissionModal() {
@@ -6429,6 +6523,7 @@
         const name = document.getElementById('missionName').value.trim();
         const missionType = document.getElementById('missionType').value;
         const description = document.getElementById('missionDesc').value.trim();
+        const optionalTasks = getOptionalTasks();
         const editId = document.getElementById('missionEditId').value;
 
         if (!name) {
@@ -6443,7 +6538,7 @@
             const res = await fetch(url, {
                 method,
                 headers: getAuthHeaders(),
-                body: JSON.stringify({ name, description, missionType })
+                body: JSON.stringify({ name, description, missionType, optionalTasks })
             });
 
             const data = await res.json();
@@ -6451,6 +6546,24 @@
                 showToast(editId ? '任务已更新' : '任务已创建', true);
                 closeMissionModal();
                 await loadMissions();
+                // 如果详情页还开着，更新详情页显示
+                if (currentMissionDetailId && editId) {
+                    const mission = missionsList.find(m => m.id === currentMissionDetailId);
+                    if (mission) {
+                        document.getElementById('missionDetailName').textContent = mission.name;
+                        document.getElementById('missionDetailDesc').textContent = mission.description || '无描述';
+                        // 更新可选任务显示
+                        const tasks = mission.optional_tasks || [];
+                        const optionalSection = document.getElementById('optionalTasksSection');
+                        const optionalList = document.getElementById('missionDetailOptionalTasks');
+                        if (tasks.length > 0) {
+                            optionalSection.style.display = 'block';
+                            optionalList.innerHTML = tasks.map(t => `<li>${escapeHtml(t)}</li>`).join('');
+                        } else {
+                            optionalSection.style.display = 'none';
+                        }
+                    }
+                }
             } else {
                 throw new Error(data.message || '保存失败');
             }
@@ -6920,6 +7033,18 @@
         // 填充详情
         document.getElementById('missionDetailName').textContent = mission.name;
         document.getElementById('missionDetailDesc').textContent = mission.description || '暂无描述';
+
+        // 填充可选任务
+        const optionalTasks = mission.optional_tasks || [];
+        const optionalSection = document.getElementById('optionalTasksSection');
+        const optionalList = document.getElementById('missionDetailOptionalTasks');
+        if (optionalTasks.length > 0) {
+            optionalSection.style.display = 'block';
+            optionalList.innerHTML = optionalTasks.map(task => `<li>${escapeHtml(task)}</li>`).join('');
+        } else {
+            optionalSection.style.display = 'none';
+            optionalList.innerHTML = '';
+        }
 
         const statusEl = document.getElementById('missionDetailStatus');
         statusEl.textContent = mission.status === 'active' ? '进行中' : '已归档';
@@ -8210,7 +8335,6 @@
 
     function editCurrentMission() {
         if (!currentMissionDetailId) return;
-        closeMissionDetail();
         openMissionModal(currentMissionDetailId);
     }
 

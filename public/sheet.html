@@ -272,6 +272,15 @@
         background: #f39c12;
         color: white;
     }
+    .optional-tasks-list {
+        margin: 6px 0 0 20px;
+        padding: 0;
+        font-size: 12px;
+        color: rgba(255,255,255,0.8);
+    }
+    .optional-tasks-list li {
+        margin-bottom: 4px;
+    }
     .manager-tag {
         background: rgba(243, 156, 18, 0.2);
         color: #f39c12;
@@ -366,7 +375,7 @@
     .offline-mode .offline-tag { display: inline-block; }
     .offline-mode .btn-back, .offline-mode .btn-save-server { display: none; }
     body.readonly-mode .readonly-tag { display: inline-block; background: var(--signal-red); color: white; }
-    body.readonly-mode .btn-save, body.readonly-mode .btn-add, body.readonly-mode .btn-del, body.readonly-mode .save-area { display: none !important; }
+    body.readonly-mode .btn-save, body.readonly-mode .btn-add, body.readonly-mode .btn-add-note, body.readonly-mode .btn-remove-note, body.readonly-mode .btn-del, body.readonly-mode .save-area, body.readonly-mode .perm-counter button { display: none !important; }
     body.readonly-mode input, body.readonly-mode textarea, body.readonly-mode .rich-editor, body.readonly-mode select { pointer-events: none; background: transparent; border-color: transparent; color: #555; -webkit-appearance: none; appearance: none; }
     body.readonly-mode .attr-btn { display: none !important; }
     
@@ -396,18 +405,32 @@
     .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
     .perm-group input { margin-bottom: 8px; flex: 1; }
     .perm-item { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .perm-check { width: 28px; height: 28px; border: 2px solid #ccc; border-radius: 4px; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #ccc; transition: all 0.2s; flex-shrink: 0; }
-    .perm-check:hover { border-color: #27ae60; color: #27ae60; }
-    .perm-check.checked { background: #27ae60; border-color: #27ae60; color: #fff; }
+    .perm-counter { display: flex; align-items: center; gap: 0; flex-shrink: 0; }
+    .perm-counter button { width: 22px; height: 22px; border: 1px solid #333; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; color: #333; font-size: 14px; font-weight: bold; transition: all 0.2s; }
+    .perm-counter button:hover { background: #333; color: #fff; }
+    .perm-counter button.perm-minus { border-radius: 4px 0 0 4px; border-right: none; }
+    .perm-counter button.perm-plus { border-radius: 0 4px 4px 0; border-left: none; }
+    .perm-counter .perm-value { width: 28px; height: 22px; border: 1px solid #333; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: bold; color: #333; cursor: pointer; }
+    .perm-counter .perm-value:hover { background: #f0f0f0; }
     .perm-note { background: #f0f2f5; padding: 10px; border-radius: 4px; font-size: 12px; color: #666; margin-top: 10px; border-left: 3px solid #ccc; }
     /* 崩溃进度槽位 */
-    .collapse-tracker { display: flex; align-items: center; gap: 10px; margin: 8px 0; }
-    .collapse-tracker label { font-size: 12px; color: #666; margin: 0; min-width: 60px; }
-    .collapse-slots { display: flex; gap: 6px; }
-    .collapse-slot { width: 20px; height: 20px; border: 2px solid #999; border-radius: 3px; cursor: pointer; transition: all 0.2s; background: #fff; }
+    .collapse-slots { display: flex; gap: 6px; margin: 8px 0; }
+    .collapse-slot { width: 20px; height: 20px; border: 2px solid #999; border-radius: 3px; cursor: pointer; transition: all 0.2s; background: #fff; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: bold; color: transparent; }
     .collapse-slot:hover { border-color: #E06B56; }
-    .collapse-slot.filled { background: #E06B56; border-color: #E06B56; }
-    
+    .collapse-slot.filled { color: #E06B56; }
+    .collapse-slot.filled::after { content: '✕'; }
+
+    /* 多条笔记样式 */
+    .btn-add-note { background: none; border: none; color: var(--signal-red); cursor: pointer; font-size: 14px; margin-left: 8px; padding: 2px 6px; transition: all 0.2s; }
+    .btn-add-note:hover { transform: scale(1.2); }
+    #notesContainer { display: flex; flex-direction: column; gap: 16px; }
+    .note-item { border: 1px solid #ddd; border-radius: 6px; padding: 12px; background: #fafafa; }
+    .note-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .note-header .note-title { flex: 1; font-weight: bold; border: 1px solid #ccc; border-radius: 4px; padding: 6px 10px; }
+    .btn-remove-note { background: none; border: none; color: #999; cursor: pointer; font-size: 14px; padding: 4px; transition: all 0.2s; }
+    .btn-remove-note:hover { color: var(--signal-red); }
+    .note-item .note-body { min-height: 60px; }
+
     /* 混合输入框（下拉/文本切换）样式修正 */
     .hybrid-input-wrapper { position: relative; display: flex; align-items: center; }
     .hybrid-input-wrapper input[type="text"] { display: none; }
@@ -465,13 +488,15 @@
     .attr-btn:hover { background: #e9ecef; border-color: #adb5bd; color: #333; }
     .attr-btn:active { transform: scale(0.95); background: #dee2e6; }
     .attr-dots-container { flex: 1; display: flex; justify-content: center; }
-    .attr-dots { display: flex; gap: 4px; }
-    .attr-dots.triangle-layout { flex-direction: column; align-items: center; gap: 2px; }
-    .attr-dots.triangle-layout .dots-row { display: flex; gap: 4px; }
-    .attr-dots.triangle-layout .bottom-row { margin-left: 10px; }
-    .dot { width: 16px; height: 16px; border: 1px solid #bdc3c7; border-radius: 50%; cursor: pointer; flex-shrink: 0; transition: all 0.2s; background: #fff; }
-    .dot.active { background: #333; border-color: #333; }
-    .dot.marked { background: var(--signal-red); border-color: var(--signal-red); }
+    .attr-dots { display: flex; gap: 0; align-items: center; }
+    .attr-dots .dot { width: 0; height: 0; cursor: pointer; flex-shrink: 0; transition: all 0.2s; border-left: 8px solid transparent; border-right: 8px solid transparent; border-top: 14px solid #ddd; margin: 0 2px; }
+    .attr-dots .dot.up { border-top: none; border-bottom: 14px solid #ddd; }
+    .attr-dots .dot.active { border-top-color: var(--signal-red); }
+    .attr-dots .dot.up.active { border-top-color: transparent; border-bottom-color: var(--signal-red); }
+    .attr-dots .dot.marked { border-top-color: #333; }
+    .attr-dots .dot.up.marked { border-top-color: transparent; border-bottom-color: #333; }
+    .r-dots .dot { width: 16px; height: 16px; border: 1px solid #bdc3c7; border-radius: 50%; cursor: pointer; flex-shrink: 0; transition: all 0.2s; background: #fff; }
+    .r-dots .dot.active { background: #333; border-color: #333; }
     .track-header { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 20px; align-items: end; }
     .track-stat { display: flex; flex-direction: column; align-items: center; width: 100%; }
     .track-stat label { margin: 0 0 6px; font-size: 10px; text-align: center; color: var(--text-dim); white-space: nowrap; }
@@ -2040,20 +2065,17 @@
 <label>机构职能</label><div class="hybrid-input-wrapper" id="grp-pFunc"><select id="sel-pFunc" onchange="handlePresetChange('pFunc', this.value)"></select><input type="text" id="pFunc" placeholder="输入机构职能"><button class="btn-reset-list" onclick="resetToDropdown('pFunc')"><i class="fas fa-list"></i></button></div>
 <label>现实触发器</label><div class="rich-editor" id="pTrig1" contenteditable="true" placeholder="GM可随时触发此项"></div>
 <label>过载解除</label><div class="rich-editor" id="pTrig2" contenteditable="true" placeholder="如何解除过载"></div>
-<div class="collapse-tracker">
-    <label>崩溃进度</label>
-    <div class="collapse-slots">
-        <span class="collapse-slot" data-idx="1" onclick="toggleCollapseSlot(this)"></span>
-        <span class="collapse-slot" data-idx="2" onclick="toggleCollapseSlot(this)"></span>
-        <span class="collapse-slot" data-idx="3" onclick="toggleCollapseSlot(this)"></span>
-        <span class="collapse-slot" data-idx="4" onclick="toggleCollapseSlot(this)"></span>
-    </div>
+<div class="collapse-slots">
+    <span class="collapse-slot" data-idx="1" onclick="toggleCollapseSlot(this)"></span>
+    <span class="collapse-slot" data-idx="2" onclick="toggleCollapseSlot(this)"></span>
+    <span class="collapse-slot" data-idx="3" onclick="toggleCollapseSlot(this)"></span>
+    <span class="collapse-slot" data-idx="4" onclick="toggleCollapseSlot(this)"></span>
 </div>
 <label>首要指令</label><div class="rich-editor" id="pTrig3" contenteditable="true" placeholder="如果你……，则获得1点申诫"></div>
 <label>许可行为</label><div class="perm-group">
-    <div class="perm-item"><input type="text" id="perm1" placeholder="许可行为 1"><button class="perm-check" data-idx="1" onclick="togglePermCheck(this)"><i class="fas fa-check"></i></button></div>
-    <div class="perm-item"><input type="text" id="perm2" placeholder="许可行为 2"><button class="perm-check" data-idx="2" onclick="togglePermCheck(this)"><i class="fas fa-check"></i></button></div>
-    <div class="perm-item"><input type="text" id="perm3" placeholder="许可行为 3"><button class="perm-check" data-idx="3" onclick="togglePermCheck(this)"><i class="fas fa-check"></i></button></div>
+    <div class="perm-item"><input type="text" id="perm1" placeholder="许可行为 1"><div class="perm-counter" data-idx="1"><button class="perm-minus" onclick="adjustPermCount(this, -1)">−</button><span class="perm-value" onclick="adjustPermCount(this, 1)">0</span><button class="perm-plus" onclick="adjustPermCount(this, 1)">+</button></div></div>
+    <div class="perm-item"><input type="text" id="perm2" placeholder="许可行为 2"><div class="perm-counter" data-idx="2"><button class="perm-minus" onclick="adjustPermCount(this, -1)">−</button><span class="perm-value" onclick="adjustPermCount(this, 1)">0</span><button class="perm-plus" onclick="adjustPermCount(this, 1)">+</button></div></div>
+    <div class="perm-item"><input type="text" id="perm3" placeholder="许可行为 3"><div class="perm-counter" data-idx="3"><button class="perm-minus" onclick="adjustPermCount(this, -1)">−</button><span class="perm-value" onclick="adjustPermCount(this, 1)">0</span><button class="perm-plus" onclick="adjustPermCount(this, 1)">+</button></div></div>
 </div>
 <div class="perm-note">如果你在单次任务中完成全部 3 项，将获得 3 点额外嘉奖。</div>
 </div>
@@ -2071,7 +2093,17 @@
 <div class="track-sec"><h3 class="c-anom" style="font-size:12px; margin:5px 0;">异常</h3><div class="track-row"><div class="p-grid"><div class="p-cell a-cell" data-idx="1"><span>H4</span></div><div class="p-cell a-cell" data-idx="2"><span>H3</span></div><div class="p-cell a-cell" data-idx="3"></div><div class="p-cell a-cell" data-idx="4"></div><div class="p-cell a-cell" data-idx="5"><span>U2</span></div><div class="p-cell a-cell" data-idx="6"></div><div class="p-cell a-cell" data-idx="7"><span>X2</span></div><div class="p-cell a-cell" data-idx="8"></div><div class="p-cell a-cell" data-idx="9"></div><div class="p-cell a-cell" data-idx="10"></div></div><div class="p-grid"><div class="p-cell a-cell" data-idx="11"><span>N1</span></div><div class="p-cell a-cell" data-idx="12"></div><div class="p-cell a-cell" data-idx="13"><span>Q2</span></div><div class="p-cell a-cell" data-idx="14"></div><div class="p-cell a-cell" data-idx="15"></div><div class="p-cell a-cell" data-idx="16"></div><div class="p-cell a-cell" data-idx="17"><span>L10</span></div><div class="p-cell a-cell" data-idx="18"></div><div class="p-cell a-cell" data-idx="19"><span>G8</span></div><div class="p-cell a-cell" data-idx="20"></div></div><div class="p-grid"><div class="p-cell a-cell" data-idx="21"></div><div class="p-cell a-cell" data-idx="22"></div><div class="p-cell a-cell" data-idx="23"><span>A7</span></div><div class="p-cell a-cell" data-idx="24"></div><div class="p-cell a-cell" data-idx="25"></div><div class="p-cell a-cell" data-idx="26"></div><div class="p-cell a-cell" data-idx="27"></div><div class="p-cell a-cell" data-idx="28"></div><div class="p-cell a-cell" data-idx="29"></div><div class="p-cell a-cell" data-idx="30"></div></div></div><div class="track-rule">当你进入察看期时，在你的异常记录条上标记1格，且无需从其他记录条上移除一格。</div><div class="track-rule">每当你在异常记录条上标记一格时，选择一项：<br>➤练习：在任意一项异常能力上标记"熟练"。 <br>➤广为人知：从一项异常能力中移除"熟练"标记，并向你的团队提出该能力的问题。在获得最多票数的答案轨道上做标记，然后获得所有已解锁的能力。</div></div>
 </div>
 <div class="panel"><h2><i class="fas fa-file-contract"></i> 欢迎你，特工！</h2><div style="margin-bottom:12px;"><label>1. 你是如何与异常接触的？</label><div class="rich-editor" id="q1" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>2. 公司是如何找到你的？</label><div class="rich-editor" id="q2" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>3. 你的期望年薪是多少？</label><div class="rich-editor" id="q3" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>4. 你的外貌特征是什么？</label><div class="rich-editor" id="q4" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>5. 你的异常能力是否有独特的视觉表现？</label><div class="rich-editor" id="q5" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>6. 你喜欢什么样的咖啡？</label><div class="rich-editor" id="q6" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>7. 在你的人际关系中，谁是你的主要联络人，为什么？</label><div class="rich-editor" id="q7" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>8. 在协作工作环境里，你能为团队带来什么？</label><div class="rich-editor" id="q8" contenteditable="true"></div></div></div>
-<div class="panel"><h2><i class="fas fa-sticky-note"></i> 备注/笔记</h2><label>标题</label><input type="text" id="noteTitle" style="margin-bottom: 12px; font-weight: bold;"><label>内容</label><div class="rich-editor" id="noteBody" contenteditable="true" placeholder="摘要..."></div></div>
+<div class="panel"><h2><i class="fas fa-sticky-note"></i> 备注/笔记 <button class="btn-add-note" onclick="addNoteItem()"><i class="fas fa-plus"></i></button></h2>
+<div id="notesContainer">
+    <div class="note-item" data-idx="0">
+        <div class="note-header">
+            <input type="text" class="note-title" placeholder="标题">
+            <button class="btn-remove-note" onclick="removeNoteItem(this)" style="display:none;"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="rich-editor note-body" contenteditable="true" placeholder="内容..."></div>
+    </div>
+</div>
+</div>
 <div class="save-area">
 <button class="btn-save btn-save-server" onclick="saveData()"><i class="fas fa-cloud-upload-alt"></i> 上传终端</button>
 <button class="btn-save btn-export" onclick="exportOffline()"><i class="fas fa-download"></i> 离线另存</button>
@@ -2764,21 +2796,28 @@ let missionInfo = { inMission: false, missions: [], managers: [] };
 // 职能进度嘉奖跟踪（本地记录，保存时合并到rewards数组）
 let funcProgressRewards = [];
 
-// 许可行为勾选状态
-let permChecks = [false, false, false];
+// 许可行为计数
+let permCounts = [0, 0, 0];
 
-function togglePermCheck(btn) {
-    const idx = parseInt(btn.dataset.idx) - 1;
-    permChecks[idx] = !permChecks[idx];
-    btn.classList.toggle('checked', permChecks[idx]);
+function adjustPermCount(btn, delta) {
+    if (isReadOnly) return;
+    const counter = btn.closest('.perm-counter');
+    const idx = parseInt(counter.dataset.idx) - 1;
+    permCounts[idx] = Math.max(0, permCounts[idx] + delta);
+    counter.querySelector('.perm-value').textContent = permCounts[idx];
     triggerAutoSave();
 }
 
-function loadPermChecks(checks) {
-    permChecks = checks || [false, false, false];
-    document.querySelectorAll('.perm-check').forEach(btn => {
-        const idx = parseInt(btn.dataset.idx) - 1;
-        btn.classList.toggle('checked', permChecks[idx]);
+function loadPermCounts(counts) {
+    // 兼容旧数据：布尔值转换为数字
+    if (counts && typeof counts[0] === 'boolean') {
+        permCounts = counts.map(c => c ? 1 : 0);
+    } else {
+        permCounts = counts || [0, 0, 0];
+    }
+    document.querySelectorAll('.perm-counter').forEach(counter => {
+        const idx = parseInt(counter.dataset.idx) - 1;
+        counter.querySelector('.perm-value').textContent = permCounts[idx] || 0;
     });
 }
 
@@ -2810,6 +2849,92 @@ function loadCollapseProgress(progress) {
             slot.classList.remove('filled');
         }
     });
+}
+
+// 多条笔记功能
+let noteIdCounter = 1;
+
+function addNoteItem() {
+    if (isReadOnly) return;
+    const container = document.getElementById('notesContainer');
+    const noteItem = document.createElement('div');
+    noteItem.className = 'note-item';
+    noteItem.dataset.idx = noteIdCounter++;
+    noteItem.innerHTML = `
+        <div class="note-header">
+            <input type="text" class="note-title" placeholder="标题">
+            <button class="btn-remove-note" onclick="removeNoteItem(this)"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="rich-editor note-body" contenteditable="true" placeholder="内容..."></div>
+    `;
+    container.appendChild(noteItem);
+    updateNoteRemoveButtons();
+    triggerAutoSave();
+}
+
+function removeNoteItem(btn) {
+    if (isReadOnly) return;
+    const noteItem = btn.closest('.note-item');
+    const container = document.getElementById('notesContainer');
+    if (container.children.length > 1) {
+        noteItem.remove();
+        updateNoteRemoveButtons();
+        triggerAutoSave();
+    }
+}
+
+function updateNoteRemoveButtons() {
+    const container = document.getElementById('notesContainer');
+    const notes = container.querySelectorAll('.note-item');
+    notes.forEach(note => {
+        const removeBtn = note.querySelector('.btn-remove-note');
+        if (removeBtn) {
+            removeBtn.style.display = notes.length > 1 ? 'block' : 'none';
+        }
+    });
+}
+
+function getNotesData() {
+    const notes = [];
+    document.querySelectorAll('#notesContainer .note-item').forEach(item => {
+        const title = item.querySelector('.note-title').value || '';
+        const body = item.querySelector('.note-body').innerHTML || '';
+        if (title || body) {
+            notes.push({ title, body });
+        }
+    });
+    return notes;
+}
+
+function loadNotesData(notes) {
+    const container = document.getElementById('notesContainer');
+    container.innerHTML = '';
+
+    if (!notes || notes.length === 0) {
+        // 如果没有笔记，创建一个空的
+        notes = [{ title: '', body: '' }];
+    }
+
+    notes.forEach((note, idx) => {
+        const noteItem = document.createElement('div');
+        noteItem.className = 'note-item';
+        noteItem.dataset.idx = idx;
+        noteItem.innerHTML = `
+            <div class="note-header">
+                <input type="text" class="note-title" placeholder="标题" value="${(note.title || '').replace(/"/g, '&quot;')}">
+                <button class="btn-remove-note" onclick="removeNoteItem(this)"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="rich-editor note-body" contenteditable="${isReadOnly ? 'false' : 'true'}" placeholder="内容...">${note.body || ''}</div>
+        `;
+        container.appendChild(noteItem);
+        // 只读模式下禁用输入
+        if (isReadOnly) {
+            noteItem.querySelector('.note-title').disabled = true;
+        }
+    });
+
+    noteIdCounter = notes.length;
+    updateNoteRemoveButtons();
 }
 
 // 进度追踪自定义编辑模式（不触发自动嘉奖和轨道变灰）
@@ -2993,6 +3118,15 @@ function renderMissionModalContent() {
                     html += `<span class="teammate-tag ${isMe ? 'is-me' : ''}">${escapeHtml(t.characterName)}${isMe ? ' (我)' : ''}</span>`;
                 });
                 html += '</div>';
+            }
+            // 可选任务
+            if (mission.optionalTasks && mission.optionalTasks.length > 0) {
+                html += '<div class="mission-card-info" style="margin-top:8px;">可选任务:</div>';
+                html += '<ol class="optional-tasks-list">';
+                mission.optionalTasks.forEach(task => {
+                    html += `<li>${escapeHtml(task)}</li>`;
+                });
+                html += '</ol>';
             }
             html += '</div>';
         });
@@ -4456,7 +4590,7 @@ function initAttrs(){
             </div>`;
         const d=document.createElement('div');
         d.className='attr-row';
-        d.innerHTML=`<div class="attr-label">${a}</div><div class="attr-help" onclick="toggleAttrTooltip(event)">?${tooltipHtml}</div><button class="attr-btn attr-btn-minus" data-attr="${a}" title="减少上限">−</button><input type="text" class="attr-input" data-attr="${a}" value="0/0" placeholder="当前/最大"><button class="attr-btn attr-btn-plus" data-attr="${a}" title="增加上限">+</button><div class="attr-dots-container"><div class="attr-dots triangle-layout" data-attr="${a}"><div class="dots-row top-row">${Array(5).fill(0).map((_,i)=>`<div class="dot" data-i="${i+1}"></div>`).join('')}</div><div class="dots-row bottom-row">${Array(4).fill(0).map((_,i)=>`<div class="dot" data-i="${i+6}"></div>`).join('')}</div></div></div>`;
+        d.innerHTML=`<div class="attr-label">${a}</div><div class="attr-help" onclick="toggleAttrTooltip(event)">?${tooltipHtml}</div><button class="attr-btn attr-btn-minus" data-attr="${a}" title="减少上限">−</button><input type="text" class="attr-input" data-attr="${a}" value="0/0" placeholder="当前/最大"><button class="attr-btn attr-btn-plus" data-attr="${a}" title="增加上限">+</button><div class="attr-dots-container"><div class="attr-dots" data-attr="${a}">${Array(9).fill(0).map((_,i)=>`<div class="dot${i%2===1?' up':''}" data-i="${i+1}"></div>`).join('')}</div></div>`;
         c.appendChild(d);
         const i=d.querySelector('input');
 
@@ -4534,12 +4668,12 @@ function initAttrs(){
                 const {current, max} = getAttrValues(a);
 
                 if(dot.classList.contains('active')) {
-                    // 点击黑色点 - 该点变红
+                    // 点击红色点(可用) - 该点变黑(已使用)
                     attrMarkedDots[a].add(idx);
                     updateAttrInput(a);
                     renderDotsNew(a, max);
                 } else if(dot.classList.contains('marked')) {
-                    // 点击红色点 - 该点变回黑色
+                    // 点击黑色点(已使用) - 该点变回红色(可用)
                     attrMarkedDots[a].delete(idx);
                     updateAttrInput(a);
                     renderDotsNew(a, max);
@@ -4592,9 +4726,9 @@ function renderDotsNew(a, max) {
         d.classList.remove('active', 'marked');
         if(idx <= max) {
             if(marked.has(idx)) {
-                d.classList.add('marked'); // 红色 - 已消耗的点
+                d.classList.add('marked'); // 黑色 - 已使用的点
             } else {
-                d.classList.add('active'); // 黑色 - 当前可用的点
+                d.classList.add('active'); // 红色 - 当前可用的点
             }
         }
     });
@@ -4898,7 +5032,16 @@ function populateData(d){
     isPopulating = true; // 防止加载数据时触发自动保存
     SLOT_LIMITS.anomSlots = d.anomSlots || 3;
     SLOT_LIMITS.realSlots = d.realSlots || 3;
-    ['pName','pTrig1','pTrig2','pTrig3','perm1','perm2','perm3','pComm','pRep','noteTitle','noteBody'].forEach(id=>{const e=document.getElementById(id);if(d[id]&&e){if(e.tagName==='DIV')e.innerHTML=d[id];else e.value=d[id];}});
+    ['pName','pTrig1','pTrig2','pTrig3','perm1','perm2','perm3','pComm','pRep'].forEach(id=>{const e=document.getElementById(id);if(d[id]&&e){if(e.tagName==='DIV')e.innerHTML=d[id];else e.value=d[id];}});
+    // 加载笔记（兼容旧数据格式）
+    if (d.notes && d.notes.length > 0) {
+        loadNotesData(d.notes);
+    } else if (d.noteTitle || d.noteBody) {
+        // 兼容旧数据：将单条笔记转换为数组格式
+        loadNotesData([{ title: d.noteTitle || '', body: d.noteBody || '' }]);
+    } else {
+        loadNotesData([]);
+    }
     // 嘉奖/申诫：优先从数组计算，确保数据准确
     const rewardsTotal = (d.rewards || []).reduce((sum, r) => sum + (r.count || 1), 0);
     const reprimandsTotal = (d.reprimands || []).reduce((sum, r) => sum + (r.count || 1), 0);
@@ -4944,8 +5087,8 @@ function populateData(d){
     }
     // 加载崩溃进度
     loadCollapseProgress(d.collapseProgress || 0);
-    // 加载许可行为勾选状态
-    loadPermChecks(d.permChecks);
+    // 加载许可行为计数
+    loadPermCounts(d.permChecks || d.permCounts);
     document.getElementById('list-anom').innerHTML='';document.getElementById('list-real').innerHTML='';document.getElementById('list-item').innerHTML='';
     (d.anoms||[]).forEach(x=>addAnom(x, false, true));
     (d.reals||[]).forEach(x=>{const card = addReal(x, true); if(card) document.getElementById('list-real').appendChild(card);});
@@ -4995,8 +5138,7 @@ function gatherData(){
         pRep:document.getElementById('pRep').value,
         mvpCount:document.getElementById('mvpCount').value,
         watchCount:document.getElementById('watchCount').value,
-        noteTitle:document.getElementById('noteTitle').value,
-        noteBody:document.getElementById('noteBody').innerHTML,
+        notes: getNotesData(),
         qs:[],attrs:{},anoms:[],reals:[],items:[],pf:[],pr:[],pa:[],pf_ign:[],pr_ign:[],pa_ign:[],
         // 无经理时（槽位999）不保存槽位限制，保持默认值
         anomSlots: SLOT_LIMITS.anomSlots >= 999 ? 3 : SLOT_LIMITS.anomSlots,
@@ -5005,8 +5147,8 @@ function gatherData(){
         funcProgressRewards: funcProgressRewards,
         // 崩溃进度
         collapseProgress: collapseProgress,
-        // 许可行为勾选状态
-        permChecks: permChecks
+        // 许可行为计数
+        permCounts: permCounts
     };
     for(let i=1;i<=8;i++)d.qs.push(document.getElementById(`q${i}`).innerHTML);
     // 保存属性数据 - 新格式，同时兼容旧格式v字段

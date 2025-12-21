@@ -465,6 +465,9 @@ db.serialize(() => {
         if (!columnNames.includes('report_status')) {
             db.run("ALTER TABLE field_missions ADD COLUMN report_status TEXT DEFAULT 'none'");
         }
+        if (!columnNames.includes('optional_tasks')) {
+            db.run("ALTER TABLE field_missions ADD COLUMN optional_tasks TEXT DEFAULT '[]'");
+        }
     });
 
     // 为 character_messages 添加新字段的迁移
@@ -4230,7 +4233,7 @@ app.get('/api/manager/character/:charId/rewards', authenticateToken, requireRole
 
 // 创建外勤任务
 app.post('/api/manager/mission', authenticateToken, requireRole(ROLE.MANAGER), (req, res) => {
-    const { name, description, missionType, characterIds } = req.body;
+    const { name, description, missionType, characterIds, optionalTasks } = req.body;
 
     if (!name || !name.trim()) {
         return res.status(400).json({ success: false, message: '任务名称不能为空' });
@@ -4238,14 +4241,16 @@ app.post('/api/manager/mission', authenticateToken, requireRole(ROLE.MANAGER), (
 
     // 任务类型: containment(收容) 或 sweep(清扫)
     const validType = ['containment', 'sweep'].includes(missionType) ? missionType : 'containment';
+    // 可选任务：数组转JSON字符串
+    const optionalTasksJson = JSON.stringify(optionalTasks || []);
 
     const missionId = Date.now().toString();
     const now = Date.now();
 
     db.run(`INSERT INTO field_missions
-        (id, name, description, mission_type, status, created_by, created_at, updated_at, report_status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [missionId, name.trim(), description || '', validType, 'active', req.user.userId, now, now, 'none'],
+        (id, name, description, mission_type, status, created_by, created_at, updated_at, report_status, optional_tasks)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [missionId, name.trim(), description || '', validType, 'active', req.user.userId, now, now, 'none', optionalTasksJson],
         function(err) {
             if (err) return res.status(500).json({ success: false, message: err.message });
 
@@ -4375,10 +4380,17 @@ app.get('/api/manager/missions', authenticateToken, requireRole(ROLE.MANAGER), (
                         };
                     }
 
+                    // 解析可选任务
+                    let optionalTasks = [];
+                    try {
+                        optionalTasks = JSON.parse(mission.optional_tasks || '[]');
+                    } catch (e) {}
+
                     const missionData = {
                         ...mission,
                         members: memberList,
                         mission_type: mission.mission_type || 'containment',
+                        optional_tasks: optionalTasks,
                         reportInfo
                     };
 
@@ -4397,7 +4409,7 @@ app.get('/api/manager/missions', authenticateToken, requireRole(ROLE.MANAGER), (
 // 更新任务信息
 app.put('/api/manager/mission/:id', authenticateToken, requireRole(ROLE.MANAGER), (req, res) => {
     const missionId = req.params.id;
-    const { name, description, status, missionType, chaosValue, scatterValue } = req.body;
+    const { name, description, status, missionType, chaosValue, scatterValue, optionalTasks } = req.body;
 
     db.get('SELECT created_by FROM field_missions WHERE id = ?', [missionId], (err, mission) => {
         if (!mission) return res.status(404).json({ success: false, message: '任务不存在' });
@@ -4434,6 +4446,11 @@ app.put('/api/manager/mission/:id', authenticateToken, requireRole(ROLE.MANAGER)
         if (scatterValue !== undefined && !isNaN(parseInt(scatterValue))) {
             updates.push('scatter_value = ?');
             params.push(parseInt(scatterValue));
+        }
+        // 可选任务
+        if (optionalTasks !== undefined) {
+            updates.push('optional_tasks = ?');
+            params.push(JSON.stringify(optionalTasks));
         }
 
         if (updates.length === 0) {
@@ -5720,17 +5737,23 @@ app.get('/api/character/:charId/mission', authenticateToken, (req, res) => {
                     });
 
                     // 构建任务列表
-                    const missionList = missions.map(m => ({
-                        missionId: m.id,
-                        missionName: m.name,
-                        missionDescription: m.description,
-                        missionType: m.mission_type,
-                        missionStatus: m.status,
-                        myStatus: m.member_status,
-                        creatorName: m.creator_name || m.creator_username || '未知',
-                        creatorId: m.created_by,
-                        teammates: membersByMission[m.id] || []
-                    }));
+                    const missionList = missions.map(m => {
+                        // 解析可选任务
+                        let optionalTasks = [];
+                        try { optionalTasks = JSON.parse(m.optional_tasks || '[]'); } catch(e) {}
+                        return {
+                            missionId: m.id,
+                            missionName: m.name,
+                            missionDescription: m.description,
+                            missionType: m.mission_type,
+                            missionStatus: m.status,
+                            myStatus: m.member_status,
+                            creatorName: m.creator_name || m.creator_username || '未知',
+                            creatorId: m.created_by,
+                            teammates: membersByMission[m.id] || [],
+                            optionalTasks: optionalTasks
+                        };
+                    });
 
                     res.json({
                         inMission: true,
