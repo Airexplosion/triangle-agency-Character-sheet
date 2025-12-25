@@ -659,11 +659,11 @@ db.get('SELECT * FROM users WHERE username = ?', [NEW_ADMIN_USERNAME], async (er
     if (!row) {
         const adminHash = await bcrypt.hash(NEW_ADMIN_PASSWORD, BCRYPT_ROUNDS);
         const testHash = await bcrypt.hash('111', BCRYPT_ROUNDS);
-        // 参数顺序: id, username, password(旧兼容字段), password_hash, name, is_admin, role, email, email_verified, created_at
-        db.run('INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [999, NEW_ADMIN_USERNAME, NEW_ADMIN_PASSWORD, adminHash, '管理员', 1, ROLE.SUPER_ADMIN, null, 0, Date.now()]);
-        db.run('INSERT OR IGNORE INTO users VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [1, '111', '111', testHash, '测试员', 0, ROLE.PLAYER, null, 0, Date.now()]);
+        // 使用显式列名插入，避免列顺序问题
+        db.run('INSERT OR IGNORE INTO users (id, username, password, password_hash, name, is_admin, role, email, email_verified, created_at, forum_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [999, NEW_ADMIN_USERNAME, NEW_ADMIN_PASSWORD, adminHash, '管理员', 1, ROLE.SUPER_ADMIN, null, 0, Date.now(), null]);
+        db.run('INSERT OR IGNORE INTO users (id, username, password, password_hash, name, is_admin, role, email, email_verified, created_at, forum_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [1, '111', '111', testHash, '测试员', 0, ROLE.PLAYER, null, 0, Date.now(), null]);
 		}
 	}); 
 }); 
