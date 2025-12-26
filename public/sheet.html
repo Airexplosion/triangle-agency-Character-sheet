@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
 <title>职员档案 // TRIANGLE AGENCY</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
 <style>
     :root {
         --deep-bg: #1a252f;
@@ -420,6 +422,89 @@
     .collapse-slot.filled { color: #E06B56; }
     .collapse-slot.filled::after { content: '✕'; }
 
+    /* 姓名+立绘布局 */
+    .name-portrait-row { display: flex; gap: 20px; align-items: flex-start; margin-bottom: 15px; }
+    .name-section { flex: 1; }
+    .name-section label { display: block; margin-bottom: 4px; }
+    .name-section input { margin-bottom: 10px; }
+    .portrait-section { flex-shrink: 0; align-self: stretch; display: flex; }
+    .portrait-preview { width: 115px; height: 100%; min-height: 130px; border: 2px dashed #ccc; border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; transition: all 0.3s; background: #f9f9f9; overflow: hidden; }
+    .portrait-preview:hover { border-color: var(--signal-red); background: #fff; }
+    .portrait-preview i { font-size: 32px; color: #bdc3c7; margin-bottom: 6px; }
+    .portrait-preview span { font-size: 11px; color: #999; text-align: center; line-height: 1.3; }
+    .portrait-preview.has-image { border-style: solid; }
+    .portrait-preview.has-image i, .portrait-preview.has-image span { display: none; }
+    .portrait-preview img { width: 100%; height: 100%; object-fit: cover; }
+    body.readonly-mode .portrait-preview { pointer-events: none; }
+
+    /* 关系头像样式 */
+    .real-avatar-row { display: flex; gap: 12px; margin-bottom: 10px; }
+    .real-avatar { width: 75px; height: 105px; flex-shrink: 0; border: 2px dashed #ccc; border-radius: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; background: #f9f9f9; overflow: hidden; transition: all 0.2s; }
+    .real-avatar:hover { border-color: var(--signal-red); }
+    .real-avatar i { font-size: 20px; color: #bdc3c7; }
+    .real-avatar.has-image { border-style: solid; }
+    .real-avatar.has-image i { display: none; }
+    .real-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .real-info-fields { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+    .real-info-fields .row-2 { margin-bottom: 0 !important; }
+    body.readonly-mode .real-avatar { pointer-events: none; }
+
+    /* 图片裁剪模态框 - 全屏二级页面风格 */
+    .cropper-modal-overlay {
+        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+        background: linear-gradient(135deg, #1a252f 0%, #2c3e50 100%);
+        z-index: 10000;
+        display: flex; flex-direction: column;
+        animation: fadeIn 0.3s ease;
+    }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    .cropper-modal-header {
+        display: flex; align-items: center; justify-content: space-between;
+        padding: 20px 30px; background: rgba(0,0,0,0.3);
+        border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    .cropper-modal-header h3 {
+        margin: 0; font-size: 20px; color: #fff;
+        display: flex; align-items: center; gap: 12px;
+    }
+    .cropper-modal-header h3 i { color: var(--signal-red); }
+    .cropper-modal-header .btn-close {
+        background: rgba(255,255,255,0.1); border: none; color: #fff;
+        width: 40px; height: 40px; border-radius: 50%; cursor: pointer;
+        font-size: 18px; transition: all 0.2s;
+    }
+    .cropper-modal-header .btn-close:hover { background: rgba(255,255,255,0.2); transform: rotate(90deg); }
+    .cropper-modal-body {
+        flex: 1; display: flex; align-items: center; justify-content: center;
+        padding: 30px; overflow: hidden;
+    }
+    .cropper-container-wrapper {
+        width: 500px; height: 500px; max-width: 80vw; max-height: 70vh;
+        background: #000; border-radius: 12px; overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .cropper-modal-footer {
+        display: flex; gap: 15px; padding: 20px 30px;
+        background: rgba(0,0,0,0.3); justify-content: center;
+        border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .cropper-modal-footer button {
+        padding: 14px 40px; border: none; border-radius: 8px; cursor: pointer;
+        font-size: 15px; font-weight: 600; transition: all 0.2s;
+        display: flex; align-items: center; gap: 8px;
+    }
+    .cropper-modal-footer .btn-cancel {
+        background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.2);
+    }
+    .cropper-modal-footer .btn-cancel:hover { background: rgba(255,255,255,0.2); }
+    .cropper-modal-footer .btn-confirm { background: var(--signal-red); color: #fff; }
+    .cropper-modal-footer .btn-confirm:hover { background: #a93226; transform: translateY(-2px); box-shadow: 0 5px 20px rgba(192,57,43,0.4); }
+    .cropper-modal-footer .btn-confirm:disabled { background: #555; cursor: not-allowed; transform: none; box-shadow: none; }
+    .cropper-tips {
+        position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+        color: rgba(255,255,255,0.6); font-size: 13px; text-align: center;
+    }
+
     /* 多条笔记样式 */
     .btn-add-note { background: none; border: none; color: var(--signal-red); cursor: pointer; font-size: 14px; margin-left: 8px; padding: 2px 6px; transition: all 0.2s; }
     .btn-add-note:hover { transform: scale(1.2); }
@@ -667,7 +752,9 @@
     .mail-list { display: flex; flex-direction: column; gap: 10px; }
     .mail-item { background: white; border-radius: 6px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer; transition: all 0.2s; border-left: 4px solid #8e44ad; }
     .mail-item:hover { transform: translateX(5px); box-shadow: 0 4px 15px rgba(0,0,0,0.15); }
-    .mail-item.unread { background: #f8f4fc; }
+    .mail-item.unread { background: #f8f4fc; position: relative; }
+    .mail-item.unread::before { content: ''; position: absolute; left: 8px; top: 50%; transform: translateY(-50%); width: 8px; height: 8px; background: var(--signal-red); border-radius: 50%; }
+    .mail-item.unread .mail-subject { font-weight: 600; }
     .mail-item.hw-auth { border-left-color: #c0392b; }
     .mail-item.sent-mail-item { border-left-color: #3498db; display: flex; gap: 12px; align-items: flex-start; }
     .mail-icon { flex-shrink: 0; width: 24px; text-align: center; }
@@ -682,6 +769,14 @@
     .mail-time { font-size: 10px; color: #bdc3c7; margin-top: 8px; }
     .mail-empty { text-align: center; padding: 40px; color: #95a5a6; }
     .mail-empty i { font-size: 48px; margin-bottom: 15px; opacity: 0.5; }
+    /* 已发邮件的已读/未读状态 */
+    .sent-read-status { font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-left: auto; margin-right: 8px; }
+    .sent-read-status.read { color: #27ae60; background: rgba(39, 174, 96, 0.1); }
+    .sent-read-status.unread { color: #e67e22; background: rgba(230, 126, 34, 0.1); }
+    .mail-item.recipient-unread { background: #fffbf5; }
+    /* 任务报告图标样式 */
+    .mail-icon.report-icon { color: #e67e22; font-size: 18px; margin-top: 3px; }
+    .mail-item.is-report { border-left-color: #e67e22; }
 
     /* === Siphon商店按钮（类似收件箱展开效果） === */
     .siphon-expandable-btn {
@@ -1135,8 +1230,8 @@
         padding: 15px 20px;
         border-top: 1px solid rgba(30, 144, 255, 0.2);
         display: flex;
-        gap: 10px;
-        justify-content: flex-end;
+        gap: 15px;
+        align-items: center;
         flex-shrink: 0;
     }
     .mail-reader-btn {
@@ -1156,11 +1251,17 @@
     }
     .mail-reader-btn.primary:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(30, 144, 255, 0.5); }
     .mail-reader-btn.secondary {
-        background: transparent;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        color: #8090a0;
+        background: rgba(255, 255, 255, 0.08);
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        color: #a0b0c0;
+        backdrop-filter: blur(4px);
     }
-    .mail-reader-btn.secondary:hover { border-color: #1e90ff; color: #1e90ff; }
+    .mail-reader-btn.secondary:hover {
+        background: rgba(30, 144, 255, 0.15);
+        border-color: rgba(30, 144, 255, 0.4);
+        color: #1e90ff;
+        transform: translateY(-1px);
+    }
     .mail-reader-btn.danger {
         background: linear-gradient(135deg, #c0392b, #e74c3c);
         border: none;
@@ -1181,6 +1282,17 @@
         box-shadow: 0 4px 15px rgba(230, 126, 34, 0.4);
     }
     .mail-reader-btn.warning:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(230, 126, 34, 0.5); }
+
+    /* 快捷回复区域 */
+    .quick-reply-section { flex: 1; padding-right: 15px; border-right: 1px solid rgba(255,255,255,0.1); }
+    .quick-reply-label { color: rgba(255,255,255,0.5); font-size: 11px; margin-bottom: 8px; display: block; text-transform: uppercase; letter-spacing: 1px; }
+    .quick-reply-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+    .quick-reply-btn { padding: 6px 12px; border: 1px solid rgba(30, 144, 255, 0.3); background: rgba(30, 144, 255, 0.1); color: #a0c8ff; border-radius: 15px; cursor: pointer; font-size: 13px; transition: all 0.2s; }
+    .quick-reply-btn:hover { background: rgba(30, 144, 255, 0.25); border-color: rgba(30, 144, 255, 0.5); transform: scale(1.03); color: #fff; }
+    .quick-reply-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .quick-reply-btn.sent { background: #27ae60; border-color: #27ae60; color: #fff; }
+    /* 关闭按钮单独样式 */
+    .mail-reader-btn.close-btn { margin-left: auto; }
 
     /* 眼睛眨眼动画 */
     .mail-eye-blink {
@@ -2057,7 +2169,22 @@
 <div class="panel"><h2><i class="fas fa-shield-alt"></i> 资质保证</h2><div id="attrs-list"></div></div>
 <div class="panel">
 <h2><i class="fas fa-id-card"></i> 基础信息</h2>
-<label>玩家姓名</label><input type="text" id="pName" placeholder="输入姓名">
+<div class="name-portrait-row">
+    <div class="name-section">
+        <label>玩家姓名</label>
+        <input type="text" id="pName" placeholder="输入姓名">
+        <label>人称代词</label>
+        <input type="text" id="pPronouns" placeholder="如: 他/她/they">
+    </div>
+    <div class="portrait-section">
+        <div class="portrait-preview" id="portraitPreview" onclick="openPortraitUpload()">
+            <i class="fas fa-user-circle"></i>
+            <span>点击上传立绘</span>
+        </div>
+        <input type="file" id="portraitInput" accept="image/*" style="display:none" onchange="handlePortraitSelect(this)">
+        <input type="hidden" id="pPortrait">
+    </div>
+</div>
 <div class="row-2">
 <div><label>异常能力</label><div class="hybrid-input-wrapper" id="grp-pAnom"><select id="sel-pAnom" onchange="handlePresetChange('pAnom', this.value)"></select><input type="text" id="pAnom" placeholder="输入异常能力"><button class="btn-reset-list" onclick="resetToDropdown('pAnom')"><i class="fas fa-list"></i></button></div></div>
 <div><label>现实身份</label><div class="hybrid-input-wrapper" id="grp-pReal"><select id="sel-pReal" onchange="handlePresetChange('pReal', this.value)"></select><input type="text" id="pReal" placeholder="输入现实身份"><button class="btn-reset-list" onclick="resetToDropdown('pReal')"><i class="fas fa-list"></i></button></div></div>
@@ -2092,7 +2219,7 @@
 <div class="track-sec"><h3 class="c-real" style="font-size:12px; margin:5px 0;">现实</h3><div class="track-row"><div class="p-grid"><div class="p-cell r-cell" data-idx="1"><span>C4</span></div><div class="p-cell r-cell" data-idx="2"></div><div class="p-cell r-cell" data-idx="3"></div><div class="p-cell r-cell" data-idx="4"><span>L11</span></div><div class="p-cell r-cell" data-idx="5"></div><div class="p-cell r-cell" data-idx="6"></div><div class="p-cell r-cell" data-idx="7"></div><div class="p-cell r-cell" data-idx="8"><span>E2</span></div><div class="p-cell r-cell" data-idx="9"></div><div class="p-cell r-cell" data-idx="10"><span>O4</span></div></div><div class="p-grid"><div class="p-cell r-cell" data-idx="11"></div><div class="p-cell r-cell" data-idx="12"></div><div class="p-cell r-cell" data-idx="13"></div><div class="p-cell r-cell" data-idx="14"><span>T6</span></div><div class="p-cell r-cell" data-idx="15"></div><div class="p-cell r-cell" data-idx="16"><span>V2</span></div><div class="p-cell r-cell" data-idx="17"></div><div class="p-cell r-cell" data-idx="18"></div><div class="p-cell r-cell" data-idx="19"></div><div class="p-cell r-cell" data-idx="20"><span>X3</span></div></div><div class="p-grid"><div class="p-cell r-cell" data-idx="21"></div><div class="p-cell r-cell" data-idx="22"><span>H5</span></div><div class="p-cell r-cell" data-idx="23"></div><div class="p-cell r-cell" data-idx="24"></div><div class="p-cell r-cell" data-idx="25"></div><div class="p-cell r-cell" data-idx="26"><span>E3</span></div><div class="p-cell r-cell" data-idx="27"></div><div class="p-cell r-cell" data-idx="28"></div><div class="p-cell r-cell" data-idx="29"></div><div class="p-cell r-cell" data-idx="30"></div></div></div><div class="track-rule">当你既未获得任务MVP也未进入察看期时，你可以将你与任意一段关系的连结提升1点。</div><div class="track-rule">每当你在现实记录条上标记一格时，将你与任意一段"关系"的"连结"提升1点，然后对关系网内的每段关系重复此操作。</div></div>
 <div class="track-sec"><h3 class="c-anom" style="font-size:12px; margin:5px 0;">异常</h3><div class="track-row"><div class="p-grid"><div class="p-cell a-cell" data-idx="1"><span>H4</span></div><div class="p-cell a-cell" data-idx="2"><span>H3</span></div><div class="p-cell a-cell" data-idx="3"></div><div class="p-cell a-cell" data-idx="4"></div><div class="p-cell a-cell" data-idx="5"><span>U2</span></div><div class="p-cell a-cell" data-idx="6"></div><div class="p-cell a-cell" data-idx="7"><span>X2</span></div><div class="p-cell a-cell" data-idx="8"></div><div class="p-cell a-cell" data-idx="9"></div><div class="p-cell a-cell" data-idx="10"></div></div><div class="p-grid"><div class="p-cell a-cell" data-idx="11"><span>N1</span></div><div class="p-cell a-cell" data-idx="12"></div><div class="p-cell a-cell" data-idx="13"><span>Q2</span></div><div class="p-cell a-cell" data-idx="14"></div><div class="p-cell a-cell" data-idx="15"></div><div class="p-cell a-cell" data-idx="16"></div><div class="p-cell a-cell" data-idx="17"><span>L10</span></div><div class="p-cell a-cell" data-idx="18"></div><div class="p-cell a-cell" data-idx="19"><span>G8</span></div><div class="p-cell a-cell" data-idx="20"></div></div><div class="p-grid"><div class="p-cell a-cell" data-idx="21"></div><div class="p-cell a-cell" data-idx="22"></div><div class="p-cell a-cell" data-idx="23"><span>A7</span></div><div class="p-cell a-cell" data-idx="24"></div><div class="p-cell a-cell" data-idx="25"></div><div class="p-cell a-cell" data-idx="26"></div><div class="p-cell a-cell" data-idx="27"></div><div class="p-cell a-cell" data-idx="28"></div><div class="p-cell a-cell" data-idx="29"></div><div class="p-cell a-cell" data-idx="30"></div></div></div><div class="track-rule">当你进入察看期时，在你的异常记录条上标记1格，且无需从其他记录条上移除一格。</div><div class="track-rule">每当你在异常记录条上标记一格时，选择一项：<br>➤练习：在任意一项异常能力上标记"熟练"。 <br>➤广为人知：从一项异常能力中移除"熟练"标记，并向你的团队提出该能力的问题。在获得最多票数的答案轨道上做标记，然后获得所有已解锁的能力。</div></div>
 </div>
-<div class="panel"><h2><i class="fas fa-file-contract"></i> 欢迎你，特工！</h2><div style="margin-bottom:12px;"><label>1. 你是如何与异常接触的？</label><div class="rich-editor" id="q1" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>2. 公司是如何找到你的？</label><div class="rich-editor" id="q2" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>3. 你的期望年薪是多少？</label><div class="rich-editor" id="q3" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>4. 你的外貌特征是什么？</label><div class="rich-editor" id="q4" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>5. 你的异常能力是否有独特的视觉表现？</label><div class="rich-editor" id="q5" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>6. 你喜欢什么样的咖啡？</label><div class="rich-editor" id="q6" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>7. 在你的人际关系中，谁是你的主要联络人，为什么？</label><div class="rich-editor" id="q7" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>8. 在协作工作环境里，你能为团队带来什么？</label><div class="rich-editor" id="q8" contenteditable="true"></div></div></div>
+<div class="panel"><h2><i class="fas fa-file-contract"></i> 欢迎你，特工！</h2><div style="margin-bottom:12px;"><label>1. 你是如何与你的异常体接触的？</label><div class="rich-editor" id="q1" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>2. 机构是如何找到你的？</label><div class="rich-editor" id="q2" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>3. 你的能力有独特的外在视觉表现吗？</label><div class="rich-editor" id="q3" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>4. 你喝咖啡有什么偏好？</label><div class="rich-editor" id="q4" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>5. 请描述你过往的工作经历</label><div class="rich-editor" id="q5" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>6. 你对Adobe、Excel和Google套件的熟悉程度如何？</label><div class="rich-editor" id="q6" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>7. 在协作型工作环境中，你能做出什么贡献？</label><div class="rich-editor" id="q7" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>8. 在你的人际关系中，谁是你的紧急联系人，和你的关系是什么？</label><div class="rich-editor" id="q8" contenteditable="true"></div></div><div style="margin-bottom:12px;"><label>9. 补充说明</label><div class="rich-editor" id="q9" contenteditable="true"></div></div></div>
 <div class="panel"><h2><i class="fas fa-sticky-note"></i> 备注/笔记 <button class="btn-add-note" onclick="addNoteItem()"><i class="fas fa-plus"></i></button></h2>
 <div id="notesContainer">
     <div class="note-item" data-idx="0">
@@ -3516,12 +3643,25 @@ function renderSentMail(container) {
             hour: '2-digit', minute: '2-digit'
         });
         const preview = m.content ? m.content.substring(0, 50) + (m.content.length > 50 ? '...' : '') : '';
+        // 显示对方是否已读（read=1表示已读，read=0表示未读）
+        const isRead = m.read === 1 || m.read === true;
+        // 对于任务报告，显示"已审阅/待审阅"；对于普通邮件，显示"已读/未读"
+        let readStatus;
+        if (m.isReport) {
+            readStatus = isRead ? '<span class="sent-read-status read">✓ 已审阅</span>' : '<span class="sent-read-status unread">待审阅</span>';
+        } else {
+            readStatus = isRead ? '<span class="sent-read-status read">✓ 已读</span>' : '<span class="sent-read-status unread">未读</span>';
+        }
+        // 图标：报告用文件图标，普通邮件用纸飞机
+        const iconClass = m.isReport ? 'fas fa-file-alt' : 'fas fa-paper-plane';
+        const iconColorClass = m.isReport ? 'report-icon' : 'sent-icon';
         return `
-            <div class="mail-item sent-mail-item" onclick="openSentMailReader('${m.id}')">
-                <div class="mail-icon sent-icon"><i class="fas fa-paper-plane"></i></div>
+            <div class="mail-item sent-mail-item ${isRead ? '' : 'recipient-unread'} ${m.isReport ? 'is-report' : ''}" onclick="openSentMailReader('${m.id}')">
+                <div class="mail-icon ${iconColorClass}"><i class="${iconClass}"></i></div>
                 <div class="mail-info">
                     <div class="mail-header-row">
                         <span class="mail-recipient">收件人: ${escapeHtmlText(m.recipientName)}</span>
+                        ${readStatus}
                         <span class="mail-time">${timeStr}</span>
                     </div>
                     <div class="mail-subject">${escapeHtmlText(m.subject)}</div>
@@ -4200,6 +4340,7 @@ function openHighwallFile(filename) {
 let currentOpenMail = null;
 
 function openMailReader(mailData) {
+    console.log('打开邮件:', mailData);
     currentOpenMail = mailData;
 
     const overlay = document.getElementById('mail-reader-overlay');
@@ -4226,7 +4367,8 @@ function openMailReader(mailData) {
     // 根据邮件类型设置操作按钮
     if (mailData.type === 'hw_auth' && mailData.hwFilename) {
         actionsEl.innerHTML = `
-            <button class="mail-reader-btn secondary" onclick="closeMailReader()">
+            <div style="flex:1;"></div>
+            <button class="mail-reader-btn secondary close-btn" onclick="closeMailReader()">
                 <i class="fas fa-times"></i> 关闭
             </button>
             <button class="mail-reader-btn danger" onclick="openHighwallFromMail('${escapeHtmlMail(mailData.hwFilename)}')">
@@ -4236,7 +4378,8 @@ function openMailReader(mailData) {
     } else if (mailData.type === 'rating_notice' && mailData.reportId) {
         // 任务初评通知 - 显示接受/申诉按钮
         actionsEl.innerHTML = `
-            <button class="mail-reader-btn secondary" onclick="closeMailReader()">
+            <div style="flex:1;"></div>
+            <button class="mail-reader-btn secondary close-btn" onclick="closeMailReader()">
                 <i class="fas fa-times"></i> 关闭
             </button>
             <button class="mail-reader-btn success" onclick="acceptRating(${mailData.reportId})">
@@ -4247,9 +4390,25 @@ function openMailReader(mailData) {
             </button>
         `;
     } else {
+        // 普通邮件 - 显示快捷回复（非系统消息才显示）
+        const isSystemMsg = mailData.sender === 'OS' || mailData.type === 'hw_auth';
+        const quickReplyHtml = !isSystemMsg && mailData.id ? `
+            <div class="quick-reply-section">
+                <span class="quick-reply-label">快捷回复</span>
+                <div class="quick-reply-btns">
+                    <button class="quick-reply-btn" onclick="sendQuickReply('👋 你好', event)">👋 你好</button>
+                    <button class="quick-reply-btn" onclick="sendQuickReply('🙏 谢谢', event)">🙏 谢谢</button>
+                    <button class="quick-reply-btn" onclick="sendQuickReply('✅ 收到', event)">✅ 收到</button>
+                    <button class="quick-reply-btn" onclick="sendQuickReply('？', event)">？</button>
+                    <button class="quick-reply-btn" onclick="sendQuickReply('👍 很不错', event)">👍 很不错</button>
+                    <button class="quick-reply-btn" onclick="sendQuickReply('👋 再见', event)">👋 再见</button>
+                </div>
+            </div>
+        ` : '';
         actionsEl.innerHTML = `
-            <button class="mail-reader-btn secondary" onclick="closeMailReader()">
-                <i class="fas fa-check"></i> 关闭
+            ${quickReplyHtml}
+            <button class="mail-reader-btn secondary close-btn" onclick="closeMailReader()">
+                <i class="fas fa-times"></i> 关闭
             </button>
         `;
     }
@@ -4279,6 +4438,76 @@ function closeMailReader() {
         eyeContainer.classList.remove('mail-eye-blink');
         currentOpenMail = null;
     }, 200);
+}
+
+async function sendQuickReply(replyText, event) {
+    console.log('sendQuickReply被调用:', replyText, 'currentOpenMail:', currentOpenMail);
+
+    if (!currentOpenMail || !currentOpenMail.id) {
+        console.error('无法回复: currentOpenMail无效', currentOpenMail);
+        showToast('无法回复此消息', 'error');
+        return;
+    }
+
+    // 获取被点击的按钮
+    const clickedBtn = event ? event.target.closest('.quick-reply-btn') : null;
+    console.log('点击的按钮:', clickedBtn);
+
+    // 检查按钮是否已禁用
+    if (clickedBtn && clickedBtn.disabled) {
+        console.log('按钮已禁用，忽略点击');
+        return;
+    }
+
+    // 禁用所有回复按钮
+    const btns = document.querySelectorAll('.quick-reply-btn');
+    btns.forEach(btn => btn.disabled = true);
+
+    // 立即显示加载状态
+    if (clickedBtn) {
+        clickedBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
+
+    try {
+        const url = `/api/character/${charId}/message/${currentOpenMail.id}/reply`;
+        console.log('发送请求到:', url);
+
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({ reply: replyText })
+        });
+
+        console.log('响应状态:', res.status);
+        const result = await res.json();
+        console.log('回复结果:', result);
+
+        if (result.success) {
+            // 标记已发送
+            if (clickedBtn) {
+                clickedBtn.classList.add('sent');
+                clickedBtn.innerHTML = '<i class="fas fa-check"></i> 已发送';
+                clickedBtn.disabled = true;
+            }
+            showToast('回复已发送', 'success');
+            // 重新启用其他按钮
+            btns.forEach(btn => {
+                if (btn !== clickedBtn) btn.disabled = false;
+            });
+            // 刷新邮箱（更新已发邮件列表）
+            loadMailbox();
+        } else {
+            console.error('发送失败:', result.message);
+            showToast(result.message || '发送失败', 'error');
+            btns.forEach(btn => btn.disabled = false);
+            if (clickedBtn) clickedBtn.textContent = replyText;
+        }
+    } catch (e) {
+        console.error('发送回复异常:', e);
+        showToast('发送失败，请重试', 'error');
+        btns.forEach(btn => btn.disabled = false);
+        if (clickedBtn) clickedBtn.textContent = replyText;
+    }
 }
 
 function openHighwallFromMail(filename) {
@@ -4855,7 +5084,7 @@ function addReal(d = null, skipCheck = false) {
     const div = document.createElement('div');
     div.className = 'card bd-real';
     const bonusOptions = getBonusOptions();
-    div.innerHTML = `${createDelBtn('real')}<div class="row-2" style="margin-bottom:10px"><input type="text" class="f-name" placeholder="姓名"><input type="text" class="f-actor" placeholder="扮演者"></div><div class="rich-editor f-desc" contenteditable="true" placeholder="描述" style="margin-bottom:10px"></div><label>连结进度</label><div class="rel-row"><div class="sq-dots r-dots">${get9Dots()}</div><label class="chk-btn"><input type="checkbox" class="f-act"><span></span></label></div><label>连结加成</label><div class="hybrid-input-wrapper has-editor"><select class="f-conn-sel" onchange="handleBonusChange(this)">${bonusOptions}</select><div class="rich-editor f-conn" contenteditable="true" placeholder="选择预设或输入加成效果..."></div><button class="btn-reset-list" onclick="resetBonus(this)"><i class="fas fa-list"></i></button></div>`;
+    div.innerHTML = `${createDelBtn('real')}<div class="real-avatar-row"><div class="real-avatar" onclick="openRealAvatar(this)"><i class="fas fa-user"></i><input type="hidden" class="f-avatar"></div><div class="real-info-fields"><div class="row-2"><input type="text" class="f-name" placeholder="姓名"><input type="text" class="f-actor" placeholder="扮演者"></div><div class="rich-editor f-desc" contenteditable="true" placeholder="描述"></div></div></div><label>连结进度</label><div class="rel-row"><div class="sq-dots r-dots">${get9Dots()}</div><label class="chk-btn"><input type="checkbox" class="f-act"><span></span></label></div><label>连结加成</label><div class="hybrid-input-wrapper has-editor"><select class="f-conn-sel" onchange="handleBonusChange(this)">${bonusOptions}</select><div class="rich-editor f-conn" contenteditable="true" placeholder="选择预设或输入加成效果..."></div><button class="btn-reset-list" onclick="resetBonus(this)"><i class="fas fa-list"></i></button></div>`;
     setupRDots(div);
     if (d) fillReal(div, d);
     setRandomVars(div);
@@ -4887,6 +5116,12 @@ function fillReal(div, d) {
     div.querySelector('.f-actor').value = d.actor;
     div.querySelector('.f-desc').innerHTML = d.desc;
     div.querySelector('.f-act').checked = d.act;
+    // 加载头像
+    if (d.avatar) {
+        const avatarDiv = div.querySelector('.real-avatar');
+        avatarDiv.innerHTML = `<img src="${d.avatar}" alt=""><input type="hidden" class="f-avatar" value="${d.avatar}">`;
+        avatarDiv.classList.add('has-image');
+    }
     const connEditor = div.querySelector('.f-conn');
     const connWrapper = div.querySelector('.hybrid-input-wrapper');
     connEditor.innerHTML = d.conn;
@@ -5124,11 +5359,277 @@ function updateFuncProgressReward(cellIdx, amount) {
         }
     }
 }
+
+// ============ 立绘上传功能 ============
+let currentCropper = null;
+
+function openPortraitUpload() {
+    if(isReadOnly) return;
+    document.getElementById('portraitInput').click();
+}
+
+function handlePortraitSelect(input) {
+    const file = input.files[0];
+    if(!file) return;
+
+    if(!file.type.startsWith('image/')) {
+        showToast('请选择图片文件', 'error');
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        showCropperModal(e.target.result);
+    };
+    reader.readAsDataURL(file);
+    input.value = ''; // 清空以便重复选择同一文件
+}
+
+function showCropperModal(imageSrc) {
+    // 创建全屏模态框
+    const overlay = document.createElement('div');
+    overlay.className = 'cropper-modal-overlay';
+    overlay.innerHTML = `
+        <div class="cropper-modal-header">
+            <h3><i class="fas fa-crop-alt"></i> 裁剪立绘</h3>
+            <button class="btn-close" onclick="closeCropperModal()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="cropper-modal-body">
+            <div class="cropper-container-wrapper">
+                <img id="cropperImage" src="${imageSrc}" style="max-width:100%;">
+            </div>
+        </div>
+        <p class="cropper-tips"><i class="fas fa-info-circle"></i> 拖动或缩放图片，选择要显示的区域</p>
+        <div class="cropper-modal-footer">
+            <button class="btn-cancel" onclick="closeCropperModal()">
+                <i class="fas fa-arrow-left"></i> 返回
+            </button>
+            <button class="btn-confirm" id="cropConfirmBtn" onclick="cropAndUpload()">
+                <i class="fas fa-check"></i> 确认上传
+            </button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // 初始化Cropper
+    const image = document.getElementById('cropperImage');
+    currentCropper = new Cropper(image, {
+        aspectRatio: 5/7, // 一寸照片比例
+        viewMode: 1,
+        dragMode: 'move',
+        autoCropArea: 0.8,
+        restore: false,
+        guides: true,
+        center: true,
+        highlight: false,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
+        toggleDragModeOnDblclick: false
+    });
+}
+
+function closeCropperModal() {
+    if(currentCropper) {
+        currentCropper.destroy();
+        currentCropper = null;
+    }
+    const overlay = document.querySelector('.cropper-modal-overlay');
+    if(overlay) overlay.remove();
+}
+
+async function cropAndUpload() {
+    if(!currentCropper) return;
+
+    const confirmBtn = document.getElementById('cropConfirmBtn');
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 上传中...';
+
+    try {
+        // 获取裁剪后的canvas（一寸照片比例 5:7）
+        const canvas = currentCropper.getCroppedCanvas({
+            width: 300,
+            height: 420,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high'
+        });
+
+        // 转为base64
+        const imageData = canvas.toDataURL('image/jpeg', 0.9);
+
+        // 上传到服务器
+        const res = await fetch('/api/upload/portrait', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                imageData: imageData,
+                characterId: charId
+            })
+        });
+
+        const result = await res.json();
+
+        if(result.success) {
+            // 更新预览和隐藏字段
+            const preview = document.getElementById('portraitPreview');
+            preview.innerHTML = `<img src="${result.url}" alt="立绘">`;
+            preview.classList.add('has-image');
+            document.getElementById('pPortrait').value = result.url;
+
+            showToast('立绘上传成功', 'success');
+            closeCropperModal();
+
+            // 触发保存
+            triggerAutoSave();
+        } else {
+            showToast(result.message || '上传失败', 'error');
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="fas fa-upload"></i> 裁剪并上传';
+        }
+    } catch(error) {
+        console.error('上传失败:', error);
+        showToast('上传失败，请重试', 'error');
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-upload"></i> 裁剪并上传';
+    }
+}
+// ============ 立绘上传功能结束 ============
+
+// ============ 关系头像上传功能 ============
+let currentRealAvatarTarget = null;
+
+function openRealAvatar(avatarDiv) {
+    if(isReadOnly) return;
+    currentRealAvatarTarget = avatarDiv;
+    // 创建临时input
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = (e) => handleRealAvatarSelect(e.target.files[0]);
+    input.click();
+}
+
+function handleRealAvatarSelect(file) {
+    if(!file || !currentRealAvatarTarget) return;
+    if(!file.type.startsWith('image/')) {
+        showToast('请选择图片文件', 'error');
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => showRealAvatarCropper(e.target.result);
+    reader.readAsDataURL(file);
+}
+
+function showRealAvatarCropper(imageSrc) {
+    const overlay = document.createElement('div');
+    overlay.className = 'cropper-modal-overlay';
+    overlay.innerHTML = `
+        <div class="cropper-modal-header">
+            <h3><i class="fas fa-user-circle"></i> 裁剪关系头像</h3>
+            <button class="btn-close" onclick="closeRealAvatarCropper()"><i class="fas fa-times"></i></button>
+        </div>
+        <div class="cropper-modal-body">
+            <div class="cropper-container-wrapper">
+                <img id="realAvatarCropImage" src="${imageSrc}" style="max-width:100%;">
+            </div>
+        </div>
+        <p class="cropper-tips"><i class="fas fa-info-circle"></i> 拖动或缩放图片，选择要显示的区域</p>
+        <div class="cropper-modal-footer">
+            <button class="btn-cancel" onclick="closeRealAvatarCropper()">
+                <i class="fas fa-arrow-left"></i> 返回
+            </button>
+            <button class="btn-confirm" id="realAvatarConfirmBtn" onclick="cropAndUploadRealAvatar()">
+                <i class="fas fa-check"></i> 确认上传
+            </button>
+        </div>
+    `;
+    document.body.appendChild(overlay);
+
+    const image = document.getElementById('realAvatarCropImage');
+    currentCropper = new Cropper(image, {
+        aspectRatio: 5/7,
+        viewMode: 1,
+        dragMode: 'move',
+        autoCropArea: 0.8,
+        restore: false,
+        guides: true,
+        center: true,
+        highlight: false,
+        cropBoxMovable: true,
+        cropBoxResizable: true,
+        toggleDragModeOnDblclick: false
+    });
+}
+
+function closeRealAvatarCropper() {
+    if(currentCropper) {
+        currentCropper.destroy();
+        currentCropper = null;
+    }
+    currentRealAvatarTarget = null;
+    const overlay = document.querySelector('.cropper-modal-overlay');
+    if(overlay) overlay.remove();
+}
+
+async function cropAndUploadRealAvatar() {
+    if(!currentCropper || !currentRealAvatarTarget) return;
+
+    const confirmBtn = document.getElementById('realAvatarConfirmBtn');
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 上传中...';
+
+    try {
+        const canvas = currentCropper.getCroppedCanvas({
+            width: 300,
+            height: 420,
+            imageSmoothingEnabled: true,
+            imageSmoothingQuality: 'high'
+        });
+
+        const imageData = canvas.toDataURL('image/jpeg', 0.9);
+
+        const res = await fetch('/api/upload/portrait', {
+            method: 'POST',
+            headers: getAuthHeaders(),
+            body: JSON.stringify({
+                imageData: imageData,
+                characterId: charId + '_rel_' + Date.now()
+            })
+        });
+
+        const result = await res.json();
+
+        if(result.success) {
+            currentRealAvatarTarget.innerHTML = `<img src="${result.url}" alt=""><input type="hidden" class="f-avatar" value="${result.url}">`;
+            currentRealAvatarTarget.classList.add('has-image');
+            showToast('头像上传成功', 'success');
+            closeRealAvatarCropper();
+            triggerAutoSave();
+        } else {
+            showToast(result.message || '上传失败', 'error');
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="fas fa-check"></i> 确认上传';
+        }
+    } catch(error) {
+        console.error('上传失败:', error);
+        showToast('上传失败，请重试', 'error');
+        confirmBtn.disabled = false;
+        confirmBtn.innerHTML = '<i class="fas fa-check"></i> 确认上传';
+    }
+}
+// ============ 关系头像上传功能结束 ============
+
 function populateData(d){
     isPopulating = true; // 防止加载数据时触发自动保存
     SLOT_LIMITS.anomSlots = d.anomSlots || 3;
     SLOT_LIMITS.realSlots = d.realSlots || 3;
-    ['pName','pTrig1','pTrig2','pTrig3','perm1','perm2','perm3','pComm','pRep'].forEach(id=>{const e=document.getElementById(id);if(d[id]&&e){if(e.tagName==='DIV')e.innerHTML=d[id];else e.value=d[id];}});
+    ['pName','pPronouns','pTrig1','pTrig2','pTrig3','perm1','perm2','perm3','pComm','pRep'].forEach(id=>{const e=document.getElementById(id);if(d[id]&&e){if(e.tagName==='DIV')e.innerHTML=d[id];else e.value=d[id];}});
+    // 加载立绘
+    if(d.pPortrait){
+        document.getElementById('pPortrait').value = d.pPortrait;
+        const preview = document.getElementById('portraitPreview');
+        preview.innerHTML = `<img src="${d.pPortrait}" alt="立绘">`;
+        preview.classList.add('has-image');
+    }
     // 加载笔记（兼容旧数据格式）
     if (d.notes && d.notes.length > 0) {
         loadNotesData(d.notes);
@@ -5222,6 +5723,8 @@ function populateData(d){
 function gatherData(){
     const d={
         pName:document.getElementById('pName').value,
+        pPronouns:document.getElementById('pPronouns').value,
+        pPortrait:document.getElementById('pPortrait').value,
         pAnom:document.getElementById('pAnom').value,
         pReal:document.getElementById('pReal').value,
         pFunc:document.getElementById('pFunc').value,
@@ -5247,7 +5750,7 @@ function gatherData(){
         // 许可行为计数
         permCounts: permCounts
     };
-    for(let i=1;i<=8;i++)d.qs.push(document.getElementById(`q${i}`).innerHTML);
+    for(let i=1;i<=9;i++)d.qs.push(document.getElementById(`q${i}`).innerHTML);
     // 保存属性数据 - 新格式，同时兼容旧格式v字段
     ATTRS.forEach(a=>{
         const {current, max} = getAttrValues(a);
@@ -5260,7 +5763,7 @@ function gatherData(){
         };
     });
     document.querySelectorAll('#list-anom .card').forEach(c=>{d.anoms.push({name:c.querySelector('.f-name').value,trig:c.querySelector('.f-trig').value,qual:c.querySelector('.f-qual').value,succ:c.querySelector('.f-succ').innerHTML,fail:c.querySelector('.f-fail').innerHTML,chk:c.querySelector('.f-chk').checked,tdesc:c.querySelector('.f-tdesc').value,t1:c.querySelector('.f-t1').value,t1v:c.querySelector('.f-t1-val').value,t2:c.querySelector('.f-t2').value,t2v:c.querySelector('.f-t2-val').value,p1:Array.from(c.querySelectorAll('.d1 .sq-dot')).map(e=>e.classList.contains('active')),p2:Array.from(c.querySelectorAll('.d2 .sq-dot')).map(e=>e.classList.contains('active'))});});
-    document.querySelectorAll('#list-real .card').forEach(c=>{let l=0;c.querySelectorAll('.r-dots .dot').forEach((e,i)=>{if(e.classList.contains('active'))l=i+1});d.reals.push({name:c.querySelector('.f-name').value,actor:c.querySelector('.f-actor').value,desc:c.querySelector('.f-desc').innerHTML,act:c.querySelector('.f-act').checked,conn:c.querySelector('.f-conn').innerHTML,lvl:l});});
+    document.querySelectorAll('#list-real .card').forEach(c=>{let l=0;c.querySelectorAll('.r-dots .dot').forEach((e,i)=>{if(e.classList.contains('active'))l=i+1});d.reals.push({name:c.querySelector('.f-name').value,actor:c.querySelector('.f-actor').value,desc:c.querySelector('.f-desc').innerHTML,act:c.querySelector('.f-act').checked,conn:c.querySelector('.f-conn').innerHTML,lvl:l,avatar:c.querySelector('.f-avatar').value||''});});
     document.querySelectorAll('#list-item .card').forEach(c=>{d.items.push({item:c.querySelector('.f-item').value,pd:c.querySelector('.f-pd').value,eff:c.querySelector('.f-eff').innerHTML});});
     document.querySelectorAll('.f-cell.active').forEach(e=>d.pf.push(parseInt(e.dataset.idx)));
     document.querySelectorAll('.r-cell.active').forEach(e=>d.pr.push(parseInt(e.dataset.idx)));

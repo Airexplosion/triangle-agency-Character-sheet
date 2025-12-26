@@ -2143,11 +2143,17 @@
         .report-status-badge.sent { background: #d4edda; color: #155724; }
 
         /* === 收件箱弹窗样式 === */
-        #inboxModal .modal-header { 
-            background: linear-gradient(135deg, var(--manager-blue), var(--manager-blue-dark)); 
+        #inboxModal .modal-box {
+            max-width: 550px;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+        }
+        #inboxModal .modal-header {
+            background: linear-gradient(135deg, var(--manager-blue), var(--manager-blue-dark));
         }
         #inboxModal .modal-header h3, #inboxModal .modal-close { color: white; }
-        #inboxModal .modal-body { flex: 1; overflow-y: auto; }
+        #inboxModal .modal-body { flex: 1; overflow-y: auto; min-height: 0; }
         .inbox-list { display: flex; flex-direction: column; gap: 10px; }
         .inbox-item {
             padding: 15px;
@@ -2178,6 +2184,115 @@
         .inbox-item-type.report { background: #fff3e0; color: #e67e22; }
         .inbox-item-type.containment { background: #e3f2fd; color: #2196f3; }
         .inbox-empty { text-align: center; padding: 40px; color: #95a5a6; }
+
+        /* === 收件箱弹窗Tab样式 === */
+        .inbox-modal-tabs {
+            display: flex;
+            border-bottom: 2px solid #ecf0f1;
+            padding: 0 20px;
+            background: #f8f9fa;
+        }
+        .inbox-modal-tab {
+            padding: 12px 20px;
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            font-weight: 500;
+            color: #7f8c8d;
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .inbox-modal-tab:hover { color: var(--manager-blue); }
+        .inbox-modal-tab.active {
+            color: var(--manager-blue);
+        }
+        .inbox-modal-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--manager-blue);
+            border-radius: 2px 2px 0 0;
+        }
+        .inbox-tab-badge {
+            background: #e74c3c;
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            min-width: 18px;
+            text-align: center;
+        }
+        .inbox-tab-content { display: none; }
+        .inbox-tab-content.active { display: block; }
+
+        /* === 发信表单样式 === */
+        .compose-form { padding: 10px 0; }
+        .compose-field { margin-bottom: 18px; }
+        .compose-field label {
+            display: block;
+            font-size: 12px;
+            color: #7f8c8d;
+            margin-bottom: 8px;
+            font-weight: 500;
+            text-transform: uppercase;
+        }
+        .compose-field label i { margin-right: 6px; color: var(--manager-blue); }
+        .compose-select, .compose-input, .compose-textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ecf0f1;
+            border-radius: 6px;
+            font-size: 14px;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        .compose-select:focus, .compose-input:focus, .compose-textarea:focus {
+            outline: none;
+            border-color: var(--manager-blue);
+        }
+        .compose-textarea { resize: vertical; min-height: 150px; }
+        .compose-actions { text-align: right; margin-top: 20px; }
+        .btn-compose-send {
+            padding: 12px 30px;
+            background: linear-gradient(135deg, var(--manager-blue), var(--manager-blue-dark));
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-compose-send:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 152, 219, 0.4);
+        }
+        .btn-compose-send:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        /* 已发邮件项样式 */
+        .sent-mail-item { border-left-color: #27ae60 !important; }
+        .sent-mail-item .inbox-item-icon { background: #27ae60 !important; }
+        .sent-mail-item.sent-unread { border-left-color: #e67e22 !important; background: #fffbf5; }
+        .sent-mail-item.sent-unread .inbox-item-icon { background: #e67e22 !important; }
+        .sent-read-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+        .sent-status-read { background: #e8f5e9; color: #27ae60; }
+        .sent-status-unread { background: #fff3e0; color: #e67e22; }
 
         /* === 外勤任务弹窗样式 === */
         #missionModal .modal-header { background: linear-gradient(135deg, #27ae60, #2ecc71); }
@@ -5119,12 +5234,57 @@
 <div id="inboxModal" class="modal-overlay">
     <div class="modal-box">
         <div class="modal-header">
-            <h3><i class="fas fa-envelope"></i> 收件箱</h3>
+            <h3><i class="fas fa-envelope"></i> 邮件中心</h3>
             <button class="modal-close" onclick="closeInboxModal()">&times;</button>
         </div>
+        <div class="inbox-modal-tabs">
+            <button class="inbox-modal-tab active" data-tab="inbox" onclick="switchInboxModalTab('inbox')">
+                <i class="fas fa-inbox"></i> 收件箱
+                <span class="inbox-tab-badge" id="inboxTabBadge" style="display:none;">0</span>
+            </button>
+            <button class="inbox-modal-tab" data-tab="compose" onclick="switchInboxModalTab('compose')">
+                <i class="fas fa-paper-plane"></i> 发信
+            </button>
+            <button class="inbox-modal-tab" data-tab="sent" onclick="switchInboxModalTab('sent')">
+                <i class="fas fa-share"></i> 已发送
+            </button>
+        </div>
         <div class="modal-body">
-            <div id="inboxList" class="inbox-list">
-                <div class="inbox-empty"><i class="fas fa-envelope-open" style="font-size:32px;margin-bottom:10px;"></i><br>收件箱为空</div>
+            <!-- 收件箱内容 -->
+            <div id="inboxTabContent" class="inbox-tab-content active">
+                <div id="inboxList" class="inbox-list">
+                    <div class="inbox-empty"><i class="fas fa-envelope-open" style="font-size:32px;margin-bottom:10px;"></i><br>收件箱为空</div>
+                </div>
+            </div>
+            <!-- 发信内容 -->
+            <div id="composeTabContent" class="inbox-tab-content">
+                <div class="compose-form">
+                    <div class="compose-field">
+                        <label><i class="fas fa-user"></i> 收件人</label>
+                        <select id="composeRecipient" class="compose-select">
+                            <option value="">-- 选择收件人 --</option>
+                        </select>
+                    </div>
+                    <div class="compose-field">
+                        <label><i class="fas fa-heading"></i> 主题</label>
+                        <input type="text" id="composeSubject" class="compose-input" placeholder="输入邮件主题">
+                    </div>
+                    <div class="compose-field">
+                        <label><i class="fas fa-align-left"></i> 内容</label>
+                        <textarea id="composeContent" class="compose-textarea" placeholder="输入邮件内容..." rows="8"></textarea>
+                    </div>
+                    <div class="compose-actions">
+                        <button class="btn-compose-send" onclick="sendManagerMail()">
+                            <i class="fas fa-paper-plane"></i> 发送
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <!-- 已发送内容 -->
+            <div id="sentTabContent" class="inbox-tab-content">
+                <div id="sentMailList" class="inbox-list">
+                    <div class="inbox-empty"><i class="fas fa-paper-plane" style="font-size:32px;margin-bottom:10px;"></i><br>暂无已发邮件</div>
+                </div>
             </div>
         </div>
     </div>
@@ -6363,6 +6523,7 @@
     let currentMissionId = null;
     let missionsList = [];
     let inboxMessages = [];
+    let mailDetailOpenedFrom = null; // 记录邮件详情从哪里打开的：'inbox' 或 'mission'
 
 	// 加载任务列表
 	async function loadMissions() {
@@ -6825,12 +6986,26 @@
     }
 
     function openInboxModal() {
+        // 重置到收件箱tab
+        switchInboxModalTab('inbox');
         renderInboxList();
+        updateInboxTabBadge();
         document.getElementById('inboxModal').classList.add('show');
+        document.body.style.overflow = 'hidden'; // 禁止背景滚动
     }
 
     function closeInboxModal() {
         document.getElementById('inboxModal').classList.remove('show');
+        document.body.style.overflow = ''; // 恢复背景滚动
+    }
+
+    function updateInboxTabBadge() {
+        const unread = inboxMessages.filter(m => !m.read).length;
+        const badge = document.getElementById('inboxTabBadge');
+        if (badge) {
+            badge.textContent = unread;
+            badge.style.display = unread > 0 ? 'inline' : 'none';
+        }
     }
 
     function renderInboxList() {
@@ -6915,6 +7090,7 @@
         }
 
         closeInboxModal();
+        mailDetailOpenedFrom = 'inbox'; // 记录来源
         document.getElementById('mailDetailModal').classList.add('show');
     }
 
@@ -6989,6 +7165,7 @@
             const msg = inboxMessages.find(m => m.id === msgId);
             if (msg) msg.read = 1;
             updateInboxBadge();
+            updateInboxTabBadge();
             renderInboxList();
         } catch (e) {
             console.error('标记已读失败:', e);
@@ -6997,6 +7174,11 @@
 
     function closeMailDetailModal() {
         document.getElementById('mailDetailModal').classList.remove('show');
+        // 如果是从收件箱打开的，关闭时返回收件箱
+        if (mailDetailOpenedFrom === 'inbox') {
+            document.getElementById('inboxModal').classList.add('show');
+        }
+        mailDetailOpenedFrom = null;
     }
 
     function escapeHtml(text) {
@@ -7004,6 +7186,165 @@
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    }
+
+    // ==========================================
+    // 收件箱弹窗Tab切换
+    // ==========================================
+
+    let managerSentMails = [];
+
+    function switchInboxModalTab(tabName) {
+        // 切换tab按钮状态
+        document.querySelectorAll('.inbox-modal-tab').forEach(btn => {
+            btn.classList.toggle('active', btn.dataset.tab === tabName);
+        });
+
+        // 切换内容区域
+        document.querySelectorAll('.inbox-tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+
+        const tabContentId = {
+            'inbox': 'inboxTabContent',
+            'compose': 'composeTabContent',
+            'sent': 'sentTabContent'
+        }[tabName];
+
+        const tabContent = document.getElementById(tabContentId);
+        if (tabContent) tabContent.classList.add('active');
+
+        // 加载对应内容
+        if (tabName === 'compose') {
+            loadComposeRecipients();
+        } else if (tabName === 'sent') {
+            loadSentMails();
+        }
+    }
+
+    let composeRecipientsLoaded = false;
+
+    async function loadComposeRecipients(forceReload = false) {
+        const select = document.getElementById('composeRecipient');
+        // 如果已经加载过且不强制刷新，则跳过
+        if (composeRecipientsLoaded && !forceReload) return;
+
+        try {
+            const res = await fetch('/api/manager/characters', {
+                headers: getAuthHeaders()
+            });
+            if (!res.ok) throw new Error('加载角色列表失败');
+            const characters = await res.json();
+
+            // 清空并填充选项 - API返回的是已解析的对象，包含name和ownerName
+            select.innerHTML = '<option value="">-- 选择收件人 --</option>';
+            characters.forEach(char => {
+                const option = document.createElement('option');
+                option.value = char.id;
+                option.textContent = `${char.name || '未命名角色'} (${char.ownerName || '未知玩家'})`;
+                select.appendChild(option);
+            });
+            composeRecipientsLoaded = true;
+        } catch (e) {
+            console.error('加载收件人列表失败:', e);
+            showToast('加载收件人列表失败');
+        }
+    }
+
+    async function sendManagerMail() {
+        const recipientId = document.getElementById('composeRecipient').value;
+        const subject = document.getElementById('composeSubject').value.trim();
+        const content = document.getElementById('composeContent').value.trim();
+
+        if (!recipientId) {
+            showToast('请选择收件人');
+            return;
+        }
+        if (!subject) {
+            showToast('请输入邮件主题');
+            return;
+        }
+        if (!content) {
+            showToast('请输入邮件内容');
+            return;
+        }
+
+        const btn = document.querySelector('.btn-compose-send');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 发送中...';
+
+        try {
+            const res = await fetch(`/api/manager/character/${recipientId}/message`, {
+                method: 'POST',
+                headers: getAuthHeaders(),
+                body: JSON.stringify({ subject, content })
+            });
+
+            const result = await res.json();
+            if (result.success) {
+                showToast('邮件发送成功', true);
+                // 清空表单
+                document.getElementById('composeSubject').value = '';
+                document.getElementById('composeContent').value = '';
+                document.getElementById('composeRecipient').value = '';
+                // 切换到已发送tab
+                switchInboxModalTab('sent');
+            } else {
+                throw new Error(result.message || '发送失败');
+            }
+        } catch (e) {
+            console.error('发送邮件失败:', e);
+            showToast(e.message || '发送失败');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane"></i> 发送';
+        }
+    }
+
+    async function loadSentMails() {
+        try {
+            const res = await fetch('/api/manager/sent-messages', {
+                headers: getAuthHeaders()
+            });
+            if (!res.ok) throw new Error('加载已发邮件失败');
+            managerSentMails = await res.json();
+            renderSentMails();
+        } catch (e) {
+            console.error('加载已发邮件失败:', e);
+            document.getElementById('sentMailList').innerHTML = '<div class="inbox-empty"><i class="fas fa-exclamation-circle" style="font-size:32px;margin-bottom:10px;"></i><br>加载失败</div>';
+        }
+    }
+
+    function renderSentMails() {
+        const container = document.getElementById('sentMailList');
+
+        if (managerSentMails.length === 0) {
+            container.innerHTML = '<div class="inbox-empty"><i class="fas fa-paper-plane" style="font-size:32px;margin-bottom:10px;"></i><br>暂无已发邮件</div>';
+            return;
+        }
+
+        container.innerHTML = managerSentMails.map(msg => {
+            const timeStr = new Date(msg.created_at).toLocaleString('zh-CN');
+            const isRead = msg.read === 1 || msg.read === true;
+            const readStatusClass = isRead ? 'sent-status-read' : 'sent-status-unread';
+            const readStatusText = isRead ? '✓ 已读' : '未读';
+
+            return `
+                <div class="inbox-item sent-mail-item ${isRead ? '' : 'sent-unread'}">
+                    <div class="inbox-item-icon">
+                        <i class="fas fa-paper-plane"></i>
+                    </div>
+                    <div class="inbox-item-content">
+                        <div class="inbox-item-subject">${escapeHtml(msg.subject || '(无主题)')}</div>
+                        <div class="inbox-item-meta">
+                            <span class="inbox-item-sender">发送给: ${escapeHtml(msg.recipient_name || '未知')}</span>
+                            <span class="sent-read-badge ${readStatusClass}">${readStatusText}</span>
+                            <span class="inbox-item-time">${timeStr}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
     }
 
     // ==========================================
@@ -8117,6 +8458,7 @@
             reportDataEl.style.display = 'none';
         }
 
+        mailDetailOpenedFrom = 'mission'; // 记录来源
         document.getElementById('mailDetailModal').classList.add('show');
     }
 
@@ -8853,6 +9195,10 @@
         modal.addEventListener('click', function(e) {
             if (e.target === this) {
                 this.classList.remove('show');
+                // 如果是收件箱弹窗，恢复背景滚动
+                if (this.id === 'inboxModal') {
+                    document.body.style.overflow = '';
+                }
             }
         });
     });
