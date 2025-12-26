@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs');
@@ -8,6 +9,16 @@ const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const nodemailer = require('nodemailer');
 const cors = require('cors');
+const COS = require('cos-nodejs-sdk-v5');
+
+// 腾讯云COS配置（从环境变量读取）
+const cos = new COS({
+    SecretId: process.env.COS_SECRET_ID || '',
+    SecretKey: process.env.COS_SECRET_KEY || ''
+});
+const COS_BUCKET = process.env.COS_BUCKET || 'taos-1310507437';
+const COS_REGION = process.env.COS_REGION || 'ap-hongkong';
+
 const app = express();
 app.use(cors());
 const PORT = 3333;
@@ -195,6 +206,21 @@ db.serialize(() => {
         created_at INTEGER,
         FOREIGN KEY(manager_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY(sender_character_id) REFERENCES characters(id) ON DELETE SET NULL
+    )`);
+
+    // 经理已发邮件表
+    db.run(`CREATE TABLE IF NOT EXISTS manager_sent_messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        manager_id INTEGER NOT NULL,
+        recipient_character_id TEXT,
+        recipient_name TEXT,
+        subject TEXT,
+        content TEXT,
+        linked_message_id INTEGER,
+        read INTEGER DEFAULT 0,
+        created_at INTEGER,
+        FOREIGN KEY(manager_id) REFERENCES users(id) ON DELETE CASCADE,
+        FOREIGN KEY(recipient_character_id) REFERENCES characters(id) ON DELETE SET NULL
     )`);
 
     // 分部表
@@ -506,6 +532,9 @@ db.serialize(() => {
         // 新增：关联的报告ID，用于评级通知
         if (!columnNames.includes('report_id')) {
             db.run("ALTER TABLE character_messages ADD COLUMN report_id INTEGER");
+        }
+        if (!columnNames.includes('linked_sent_id')) {
+            db.run("ALTER TABLE character_messages ADD COLUMN linked_sent_id INTEGER");
         }
     });
 
@@ -1623,6 +1652,52 @@ app.post('/api/character', (req, res) => {
         [newId, req.body.userId, data, Date.now()],
         function(err) { res.json({ success: true, id: newId }); }
     );
+});
+
+// 立绘图片上传API
+app.post('/api/upload/portrait', authenticateToken, async (req, res) => {
+    try {
+        const { imageData, characterId } = req.body;
+
+        if (!imageData) {
+            return res.status(400).json({ success: false, message: '缺少图片数据' });
+        }
+
+        // 从base64中提取图片数据
+        const matches = imageData.match(/^data:image\/(\w+);base64,(.+)$/);
+        if (!matches) {
+            return res.status(400).json({ success: false, message: '无效的图片格式' });
+        }
+
+        const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+        const base64Data = matches[2];
+        const buffer = Buffer.from(base64Data, 'base64');
+
+        // 生成唯一文件名
+        const fileName = `portraits/${characterId || req.user.userId}_${Date.now()}.${ext}`;
+
+        // 上传到COS（设置公有读权限）
+        cos.putObject({
+            Bucket: COS_BUCKET,
+            Region: COS_REGION,
+            Key: fileName,
+            Body: buffer,
+            ContentType: `image/${matches[1]}`,
+            ACL: 'public-read'
+        }, (err, data) => {
+            if (err) {
+                console.error('COS上传失败:', err);
+                return res.status(500).json({ success: false, message: '图片上传失败' });
+            }
+
+            // 返回图片URL
+            const imageUrl = `https://${COS_BUCKET}.cos.${COS_REGION}.myqcloud.com/${fileName}`;
+            res.json({ success: true, url: imageUrl });
+        });
+    } catch (error) {
+        console.error('上传处理失败:', error);
+        res.status(500).json({ success: false, message: '服务器错误' });
+    }
 });
 
 app.put('/api/character/:id', optionalAuth, (req, res) => {
@@ -3303,18 +3378,34 @@ app.get('/api/character/:id/sent-messages', authenticateToken, (req, res) => {
             return res.status(403).json([]);
         }
 
-        // 只返回已发邮件（message_type = 'sent'）
-        db.all(`SELECT * FROM character_messages WHERE character_id = ? AND message_type = 'sent' ORDER BY created_at DESC`,
+        // 只返回已发邮件（message_type = 'sent'），并关联任务报告表获取审阅状态
+        db.all(`SELECT cm.*, mr.status as report_status, mr.reviewed_at as report_reviewed_at
+                FROM character_messages cm
+                LEFT JOIN mission_reports mr ON cm.report_id = mr.id
+                WHERE cm.character_id = ? AND cm.message_type = 'sent'
+                ORDER BY cm.created_at DESC`,
             [charId], (err, rows) => {
                 if (err) return res.json([]);
-                const messages = (rows || []).map(r => ({
-                    id: r.id,
-                    characterId: r.character_id,
-                    recipientName: r.recipient_name || '未知收件人',
-                    subject: r.subject,
-                    content: r.content,
-                    createdAt: r.created_at
-                }));
+                const messages = (rows || []).map(r => {
+                    // 对于任务报告，判断经理是否已审阅
+                    let isRead = r.read;
+                    if (r.report_id) {
+                        // 有report_id的是任务报告，根据report状态判断
+                        // 状态为 'initial', 'sent', 'finalized', 'appealing' 等表示已被经理查看/处理
+                        isRead = r.report_status && r.report_status !== 'submitted' ? 1 : 0;
+                    }
+                    return {
+                        id: r.id,
+                        characterId: r.character_id,
+                        recipientName: r.recipient_name || '未知收件人',
+                        subject: r.subject,
+                        content: r.content,
+                        createdAt: r.created_at,
+                        read: isRead,  // 收件人是否已读（对于报告是经理是否已审阅）
+                        isReport: !!r.report_id,
+                        reportStatus: r.report_status
+                    };
+                });
                 res.json(messages);
             });
     });
@@ -3344,13 +3435,118 @@ app.post('/api/manager/character/:charId/message', authenticateToken, requireRol
             });
         });
 
-        db.run('INSERT INTO character_messages (character_id, sender_id, sender_name, subject, content, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-            [charId, managerId, sender, subject, content, Date.now()],
+        // 获取收件人名称
+        const recipientName = await new Promise((resolve) => {
+            db.get('SELECT data FROM characters WHERE id = ?', [charId], (err, row) => {
+                if (row && row.data) {
+                    try {
+                        const data = JSON.parse(row.data);
+                        resolve(data.pName || '未命名角色');
+                    } catch(e) {
+                        resolve('未命名角色');
+                    }
+                } else {
+                    resolve('未命名角色');
+                }
+            });
+        });
+
+        const now = Date.now();
+
+        // 先保存已发邮件记录（read=0表示对方未读）
+        db.run('INSERT INTO manager_sent_messages (manager_id, recipient_character_id, recipient_name, subject, content, read, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)',
+            [managerId, charId, recipientName, subject, content, now],
             function(err) {
                 if (err) return res.status(500).json({ success: false, message: err.message });
-                res.json({ success: true, messageId: this.lastID });
+                const sentMsgId = this.lastID;
+
+                // 发送消息给角色卡，并记录linked_sent_id
+                db.run('INSERT INTO character_messages (character_id, sender_id, sender_name, subject, content, linked_sent_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                    [charId, managerId, sender, subject, content, sentMsgId, now],
+                    function(err2) {
+                        if (err2) return res.status(500).json({ success: false, message: err2.message });
+
+                        // 更新已发邮件的linked_message_id
+                        db.run('UPDATE manager_sent_messages SET linked_message_id = ? WHERE id = ?', [this.lastID, sentMsgId]);
+
+                        res.json({ success: true, messageId: this.lastID });
+                    });
             });
     } catch (e) {
+        res.status(500).json({ success: false, message: '服务器内部错误' });
+    }
+});
+
+// 角色卡快捷回复消息
+app.post('/api/character/:charId/message/:msgId/reply', authenticateToken, async (req, res) => {
+    try {
+        const charId = req.params.charId;
+        const msgId = req.params.msgId;
+        const { reply } = req.body;
+
+        if (!reply) {
+            return res.status(400).json({ success: false, message: '回复内容不能为空' });
+        }
+
+        // 验证角色卡归属
+        const char = await new Promise((resolve) => {
+            db.get('SELECT user_id, data FROM characters WHERE id = ?', [charId], (err, row) => resolve(row));
+        });
+        if (!char || char.user_id !== req.user.userId) {
+            return res.status(403).json({ success: false, message: '无权操作此角色卡' });
+        }
+
+        // 获取原消息信息（包括发送者角色信息）
+        const originalMsg = await new Promise((resolve) => {
+            db.get('SELECT sender_id, sender_name, subject, from_character_id FROM character_messages WHERE id = ? AND character_id = ?',
+                [msgId, charId], (err, row) => resolve(row));
+        });
+        if (!originalMsg) {
+            return res.status(404).json({ success: false, message: '原消息不存在' });
+        }
+
+        // 获取角色卡名称
+        let charData = {};
+        try { charData = JSON.parse(char.data); } catch(e) {}
+        const charName = charData.pName || '未知角色';
+
+        const now = Date.now();
+        const replySubject = 'Re: ' + originalMsg.subject;
+
+        // 检查发送者是经理还是其他角色
+        const sender = await new Promise((resolve) => {
+            db.get('SELECT role FROM users WHERE id = ?', [originalMsg.sender_id], (err, row) => resolve(row));
+        });
+
+        if (sender && sender.role >= 2) {
+            // 发送者是经理，回复到经理收件箱
+            db.run(`INSERT INTO manager_inbox (manager_id, sender_character_id, sender_name, subject, content, message_type, created_at)
+                    VALUES (?, ?, ?, ?, ?, 'reply', ?)`,
+                [originalMsg.sender_id, charId, charName, replySubject, reply, now],
+                function(err) {
+                    if (err) return res.status(500).json({ success: false, message: err.message });
+
+                    // 同时在角色已发邮件中创建记录
+                    db.run(`INSERT INTO character_messages (character_id, sender_id, sender_name, subject, content, message_type, recipient_name, created_at)
+                            VALUES (?, ?, ?, ?, ?, 'sent', ?, ?)`,
+                        [charId, req.user.userId, charName, replySubject, reply, '经理', now]);
+
+                    res.json({ success: true });
+                });
+        } else if (originalMsg.from_character_id) {
+            // 发送者是其他角色，回复到该角色的收件箱
+            db.run(`INSERT INTO character_messages (character_id, sender_id, sender_name, subject, content, message_type, from_character_id, created_at)
+                    VALUES (?, ?, ?, ?, ?, 'reply', ?, ?)`,
+                [originalMsg.from_character_id, req.user.userId, charName, replySubject, reply, charId, now],
+                function(err) {
+                    if (err) return res.status(500).json({ success: false, message: err.message });
+                    res.json({ success: true });
+                });
+        } else {
+            return res.status(400).json({ success: false, message: '无法确定回复目标' });
+        }
+    } catch (e) {
+        console.error('快捷回复错误:', e);
         res.status(500).json({ success: false, message: '服务器内部错误' });
     }
 });
@@ -3367,10 +3563,30 @@ app.put('/api/character/:charId/message/:msgId/read', authenticateToken, (req, r
             return res.status(403).json({ success: false });
         }
 
-        db.run('UPDATE character_messages SET read = 1 WHERE id = ? AND character_id = ?',
-            [msgId, charId], function(err) {
-                if (err) return res.status(500).json({ success: false });
-                res.json({ success: true });
+        // 获取消息信息，检查是否有关联的发送记录和发送者类型
+        db.get('SELECT linked_sent_id, sender_id, message_type FROM character_messages WHERE id = ? AND character_id = ?',
+            [msgId, charId], (err, msg) => {
+                // 标记当前消息为已读
+                db.run('UPDATE character_messages SET read = 1 WHERE id = ? AND character_id = ?',
+                    [msgId, charId], function(err) {
+                        if (err) return res.status(500).json({ success: false });
+
+                        // 如果有关联的发送记录，也更新其 read 状态（用于发送者查看）
+                        if (msg && msg.linked_sent_id) {
+                            // 检查是否是来自经理的消息（通过检查sender_id是否对应经理用户）
+                            db.get('SELECT role FROM users WHERE id = ?', [msg.sender_id], (err, sender) => {
+                                if (sender && sender.role >= 2) {
+                                    // 发送者是经理，更新manager_sent_messages
+                                    db.run('UPDATE manager_sent_messages SET read = 1 WHERE id = ?', [msg.linked_sent_id]);
+                                } else {
+                                    // 发送者是其他角色，更新character_messages
+                                    db.run('UPDATE character_messages SET read = 1 WHERE id = ?', [msg.linked_sent_id]);
+                                }
+                            });
+                        }
+
+                        res.json({ success: true });
+                    });
             });
     });
 });
@@ -6170,15 +6386,20 @@ app.post('/api/character/:charId/send-mail', authenticateToken, async (req, res)
                 });
         }
     } else if (recipientType === 'character') {
-        // 发送给队友 - 存入 character_messages
-        db.run('INSERT INTO character_messages (character_id, sender_id, sender_name, subject, content, message_type, from_character_id, recipient_name, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-            [recipientId, req.user.userId, senderName, subject, content, 'mail', charId, recipientName, now],
+        // 发送给队友 - 先创建发送者的已发记录，再创建收件人的消息（带linked_sent_id）
+        // 这样当收件人标记已读时，可以更新发送者的已发邮件状态
+        db.run('INSERT INTO character_messages (character_id, sender_id, sender_name, subject, content, message_type, from_character_id, recipient_name, read, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?)',
+            [charId, req.user.userId, senderName, subject, content, 'sent', charId, recipientName, now],
             function(err) {
                 if (err) return res.status(500).json({ success: false, message: err.message });
-                // 记录已发邮件
-                db.run('INSERT INTO character_messages (character_id, sender_id, sender_name, subject, content, message_type, from_character_id, recipient_name, read, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)',
-                    [charId, req.user.userId, senderName, subject, content, 'sent', charId, recipientName, now]);
-                res.json({ success: true, messageId: this.lastID });
+                const sentMsgId = this.lastID;
+                // 创建收件人的消息，linked_sent_id 指向发送者的已发邮件
+                db.run('INSERT INTO character_messages (character_id, sender_id, sender_name, subject, content, message_type, from_character_id, recipient_name, linked_sent_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    [recipientId, req.user.userId, senderName, subject, content, 'mail', charId, recipientName, sentMsgId, now],
+                    function(err2) {
+                        if (err2) return res.status(500).json({ success: false, message: err2.message });
+                        res.json({ success: true, messageId: this.lastID });
+                    });
             });
     } else {
         return res.status(400).json({ success: false, message: '无效的收件人类型' });
@@ -6313,10 +6534,10 @@ app.post('/api/character/:charId/send-report', authenticateToken, async (req, re
                         // 更新任务报告状态
                         db.run('UPDATE field_missions SET report_status = ? WHERE id = ?', ['submitted', activeMission.mission_id]);
 
-                        // 记录到已发邮件 - 构建报告摘要
+                        // 记录到已发邮件 - 构建报告摘要，包含report_id以便追踪经理审阅状态
                         const reportSummary = buildReportSummary(reportData);
-                        db.run('INSERT INTO character_messages (character_id, sender_id, sender_name, subject, content, message_type, from_character_id, recipient_name, read, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1, ?)',
-                            [charId, req.user.userId, senderName, subject, reportSummary, 'sent', charId, '任务收件箱', now]);
+                        db.run('INSERT INTO character_messages (character_id, sender_id, sender_name, subject, content, message_type, from_character_id, recipient_name, report_id, read, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)',
+                            [charId, req.user.userId, senderName, subject, reportSummary, 'sent', charId, '任务收件箱', reportId, now]);
 
                         res.json({ success: true, reportId, messageId: this.lastID, sentToMission: true });
                     });
@@ -6427,6 +6648,15 @@ app.delete('/api/manager/inbox/:msgId', authenticateToken, requireRole(ROLE.MANA
         [req.params.msgId, req.user.userId], function(err) {
             if (err) return res.status(500).json({ success: false });
             res.json({ success: true });
+        });
+});
+
+// 获取经理已发邮件
+app.get('/api/manager/sent-messages', authenticateToken, requireRole(ROLE.MANAGER), (req, res) => {
+    db.all('SELECT * FROM manager_sent_messages WHERE manager_id = ? ORDER BY created_at DESC',
+        [req.user.userId], (err, messages) => {
+            if (err) return res.status(500).json([]);
+            res.json(messages || []);
         });
 });
 
