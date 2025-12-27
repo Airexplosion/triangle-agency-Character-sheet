@@ -2108,9 +2108,22 @@ app.get('/api/character/:id', optionalAuth, (req, res) => {
 app.post('/api/character', (req, res) => {
     const newId = Date.now().toString();
     const data = JSON.stringify({ pName: "新进职员" });
+    const now = Date.now();
     db.run('INSERT INTO characters (id, user_id, data, created_at) VALUES (?, ?, ?, ?)',
-        [newId, req.body.userId, data, Date.now()],
-        function(err) { res.json({ success: true, id: newId }); }
+        [newId, req.body.userId, data, now],
+        function(err) {
+            if (err) {
+                return res.status(500).json({ success: false, message: '创建角色卡失败' });
+            }
+            // 自动授予A1高墙文件权限
+            db.run('INSERT INTO character_document_permissions (character_id, filename, granted_at) VALUES (?, ?, ?)',
+                [newId, 'A1.md', now],
+                function(permErr) {
+                    // 即使权限插入失败，角色卡已创建成功，仍然返回成功
+                    res.json({ success: true, id: newId });
+                }
+            );
+        }
     );
 });
 
@@ -3647,6 +3660,42 @@ app.get('/api/documents/read/:filename', authenticateToken, (req, res) => {
                 });
             });
         }
+    });
+});
+
+// 2.3 提供高墙HTML文件的原始内容（用于iframe展示）
+app.get('/api/documents/html/:filename', authenticateToken, (req, res) => {
+    const filename = req.params.filename;
+
+    // 安全检查：防止路径遍历，只允许.html文件
+    if (filename.includes('..') || filename.includes('/') || !filename.endsWith('.html')) {
+        return res.status(400).json({ error: '非法的文件名' });
+    }
+
+    // 权限检查：对应的.md文件需要有权限
+    const mdFilename = filename.replace('.html', '.md');
+    const checkPermission = () => {
+        if (req.user.role >= ROLE.SUPER_ADMIN) return Promise.resolve(true);
+        return new Promise((resolve) => {
+            const sql = `
+                SELECT 1 FROM character_document_permissions cdp
+                JOIN characters c ON cdp.character_id = c.id
+                WHERE c.user_id = ? AND cdp.filename = ?
+                LIMIT 1
+            `;
+            db.get(sql, [req.user.userId, mdFilename], (err, row) => resolve(!!row));
+        });
+    };
+
+    checkPermission().then(allowed => {
+        if (!allowed) return res.status(403).json({ error: '权限不足' });
+
+        const filePath = path.join(HIGH_SECURITY_DIR, filename);
+        if (!fs.existsSync(filePath)) return res.status(404).json({ error: '文件不存在' });
+
+        // 直接返回HTML文件内容
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        fs.createReadStream(filePath).pipe(res);
     });
 });
 
